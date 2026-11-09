@@ -161,7 +161,7 @@ button:disabled { opacity: .45; }
 <body>
 <div id="game">
   <canvas id="gl"></canvas><canvas id="cv"></canvas>
-  <div class="hud mini"><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button></div>
+  <div class="hud mini"><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button><button id="qual">화질 높음</button></div>
   <div class="hud topbar">
     <div class="pill"><span id="stage">1-1</span><span class="track" id="track"></span><span class="rtype" id="rtype">급식 줄</span></div>
     <div class="timer"><i id="timerfill"></i></div>
@@ -203,6 +203,12 @@ button:disabled { opacity: .45; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script>
 "use strict";
 // =============== 데이터 ===============
@@ -694,7 +700,7 @@ function gameOver(place) {
 
 // =============== 급식 줄 (회전 선택 라운드) ===============
 function startCarousel() {
-  S.phase = "carousel"; S.battle = null; S.sel = null; S.scout = null;
+  S.phase = "carousel"; S.battle = null; S.sel = null; S.scout = null; S.opp = null;
   const s = S.stage;
   const costs = s === 1 ? [1] : s === 2 ? [1, 2] : s === 3 ? [2, 3] : s === 4 ? [3, 4] : [3, 4, 5];
   const opts = [];
@@ -1225,6 +1231,90 @@ function makePortraits() {
     r2.dispose(); if (r2.forceContextLoss) r2.forceContextLoss();
   } catch (e) { /* 그림 없이도 카드는 보여요 */ }
 }
+let composer = null, bloomPass = null, HQ = true, pollen = null;
+try { HQ = localStorage.getItem("uri-hq") !== "0"; } catch (e) {}
+const FINAL_SHADER = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    vec3 toSRGB(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
+    void main(){
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(l), c, 1.14);
+      c = toSRGB(clamp(c, 0.0, 1.0));
+      c = (c - 0.5) * 1.06 + 0.5;
+      c *= vec3(1.025, 1.0, 0.965);
+      float v = smoothstep(0.9, 0.3, length((vUv - 0.5) * vec2(1.15, 1.0)));
+      c *= mix(0.74, 1.0, v);
+      gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    }`,
+};
+function setupPost() {
+  if (!THREE.EffectComposer || !THREE.UnrealBloomPass || !THREE.ShaderPass) return;
+  const opts = { format: THREE.RGBAFormat };
+  const rt = renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget ? new THREE.WebGLMultisampleRenderTarget(16, 16, opts) : new THREE.WebGLRenderTarget(16, 16, opts);
+  composer = new THREE.EffectComposer(renderer, rt);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.32, 0.35, 0.93);
+  composer.addPass(bloomPass);
+  composer.addPass(new THREE.ShaderPass(FINAL_SHADER));
+}
+function softTex(inner, outer) {
+  return canvasTex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, inner); gr.addColorStop(1, outer); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+}
+function buildDecor() {
+  // 풀 포기 (한 번에 그리는 인스턴스)
+  const tuft = new THREE.ConeGeometry(0.05, 0.38, 3); tuft.translate(0, 0.19, 0);
+  const N = HQ ? 7000 : 2500, grass = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({ roughness: 0.9 }), N);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), col = new THREE.Color();
+  let n = 0;
+  while (n < N) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 23.5, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const inArena = Math.abs(x) < 8.6 && z > -8.6 && z < 10.2;
+    if (inArena && Math.random() > 0.04) continue;
+    e.set((Math.random() - 0.5) * 0.5, Math.random() * 3, (Math.random() - 0.5) * 0.5); q.setFromEuler(e);
+    const sc = 0.6 + Math.random() * 0.9;
+    m4.compose(new THREE.Vector3(x, inArena ? 0.16 : 0, z), q, new THREE.Vector3(sc, sc * (0.7 + Math.random() * 0.8), sc));
+    grass.setMatrixAt(n, m4);
+    col.setHSL(0.24 + Math.random() * 0.06, 0.45 + Math.random() * 0.2, 0.22 + Math.random() * 0.14).convertSRGBToLinear();
+    grass.setColorAt(n, col); n++;
+  }
+  grass.receiveShadow = true; scene.add(grass);
+  // 꽃
+  const fl = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 6, 5), new THREE.MeshStandardMaterial({ roughness: 0.6 }), 500);
+  const FC = [0xffffff, 0xffe066, 0xff9ac8, 0xb59aff];
+  for (let i = 0; i < 500; i++) {
+    let x, z; do { const a = Math.random() * Math.PI * 2, r = 9 + Math.random() * 14; x = Math.cos(a) * r; z = Math.sin(a) * r; } while (Math.abs(x) < 8.8 && z > -8.8 && z < 10.4);
+    m4.makeTranslation(x, 0.22 + Math.random() * 0.15, z); fl.setMatrixAt(i, m4); fl.setColorAt(i, col.setHex(rnd(FC)).convertSRGBToLinear());
+  }
+  scene.add(fl);
+  // 구름
+  const cloudTex = softTex("rgba(255,255,255,.95)", "rgba(255,255,255,0)");
+  for (let i = 0; i < 26; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, color: lin(i % 3 ? 0xfff1e6 : 0xf3d6e6), transparent: true, opacity: 0.75, depthWrite: false }));
+    const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 26;
+    sp.position.set(Math.cos(a) * r, -10 + Math.random() * 14, Math.sin(a) * r - 6);
+    const w = 14 + Math.random() * 18; sp.scale.set(w, w * 0.45, 1); scene.add(sp);
+  }
+  // 떠다니는 꽃가루
+  const P = HQ ? 260 : 120, pos = new Float32Array(P * 3);
+  for (let i = 0; i < P; i++) { pos[i * 3] = (Math.random() - 0.5) * 30; pos[i * 3 + 1] = Math.random() * 6; pos[i * 3 + 2] = (Math.random() - 0.5) * 30; }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  pollen = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.16, map: softTex("rgba(255,244,190,1)", "rgba(255,244,190,0)"), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: lin(0xfff2b0) }));
+  scene.add(pollen);
+  // 뒤쪽 테두리 빛
+  const rimL = new THREE.DirectionalLight(0xa8d4ff, 0.75); rimL.position.set(6, 7, -14); scene.add(rimL);
+}
+function stepDecor(dt) {
+  if (!pollen) return;
+  const a = pollen.geometry.attributes.position;
+  for (let i = 0; i < a.count; i++) {
+    let y = a.getY(i) + dt * 0.25; if (y > 6) y = 0;
+    a.setY(i, y); a.setX(i, a.getX(i) + Math.sin(clock3d * 0.6 + i) * dt * 0.15);
+  }
+  a.needsUpdate = true;
+}
 function init3D() {
   renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -1244,7 +1334,7 @@ function init3D() {
   Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 14, bottom: -14, near: 1, far: 60 });
   scene.add(sun);
   const fill = new THREE.DirectionalLight(0xcfe0ff, 0.35); fill.position.set(10, 10, 16); scene.add(fill);
-  buildWorld(); buildArena();
+  buildWorld(); buildArena(); buildDecor(); setupPost();
   // 캐릭터 부품
   const torsoPts = [[0, 0], [0.25, 0], [0.27, 0.12], [0.27, 0.3], [0.29, 0.42], [0.25, 0.5], [0.12, 0.56], [0, 0.565]].map(([x, y]) => new THREE.Vector2(x, y));
   Object.assign(GEO, {
@@ -1480,8 +1570,10 @@ function resize() {
   const s = Math.max(30, Math.min(W, H) * 0.062);
   IT.s = s; IT.x0 = 12; IT.cols = H < 600 ? 5 : 3; IT.y0 = H < 600 ? H * 0.4 : H * 0.5;
   if (HAS3D && renderer) {
-    renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
+    const pr = HQ ? Math.min(2, window.devicePixelRatio || 1) : Math.min(1.25, window.devicePixelRatio || 1);
+    renderer.setPixelRatio(pr);
     renderer.setSize(W, H, false); gl.style.width = W + "px"; gl.style.height = H + "px";
+    if (composer) { composer.setPixelRatio(pr); composer.setSize(W, H); }
     camera.aspect = W / H; camera.updateProjectionMatrix(); fitCamera();
   }
 }
@@ -1631,7 +1723,8 @@ function render3D(dt) {
     camera.position.copy(camBase.pos);
     if (S.shake > 0) { S.shake -= dt; camera.position.x += (Math.random() - 0.5) * 0.3; camera.position.y += (Math.random() - 0.5) * 0.3; }
   }
-  renderer.render(scene, camera);
+  stepDecor(dt);
+  if (composer && HQ) composer.render(); else renderer.render(scene, camera);
   return R;
 }
 const _v = HAS3D ? new THREE.Vector3() : null;
@@ -2014,6 +2107,7 @@ function renderUI() {
   $("ready").disabled = S.phase !== "plan";
   $("speed").textContent = `속도 ×${S.speed}`;
   $("mute").textContent = muted ? "소리 꺼짐" : "소리 켜짐";
+  $("qual").textContent = HQ ? "화질 높음" : "화질 보통";
   // 정보창
   if (S.sel) {
     if (S.sel.w === "i" && P.items[S.sel.i]) return showItem(P.items[S.sel.i]);
@@ -2041,6 +2135,7 @@ $("reroll").onclick = () => { const P = human(); if (!shopOpen()) return; if (!r
 $("buyxp").onclick = () => { const P = human(); if (!shopOpen()) return; if (!buyXp(P)) return toast("골드가 부족해요"); sfx("place"); renderUI(); };
 $("lock").onclick = () => { const P = human(); P.locked = !P.locked; renderUI(); };
 $("ready").onclick = () => startCombat();
+$("qual").onclick = () => { HQ = !HQ; try { localStorage.setItem("uri-hq", HQ ? "1" : "0"); } catch (e) {} resize(); renderUI(); toast(HQ ? "화질 높음: 빛 번짐·고해상도" : "화질 보통: 더 부드럽게 움직여요"); };
 document.addEventListener("keydown", (e) => {
   if (!S || !$("ov").hidden || e.repeat) return;
   const k = e.key.toLowerCase();
