@@ -74,7 +74,9 @@ body {
 .trait.on { border-style: solid; border-color: var(--accent); color: var(--bg); background: var(--accent); font-weight: 700; }
 .trait.hint { border: none; padding-left: 0; }
 #boardbox { min-width: 0; display: flex; justify-content: center; }
-#cv { display: block; touch-action: none; }
+#stage3d { position: relative; }
+#gl { position: absolute; left: 0; top: 0; border-radius: 12px; display: block; }
+#cv { position: relative; display: block; touch-action: none; }
 .info {
   background: var(--panel); border-radius: 10px; padding: 9px 12px; min-height: 40px;
   display: flex; gap: 10px; align-items: center; font-size: 13px; line-height: 1.5;
@@ -167,7 +169,7 @@ button.sell { color: var(--danger); border-color: var(--danger); padding: 6px 10
   <div class="timer"><i id="timerfill"></i></div>
   <div class="players" id="players"></div>
   <div class="traits" id="traits"></div>
-  <div id="boardbox"><canvas id="cv"></canvas></div>
+  <div id="boardbox"><div id="stage3d"><canvas id="gl"></canvas><canvas id="cv"></canvas></div></div>
   <div class="info" id="info"></div>
   <div class="lvlrow"><span id="lvl">레벨 1</span><div class="xpbar"><i id="xpfill"></i></div><span id="xptxt">0/2</span></div>
   <div class="btns">
@@ -196,6 +198,7 @@ button.sell { color: var(--danger); border-color: var(--danger); padding: 6px 10
     <button class="go" id="start">시작하기</button>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 "use strict";
 // =============== 데이터 ===============
@@ -789,7 +792,7 @@ function nextStep(B, u, t) {
   }
   return null;
 }
-function addFloat(B, t, text, col, big) { if (B.visual) B.floats.push({ X: t.X, Y: t.Y - 0.35, text, col, t: 0.8, big }); }
+function addFloat(B, t, text, col, big) { if (B.visual) B.floats.push({ X: t.X, Y: t.Y, h: 1.9, text, col, t: 0.9, big }); }
 function addFx(B, X, Y, r, col, dur = 0.5) { if (B.visual) B.fx.push({ X, Y, r, col, t: dur, t0: dur }); }
 function dealDamage(B, src, t, amt, kind) {
   if (!t.alive) return 0;
@@ -834,7 +837,8 @@ function cast(B, u) {
   if (!u.tgt || !u.tgt.alive) u.tgt = nearest(B, u);
   const t = u.tgt;
   const allies = B.f.filter((o) => o.alive && o.team === u.team), foes = B.f.filter((o) => o.alive && o.team !== u.team);
-  addFloat(B, { X: u.X, Y: u.Y - 0.35 }, def.s || CLASS[def.k].sk, TOK["--accent"], true);
+  u.castT = 0.35;
+  addFloat(B, { X: u.X, Y: u.Y }, def.s || CLASS[def.k].sk, TOK["--accent"], true);
   if (B.visual) sfx("cast");
   switch (def.k) {
     case "수호자": u.shield += 260 * P; addFx(B, u.X, u.Y, 0.8, TOK["--c3"]); break;
@@ -866,7 +870,7 @@ function stepBattle(B, dt) {
     const k = Math.min(1, dt * 9);
     u.X += (u.c + (u.r & 1) * 0.5 - u.X) * k; u.Y += (u.r - u.Y) * k;
     if (!u.alive) continue;
-    u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, u.lunge - dt);
+    u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, u.lunge - dt); u.castT = Math.max(0, (u.castT || 0) - dt);
     u.sec += dt;
     if (u.sec >= 1) { u.sec -= 1; if (u.manaTick) gainMana(B, u, u.manaTick); if (u.regen) heal(B, u, u.maxHp * u.regen); }
     if (!u.tgt || !u.tgt.alive || hexDist(u, u.tgt) > u.rg) u.tgt = nearest(B, u);
@@ -918,35 +922,304 @@ function sfx(name) {
   }
 }
 
-// =============== 그리기 ===============
-const cv = $("cv"), ctx = cv.getContext("2d");
-let W = 0, H = 0, size = 20, hw = 34, boardH = 0, benchY = 0, bc = 0, itemY = 0, ic = 0;
-const PAD = 4;
-function layout(w) {
-  W = Math.floor(w); size = (W - 2 * PAD) / (7.5 * SQ3); hw = SQ3 * size;
-  boardH = 12.5 * size + 2 * PAD; benchY = boardH + 16; bc = W / BENCH; itemY = benchY + bc + 16; ic = W / ITEM_MAX;
-  H = Math.ceil(itemY + ic * 0.9);
+// =============== 3D 그리기 ===============
+// 3D 장면(three.js) 위에 2D 캔버스를 겹쳐서 체력바·이름·숫자를 그려요
+const gl = $("gl"), cv = $("cv"), ctx = cv.getContext("2d");
+const HAS3D = typeof THREE !== "undefined";
+let W = 0, H3 = 0, H = 0, ic = 0, itemY = 0;
+const CX = 3.25 * SQ3, BENCH_Z = 7.7, SLOT_W = 13.2 / BENCH, BENCH_X0 = -6.6;
+const worldX = (X) => X * SQ3 - CX, worldZ = (Y) => Y * 1.5 - 5.25;
+const benchX = (i) => BENCH_X0 + SLOT_W * (i + 0.5);
+const gridX = (r, c) => c + (r & 1) * 0.5;
+let renderer, scene, camera, raycaster, pickPlane, carouselDisc, camBase = null, chalk = null;
+const tiles = [], pads = [], GEO = {}, PAPER = {};
+const CLASS_COL = { "수호자": 0x4a7bd0, "돌격대": 0xd0503c, "저격수": 0x3ca86a, "천재": 0x8a5cd0, "응원단": 0xe0a030, "반장": 0xf5d76e };
+const HAIR = [0x2b2118, 0x3b2a1e, 0x1a1a1a, 0x4a3020, 0x241a14];
+const COST_HEX = [0, 0xc9d1cc, 0x7fe0b0, 0x7fc4ff, 0xe39cff, 0xffcc4d];
+
+function canvasTex(w, h, paint) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  paint(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c); t.userData = { c, paint }; return t;
+}
+function repaint(t) { const { c, paint } = t.userData; paint(c.getContext("2d"), c.width, c.height); t.needsUpdate = true; }
+function paintChalk(g, w, h) {
+  g.fillStyle = "#1f3d31"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#7a5a3a"; g.lineWidth = 26; g.strokeRect(13, 13, w - 26, h - 26);
+  g.fillStyle = "rgba(238,242,230,.92)"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = `120px ${TOK["--display"]}`; g.fillText("우리반 오토배틀", w / 2, h * 0.42);
+  g.fillStyle = "rgba(245,215,110,.9)"; g.font = `46px ${TOK["--display"]}`;
+  g.fillText("오늘의 목표: 끝까지 살아남기!", w / 2, h * 0.76);
+}
+function paperTex(name) {
+  if (PAPER[name]) return PAPER[name];
+  return (PAPER[name] = canvasTex(128, 160, (g, w, h) => {
+    g.fillStyle = "#f7f4ea"; g.fillRect(0, 0, w, h);
+    g.strokeStyle = "#b8c6d8"; g.lineWidth = 2;
+    for (let y = 46; y < h; y += 16) { g.beginPath(); g.moveTo(10, y); g.lineTo(w - 10, y); g.stroke(); }
+    g.fillStyle = "#24302a"; g.textAlign = "center"; g.font = `28px ${TOK["--display"]}`; g.fillText(name, w / 2, 30);
+    g.strokeStyle = "#e0453a"; g.lineWidth = 5; g.beginPath(); g.arc(w * 0.68, h * 0.66, 26, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = "#e0453a"; g.font = `26px ${TOK["--display"]}`; g.fillText("0점", w * 0.68, h * 0.69);
+  }));
+}
+function init3D() {
+  renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x13241d);
+  scene.fog = new THREE.Fog(0x13241d, 28, 55);
+  camera = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
+  scene.add(new THREE.HemisphereLight(0xfff6e0, 0x2a3a30, 0.8));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+  sun.position.set(-6, 16, 9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 13, bottom: -13, near: 1, far: 45 });
+  scene.add(sun);
+  // 교실 바닥(나무)
+  const wood = canvasTex(256, 256, (g, w, h) => {
+    for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? "#6b4f3a" : "#735540"; g.fillRect(0, (i * h) / 8, w, h / 8); g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(0, (i * h) / 8, w, 2); }
+  });
+  wood.wrapS = wood.wrapT = THREE.RepeatWrapping; wood.repeat.set(8, 8);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshLambertMaterial({ map: wood }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.32; floor.receiveShadow = true; scene.add(floor);
+  // 보드 받침
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(14.8, 0.3, 13.8), new THREE.MeshLambertMaterial({ color: 0x1d3a2f }));
+  slab.position.y = -0.15; slab.receiveShadow = true; scene.add(slab);
+  // 육각 칸
+  const hexGeo = new THREE.CylinderGeometry(0.93, 0.93, 0.12, 6);
+  for (let r = 0; r < ROWS; r++) {
+    tiles[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      const m = new THREE.Mesh(hexGeo, new THREE.MeshLambertMaterial({ color: r >= 4 ? 0x2f5a4a : 0x24463a }));
+      m.position.set(worldX(gridX(r, c)), 0.06, worldZ(r)); m.receiveShadow = true;
+      scene.add(m); tiles[r][c] = m;
+    }
+  }
+  // 가운데 점선
+  const dashGeo = new THREE.BoxGeometry(0.45, 0.02, 0.06), dashMat = new THREE.MeshBasicMaterial({ color: 0x9fb3a6 });
+  for (let x = -6.6; x <= 6.6; x += 0.9) { const d = new THREE.Mesh(dashGeo, dashMat); d.position.set(x, 0.13, 0); scene.add(d); }
+  // 대기석
+  const padGeo = new THREE.BoxGeometry(SLOT_W - 0.12, 0.1, 1.25);
+  for (let i = 0; i < BENCH; i++) {
+    const p = new THREE.Mesh(padGeo, new THREE.MeshLambertMaterial({ color: 0x1a2f26 }));
+    p.position.set(benchX(i), -0.02, BENCH_Z); p.receiveShadow = true; scene.add(p); pads.push(p);
+  }
+  // 뒤쪽 칠판
+  chalk = canvasTex(1024, 384, paintChalk);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(16, 6), new THREE.MeshLambertMaterial({ map: chalk }));
+  board.position.set(0, 3.2, -10); scene.add(board);
+  // 책상 장식
+  const deskGeo = new THREE.BoxGeometry(2.2, 0.12, 1.4), legGeo = new THREE.BoxGeometry(0.1, 0.9, 0.1);
+  const deskMat = new THREE.MeshLambertMaterial({ color: 0xa57a52 }), legMat = new THREE.MeshLambertMaterial({ color: 0x555b58 });
+  for (const [x, z] of [[-10.5, -4], [10.5, -4], [-10.5, 1], [10.5, 1], [-10.5, 6], [10.5, 6]]) {
+    const d = new THREE.Mesh(deskGeo, deskMat); d.position.set(x, 0.6, z); d.castShadow = true; scene.add(d);
+    for (const [lx, lz] of [[-1, -0.6], [1, -0.6], [-1, 0.6], [1, 0.6]]) { const l = new THREE.Mesh(legGeo, legMat); l.position.set(x + lx, 0.13, z + lz); scene.add(l); }
+  }
+  // 급식 줄 원판
+  carouselDisc = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 0.1, 48), new THREE.MeshLambertMaterial({ color: 0x3a5a4c }));
+  carouselDisc.position.y = 0.16; carouselDisc.receiveShadow = true; scene.add(carouselDisc);
+  // 공용 모양
+  GEO.base = new THREE.CylinderGeometry(0.58, 0.62, 0.08, 28);
+  GEO.ring = new THREE.TorusGeometry(0.64, 0.045, 8, 36);
+  GEO.body = new THREE.CylinderGeometry(0.26, 0.34, 0.6, 18);
+  GEO.head = new THREE.SphereGeometry(0.27, 22, 16);
+  GEO.hair = new THREE.SphereGeometry(0.285, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.52);
+  GEO.eye = new THREE.SphereGeometry(0.038, 8, 6);
+  GEO.arm = new THREE.CylinderGeometry(0.07, 0.07, 0.42, 8);
+  GEO.leg = new THREE.CylinderGeometry(0.09, 0.09, 0.22, 8);
+  GEO.shield = new THREE.BoxGeometry(0.06, 0.5, 0.42);
+  GEO.band = new THREE.TorusGeometry(0.27, 0.035, 6, 24);
+  GEO.rod = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 6);
+  GEO.tip = new THREE.SphereGeometry(0.07, 8, 6);
+  GEO.book = new THREE.BoxGeometry(0.34, 0.07, 0.25);
+  GEO.pole = new THREE.CylinderGeometry(0.025, 0.025, 1.0, 6);
+  GEO.flag = new THREE.BoxGeometry(0.34, 0.22, 0.02);
+  GEO.crown = new THREE.CylinderGeometry(0.2, 0.23, 0.16, 5, 1, true);
+  GEO.paper = new THREE.BoxGeometry(0.9, 1.15, 0.06);
+  GEO.proj = new THREE.SphereGeometry(0.1, 10, 8);
+  GEO.ringFx = new THREE.RingGeometry(0.86, 1, 48);
+  raycaster = new THREE.Raycaster();
+  pickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.4);
+}
+function buildUnit(sp, enemy) {
+  const g = new THREE.Group(); g.userData.mats = [];
+  const add = (geo, col, x, y, z, o = {}) => {
+    const m = new THREE.MeshLambertMaterial(o.map ? { map: o.map } : { color: col });
+    if (o.side) m.side = THREE.DoubleSide;
+    g.userData.mats.push(m);
+    const mesh = new THREE.Mesh(geo, m);
+    mesh.position.set(x, y, z); mesh.castShadow = true;
+    if (o.rx) mesh.rotation.x = o.rx; if (o.rz) mesh.rotation.z = o.rz;
+    g.add(mesh); return mesh;
+  };
+  if (sp.mon) {
+    add(GEO.ring, enemy ? 0xff6a5a : 0x7fe0b0, 0, 0.08, 0, { rx: Math.PI / 2 });
+    add(GEO.paper, 0xffffff, 0, 0.75, 0, { map: paperTex(sp.mon.mn) });
+    add(GEO.eye, 0x1a1a1a, -0.15, 0.95, 0.05); add(GEO.eye, 0x1a1a1a, 0.15, 0.95, 0.05);
+    add(GEO.leg, 0x24302a, -0.2, 0.11, 0); add(GEO.leg, 0x24302a, 0.2, 0.11, 0);
+    return g;
+  }
+  const def = DEFS[sp.d], cc = CLASS_COL[def.k];
+  add(GEO.base, COST_HEX[def.c], 0, 0.04, 0);
+  add(GEO.ring, enemy ? 0xff6a5a : 0x7fe0b0, 0, 0.09, 0, { rx: Math.PI / 2 });
+  add(GEO.leg, 0x2c3440, -0.12, 0.19, 0); add(GEO.leg, 0x2c3440, 0.12, 0.19, 0);
+  add(GEO.body, cc, 0, 0.55, 0);
+  add(GEO.arm, cc, -0.37, 0.58, 0, { rz: 0.28 }); add(GEO.arm, cc, 0.37, 0.58, 0, { rz: -0.28 });
+  add(GEO.head, 0xf2c9a0, 0, 1.1, 0);
+  let h = 0; for (const ch of def.n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  add(GEO.hair, HAIR[h % HAIR.length], 0, 1.13, -0.02);
+  add(GEO.eye, 0x1a1a1a, -0.09, 1.11, 0.245); add(GEO.eye, 0x1a1a1a, 0.09, 1.11, 0.245);
+  switch (def.k) {
+    case "수호자": add(GEO.shield, 0xb8c4bc, 0.45, 0.6, 0.1); break;
+    case "돌격대": add(GEO.band, 0xff4040, 0, 1.17, 0, { rx: Math.PI / 2 }); break;
+    case "저격수": add(GEO.rod, 0x333333, 0.42, 0.75, 0.15, { rx: 0.6 }); add(GEO.tip, 0xffcc4d, 0.42, 1.08, 0.38); break;
+    case "천재": add(GEO.book, 0xe39cff, 0, 1.42, 0); break;
+    case "응원단": add(GEO.pole, 0xdddddd, 0.45, 0.85, 0); add(GEO.flag, 0xffcc4d, 0.63, 1.22, 0); break;
+    case "반장": add(GEO.crown, 0xffcc4d, 0, 1.42, 0, { side: true }); break;
+  }
+  return g;
+}
+// 키(유닛·투사체 등)마다 3D 물체를 하나씩 두고, 이번 프레임에 안 쓰인 것은 지워요
+const pool = new Map(); let frameId = 0, clock3d = 0;
+function useMesh(key, make) {
+  let e = pool.get(key);
+  if (!e) { e = { o: make() }; scene.add(e.o); pool.set(key, e); }
+  e.f = frameId; return e.o;
+}
+function sweep() {
+  for (const [k, e] of pool) if (e.f !== frameId) {
+    scene.remove(e.o);
+    e.o.traverse((m) => { if (m.material) m.material.dispose(); });
+    pool.delete(k);
+  }
+}
+function fitCamera() {
+  const elev = THREE.MathUtils.degToRad(W / H3 > 1.15 ? 50 : 57);
+  const dir = new THREE.Vector3(0, Math.sin(elev), Math.cos(elev));
+  const pts = [[-7, 0, -6.4], [7, 0, -6.4], [-7, 0, 8.5], [7, 0, 8.5], [-6.5, 1.7, -6.3], [6.5, 1.7, -6.3]].map((p) => new THREE.Vector3(...p));
+  const target = new THREE.Vector3(0, 0, 1);
+  const place = (d) => { camera.position.copy(target).addScaledVector(dir, d); camera.lookAt(target); camera.updateMatrixWorld(); };
+  const bounds = () => {
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const p of pts) { const v = p.clone().project(camera); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
+    return { x0, x1, y0, y1 };
+  };
+  for (let it = 0; it < 5; it++) {
+    let lo = 4, hi = 150;
+    for (let k = 0; k < 30; k++) {
+      const mid = (lo + hi) / 2; place(mid); const b = bounds();
+      if (b.x0 >= -0.98 && b.x1 <= 0.98 && b.y0 >= -0.97 && b.y1 <= 0.95) hi = mid; else lo = mid;
+    }
+    place(hi); const b = bounds();
+    target.z -= ((b.y0 + b.y1) / 2) * 3;
+  }
+  camBase = { pos: camera.position.clone() };
 }
 function resize() {
   const box = $("boardbox"), land = matchMedia(LAND).matches;
-  let w = Math.min(land ? 900 : 560, box.clientWidth);
+  let w = Math.min(land ? 1000 : 600, box.clientWidth);
+  const r3 = land ? 0.74 : 1.02;
   if (land) {
-    layout(1000); const ratio = H / 1000;
     const top = box.getBoundingClientRect().top + window.scrollY;
-    w = Math.min(w, Math.max(280, (window.innerHeight - top - 28) / ratio));
+    w = Math.min(w, Math.max(300, (window.innerHeight - top - 40) / (r3 + 0.085)));
   }
-  layout(w);
-  const dpr = window.devicePixelRatio || 1;
+  W = Math.floor(w); H3 = Math.round(W * r3); ic = W / ITEM_MAX; itemY = H3 + 22; H = Math.ceil(itemY + ic * 0.85 + 4);
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (HAS3D && renderer) {
+    renderer.setSize(W, H3, false); gl.style.width = W + "px"; gl.style.height = H3 + "px";
+    camera.aspect = W / H3; camera.updateProjectionMatrix(); fitCamera();
+  }
 }
-const cellXY = (X, Y) => [PAD + X * hw + hw / 2, PAD + size + Y * 1.5 * size];
-const gXY = (r, c) => cellXY(c + (r & 1) * 0.5, r);
-function hexPath(cx, cy, s) {
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) { const a = (Math.PI / 180) * (60 * i - 30); const x = cx + s * Math.cos(a), y = cy + s * Math.sin(a); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-  ctx.closePath();
+let drag = null, lastT = performance.now();
+function collect(dt) {
+  const out = [], P = human(), dragging = drag && drag.moved && drag.loc.w !== "i" ? drag.obj : null;
+  const push = (key, sp, x, z, o = {}) => out.push({ key, sp, x, z, ...o });
+  if (S.phase === "carousel" && S.car) {
+    const C = S.car;
+    C.opts.forEach((o, i) => {
+      if (o.taken) return;
+      const a = C.ang + (i * 2 * Math.PI) / C.opts.length;
+      push(o, { d: o.d, star: 1, items: [o.item] }, Math.cos(a) * 3.5, Math.sin(a) * 3.1, { face: Math.atan2(-Math.cos(a), -Math.sin(a)) + Math.PI });
+    });
+  } else if (S.battle && (S.phase === "combat" || S.phase === "result")) {
+    for (const u of S.battle.f) {
+      if (!u.alive) { if (u.deadT <= 0) continue; u.deadT -= dt; }
+      let x = worldX(u.X), z = worldZ(u.Y);
+      if (u.lunge > 0) { const k = Math.sin((u.lunge / 0.18) * Math.PI) * 0.35; x += u.lx * SQ3 * k; z += u.ly * 1.5 * k; }
+      let face = u.team ? 0 : Math.PI;
+      if (u.alive && u.tgt) face = Math.atan2(worldX(u.tgt.X) - worldX(u.X), worldZ(u.tgt.Y) - worldZ(u.Y));
+      push(u, u, x, z, { enemy: u.team === 1, f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, u.deadT / 0.45), face,
+        jump: u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.5 : 0, dead: !u.alive });
+    }
+  } else {
+    if (S.scout != null) {
+      const Q = S.players[S.scout];
+      for (let r = 0; r < 4; r++) for (let c = 0; c < COLS; c++) {
+        const u = Q.board[r][c]; if (!u) continue;
+        push(u, u, worldX(gridX(3 - r, COLS - 1 - c)), worldZ(3 - r), { enemy: true, face: 0 });
+      }
+    }
+    for (let r = 0; r < 4; r++) for (let c = 0; c < COLS; c++) {
+      const u = P.board[r][c]; if (!u || u === dragging) continue;
+      push(u, u, worldX(gridX(4 + r, c)), worldZ(4 + r), { face: 0 });
+    }
+  }
+  P.bench.forEach((u, i) => { if (u && u !== dragging) push(u, u, benchX(i), BENCH_Z, { face: 0, bench: 1 }); });
+  if (dragging && drag.wp) push(dragging, dragging, drag.wp.x, drag.wp.z, { lift: 0.5, alpha: 0.85, face: 0 });
+  return out;
 }
+function placeUnit(it) {
+  const g = useMesh(it.key, () => buildUnit(it.sp, it.enemy));
+  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.55 : 1) : [1, 1, 1.13, 1.27][it.sp.star]) * (it.bench ? 0.82 : 1);
+  g.scale.setScalar(sc);
+  const bob = it.dead ? 0 : Math.abs(Math.sin(clock3d * 2.6 + it.x * 1.3 + it.z)) * 0.05;
+  g.position.set(it.x, (it.lift || 0) + (it.jump || 0) + bob - (it.dead ? (1 - it.alpha) * 0.7 : 0), it.z);
+  const cur = g.rotation.y, d = ((((it.face ?? 0) - cur) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+  g.rotation.y = cur + d * 0.25;
+  const a = it.alpha ?? 1;
+  for (const m of g.userData.mats) { m.transparent = a < 1; m.opacity = a; m.emissive.setHex(it.flash ? 0x777777 : 0); }
+  it.g = g;
+}
+function render3D(dt) {
+  frameId++; clock3d += dt;
+  const P = human();
+  const holding = S.phase === "plan" && ((S.sel && S.sel.w !== "i" && getAt(P, S.sel)) || (drag && drag.moved && drag.obj && drag.loc.w !== "i"));
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const sel = S.phase === "plan" && S.sel && S.sel.w === "b" && S.sel.r + 4 === r && S.sel.c === c;
+    tiles[r][c].material.emissive.setHex(sel ? 0x6b5a10 : holding && r >= 4 ? 0x1a1a08 : 0);
+  }
+  pads.forEach((p, i) => p.material.emissive.setHex(S.sel && S.sel.w === "n" && S.sel.i === i ? 0x6b5a10 : 0));
+  carouselDisc.visible = S.phase === "carousel";
+  if (carouselDisc.visible && S.car) carouselDisc.rotation.y = -S.car.ang;
+  const R = collect(dt);
+  R.forEach(placeUnit);
+  const B = S.battle;
+  if (B && (S.phase === "combat" || S.phase === "result")) {
+    for (const p of B.projs) {
+      const m = useMesh(p, () => new THREE.Mesh(GEO.proj, new THREE.MeshBasicMaterial({ color: new THREE.Color(p.col) })));
+      m.position.set(worldX(p.X), 0.85, worldZ(p.Y)); m.scale.setScalar(p.sz * 10);
+    }
+    for (const g of B.fx) {
+      g.t -= dt;
+      const m = useMesh(g, () => { const mm = new THREE.Mesh(GEO.ringFx, new THREE.MeshBasicMaterial({ color: new THREE.Color(g.col), transparent: true, side: THREE.DoubleSide })); mm.rotation.x = -Math.PI / 2; return mm; });
+      const k = 1 - g.t / g.t0;
+      m.position.set(worldX(g.X), 0.2, worldZ(g.Y)); m.scale.setScalar(Math.max(0.05, g.r * (0.3 + 0.9 * k)));
+      m.material.opacity = Math.max(0, g.t / g.t0);
+    }
+    B.fx = B.fx.filter((g) => g.t > 0);
+  }
+  sweep();
+  if (camBase) {
+    camera.position.copy(camBase.pos);
+    if (S.shake > 0) { S.shake -= dt; camera.position.x += (Math.random() - 0.5) * 0.3; camera.position.y += (Math.random() - 0.5) * 0.3; }
+  }
+  renderer.render(scene, camera);
+  return R;
+}
+const _v = new THREE.Vector3();
+function proj(x, y, z) { _v.set(x, y, z).project(camera); return [((_v.x + 1) / 2) * W, ((1 - _v.y) / 2) * H3]; }
 function roundRect(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
@@ -961,198 +1234,142 @@ function drawItemBox(id, x, y, s) {
   ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = font(s * 0.62);
   ctx.fillText(it.n[0], x + s / 2, y + s / 2 + 1);
 }
-function drawUnitAt(sp, x, y, R, o = {}) {
-  const mon = sp.mon;
-  const name = mon ? mon.mn : short(DEFS[sp.d].n);
-  const col = mon ? mon.col : TOK[COST_COLOR[DEFS[sp.d].c]];
-  if (mon && mon.boss) R *= 1.15;
-  ctx.globalAlpha = o.alpha ?? 1;
-  ctx.beginPath(); ctx.ellipse(x, y + R * 0.85, R * 0.8, R * 0.25, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.fill();
-  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2);
-  ctx.fillStyle = o.flash ? "#ffffff" : o.enemy ? "#4a2420" : "#20352c"; ctx.fill();
-  ctx.lineWidth = sp.star >= 2 ? 3.5 : 2.5; ctx.strokeStyle = col; ctx.stroke();
-  if (o.enemy) { ctx.beginPath(); ctx.arc(x, y, R + 2.5, 0, Math.PI * 2); ctx.strokeStyle = TOK["--danger"]; ctx.lineWidth = 1.5; ctx.stroke(); }
-  ctx.fillStyle = TOK["--chalk"]; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.font = font(R * (name.length >= 4 ? 0.42 : name.length === 3 ? 0.5 : 0.62));
-  ctx.fillText(name, x, y + 1);
-  if (!mon) {
-    ctx.fillStyle = sp.star === 3 ? TOK["--c5"] : TOK["--accent"]; ctx.font = font(R * 0.5);
-    ctx.fillText("★".repeat(sp.star), x, y - R - R * 0.12);
-  }
-  const items = sp.items || [];
-  if (items.length) {
-    const s = R * 0.48, tw = items.length * s + (items.length - 1) * 2;
-    items.forEach((id, i) => drawItemBox(id, x - tw / 2 + i * (s + 2), y + R * 0.45, s));
-  }
-  if (o.f) {
-    const f = o.f, bw = R * 2, bx = x - R, by = y + R + 3;
-    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(bx, by, bw, 5);
-    ctx.fillStyle = o.enemy ? TOK["--danger"] : TOK["--c2"]; ctx.fillRect(bx, by, bw * Math.max(0, f.hp / f.maxHp), 5);
-    if (f.shield > 0) { ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(bx, by, Math.min(bw, bw * (f.shield / f.maxHp)), 2); }
-    if (f.mm !== Infinity) { ctx.fillStyle = TOK["--c3"]; ctx.fillRect(bx, by + 6, bw * Math.min(1, f.mana / f.mm), 2.5); }
-  }
-  ctx.globalAlpha = 1;
-}
-let drag = null, lastT = performance.now();
-function draw(dt) {
-  ctx.save();
+function drawOverlay(dt, R) {
   ctx.clearRect(0, 0, W, H);
-  if (S.shake > 0) { S.shake -= dt; ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8); }
-  // 보드
-  ctx.fillStyle = TOK["--board"]; roundRect(0, 0, W, boardH, 12); ctx.fill();
+  const u0 = Math.max(10, W / 34);
+  // 유닛 머리 위 정보
+  for (const it of R) {
+    const sc = it.g ? it.g.scale.x : 1;
+    const [sx, sy] = proj(it.x, (it.lift || 0) + (it.jump || 0) + 1.62 * sc, it.z);
+    if (S.phase === "carousel" && it.key && "taken" in it.key) { it.key.sx = sx; it.key.sy = sy + u0 * 1.6; }
+    ctx.globalAlpha = it.alpha ?? 1;
+    const sp = it.sp, fs = u0 * (it.bench ? 0.78 : 0.92);
+    const name = sp.mon ? sp.mon.mn : short(DEFS[sp.d].n);
+    if (!sp.mon) {
+      ctx.fillStyle = sp.star === 3 ? TOK["--c5"] : TOK["--accent"]; ctx.font = font(fs * 0.85);
+      ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText("★".repeat(sp.star), sx, sy - fs * 1.15);
+    }
+    ctx.font = font(fs); ctx.textBaseline = "middle";
+    const tw = ctx.measureText(name).width + fs * 0.6;
+    ctx.fillStyle = it.enemy ? "rgba(90,30,26,.85)" : "rgba(16,32,26,.8)";
+    roundRect(sx - tw / 2, sy - fs * 1.1, tw, fs * 1.15, fs * 0.35); ctx.fill();
+    ctx.fillStyle = TOK["--chalk"]; ctx.fillText(name, sx, sy - fs * 0.5);
+    if (it.f) {
+      const f = it.f, bw = u0 * 2.6, bx = sx - bw / 2, by = sy + 2;
+      ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(bx - 1, by - 1, bw + 2, 7);
+      ctx.fillStyle = it.enemy ? TOK["--danger"] : TOK["--c2"]; ctx.fillRect(bx, by, bw * Math.max(0, f.hp / f.maxHp), 5);
+      if (f.shield > 0) { ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(bx, by, Math.min(bw, bw * (f.shield / f.maxHp)), 2); }
+      if (f.mm !== Infinity) { ctx.fillStyle = TOK["--c3"]; ctx.fillRect(bx, by + 6, bw * Math.min(1, f.mana / f.mm), 3); }
+    }
+    const items = sp.items || [];
+    if (items.length && !it.bench) {
+      const s = fs * 0.95, w = items.length * s + (items.length - 1) * 2, y = sy + (it.f ? 12 : 3);
+      items.forEach((id, i) => drawItemBox(id, sx - w / 2 + i * (s + 2), y, s));
+    } else if (items.length) {
+      ctx.fillStyle = TOK["--c5"]; ctx.beginPath(); ctx.arc(sx + tw / 2, sy - fs * 1.1, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // 떠오르는 숫자
+  const B = S.battle;
+  if (B && (S.phase === "combat" || S.phase === "result")) {
+    for (const f of B.floats) {
+      f.t -= dt; f.h += dt * 1.3;
+      const [x, y] = proj(worldX(f.X), f.h, worldZ(f.Y));
+      ctx.globalAlpha = Math.max(0, Math.min(1, f.t * 2));
+      ctx.fillStyle = f.col; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = font(u0 * (f.big ? 1.25 : 1)); ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3;
+      ctx.strokeText(f.text, x, y); ctx.fillText(f.text, x, y);
+      ctx.globalAlpha = 1;
+    }
+    B.floats = B.floats.filter((f) => f.t > 0);
+    const label = S.type === "pve" ? "몬스터 라운드" : S.opp ? `상대: ${S.opp.name}${S.oppGhost ? " (복제)" : ""}` : "";
+    tag(label, 8, 8);
+  } else if (S.phase === "plan" && S.scout != null) tag(`정찰 중: ${S.players[S.scout].name}`, 8, 8);
+  // 급식 줄 안내
+  if (S.phase === "carousel" && S.car) {
+    const C = S.car, cur = C.order[C.turn];
+    const [cx, cy] = proj(0, 0.3, 0);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = TOK["--accent"]; ctx.font = font(u0 * 1.7); ctx.fillText("급식 줄", cx, cy - u0 * 1.2);
+    ctx.fillStyle = TOK["--chalk"]; ctx.font = font(u0 * 1.05);
+    const msg = !cur ? "모두 골랐어요" : cur.human ? (C.t >= C.wait ? `지금 고르세요! ${Math.ceil(C.humanT)}초` : "곧 내 차례!") : `${cur.name}이(가) 고르는 중`;
+    ctx.fillText(msg, cx, cy + u0 * 0.4);
+    const my = C.order.findIndex((p) => p.human);
+    if (cur && my > C.turn) { ctx.fillStyle = TOK["--chalk-dim"]; ctx.fillText(`내 순서: ${my + 1}번째`, cx, cy + u0 * 1.7); }
+  }
+  // 대기석·아이템 줄
   const P = human();
-  const selUnit = S.sel && S.sel.w !== "i" ? getAt(P, S.sel) : null;
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    const [x, y] = gXY(r, c);
-    hexPath(x, y, size * 0.95);
-    ctx.fillStyle = r >= 4 ? TOK["--hex-mine"] : TOK["--hex-foe"]; ctx.fill();
-    ctx.strokeStyle = TOK["--board-line"]; ctx.lineWidth = 1.2; ctx.stroke();
-    if (S.phase === "plan" && r >= 4 && (selUnit || (drag && drag.moved && drag.obj && drag.loc.w !== "i"))) {
-      ctx.fillStyle = "rgba(245,215,110,.08)"; ctx.fill();
-    }
-  }
-  if (S.phase === "carousel" && S.car) drawCarousel();
-  else if (S.battle && (S.phase === "combat" || S.phase === "result")) drawBattle(dt);
-  else {
-    if (S.scout != null) {
-      const Q = S.players[S.scout];
-      for (let r = 0; r < 4; r++) for (let c = 0; c < COLS; c++) {
-        const u = Q.board[r][c]; if (!u) continue;
-        const [x, y] = gXY(3 - r, COLS - 1 - c); drawUnitAt(u, x, y, size * 0.78, { enemy: true, alpha: 0.9 });
-      }
-      ctx.fillStyle = TOK["--chalk-dim"]; ctx.font = font(size * 0.55); ctx.textAlign = "left"; ctx.textBaseline = "top";
-      ctx.fillText(`정찰 중: ${Q.name}`, PAD + 6, PAD + 4);
-    }
-    for (let r = 0; r < 4; r++) for (let c = 0; c < COLS; c++) {
-      const u = P.board[r][c]; if (!u || (drag && drag.moved && drag.obj === u)) continue;
-      const [x, y] = gXY(4 + r, c); drawUnitAt(u, x, y, size * 0.78);
-    }
-    if (S.sel && S.sel.w === "b") { const [x, y] = gXY(4 + S.sel.r, S.sel.c); hexPath(x, y, size * 0.95); ctx.strokeStyle = TOK["--accent"]; ctx.lineWidth = 3; ctx.stroke(); }
-  }
-  // 가운데 선
-  const midY = (gXY(3, 0)[1] + gXY(4, 0)[1]) / 2;
-  if (S.phase !== "carousel") {
-  ctx.setLineDash([6, 6]); ctx.strokeStyle = "rgba(159,179,166,.5)"; ctx.lineWidth = 1; ctx.beginPath();
-  ctx.moveTo(6, midY); ctx.lineTo(W - 6, midY); ctx.stroke(); ctx.setLineDash([]);
-  }
-  // 대기석
   ctx.fillStyle = TOK["--chalk-dim"]; ctx.font = `11px ${TOK["--body"]}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillText(`대기석 ${P.bench.filter(Boolean).length}/${BENCH}`, 4, benchY - 8);
-  ctx.fillText(`아이템 ${P.items.length}/${ITEM_MAX}  (아이템을 탭한 뒤 친구를 탭하면 장착)`, 4, itemY - 8);
-  for (let i = 0; i < BENCH; i++) {
-    ctx.fillStyle = TOK["--panel"]; roundRect(i * bc + 2, benchY + 2, bc - 4, bc - 4, 8); ctx.fill();
-    if (S.sel && S.sel.w === "n" && S.sel.i === i) { ctx.strokeStyle = TOK["--accent"]; ctx.lineWidth = 3; ctx.stroke(); }
-    const u = P.bench[i];
-    if (u && !(drag && drag.moved && drag.obj === u)) drawUnitAt(u, i * bc + bc / 2, benchY + bc / 2 + 2, bc * 0.36);
-  }
-  // 아이템 칸
+  ctx.fillText(`대기석 ${P.bench.filter(Boolean).length}/${BENCH} · 아이템 ${P.items.length}/${ITEM_MAX}  (아이템을 탭한 뒤 친구를 탭하면 장착)`, 4, itemY - 10);
   for (let i = 0; i < ITEM_MAX; i++) {
-    ctx.fillStyle = "rgba(26,47,38,.7)"; roundRect(i * ic + 2, itemY, ic - 4, ic * 0.85, 6); ctx.fill();
+    ctx.fillStyle = "rgba(26,47,38,.85)"; roundRect(i * ic + 2, itemY, ic - 4, ic * 0.85, 6); ctx.fill();
     if (S.sel && S.sel.w === "i" && S.sel.i === i) { ctx.strokeStyle = TOK["--accent"]; ctx.lineWidth = 3; ctx.stroke(); }
     const id = P.items[i];
-    if (id && !(drag && drag.moved && drag.loc.w === "i" && drag.loc.i === i)) {
-      const s = ic * 0.62; drawItemBox(id, i * ic + (ic - s) / 2, itemY + (ic * 0.85 - s) / 2, s);
-    }
+    if (id && !(drag && drag.moved && drag.loc.w === "i" && drag.loc.i === i)) { const s = ic * 0.62; drawItemBox(id, i * ic + (ic - s) / 2, itemY + (ic * 0.85 - s) / 2, s); }
   }
-  // 끌고 있는 것
-  if (drag && drag.moved && drag.obj) {
-    if (drag.loc.w === "i") { const s = ic * 0.7; drawItemBox(drag.obj, drag.x - s / 2, drag.y - s / 2, s); }
-    else drawUnitAt(drag.obj, drag.x, drag.y, size * 0.8, { alpha: 0.85 });
-  }
+  if (drag && drag.moved && drag.obj && drag.loc.w === "i") { const s = ic * 0.7; drawItemBox(drag.obj, drag.x - s / 2, drag.y - s / 2, s); }
   // 승패 배너
   if (S.banner) {
     S.banner.t -= dt;
+    const my = H3 * 0.42;
     ctx.globalAlpha = Math.max(0, Math.min(1, S.banner.t * 2));
-    ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(0, midY - size * 1.1, W, size * 2.2);
+    ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(0, my - u0 * 2, W, u0 * 4);
     ctx.fillStyle = S.banner.col; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = font(size * 1.3); ctx.fillText(S.banner.text, W / 2, midY);
+    ctx.font = font(u0 * 2.6); ctx.fillText(S.banner.text, W / 2, my);
     ctx.globalAlpha = 1;
     if (S.banner.t <= 0) S.banner = null;
   }
-  ctx.restore();
 }
-function drawBattle(dt) {
-  const B = S.battle;
-  for (const u of B.f) {
-    if (!u.alive) { if (u.deadT <= 0) continue; u.deadT -= dt; }
-    let [x, y] = cellXY(u.X, u.Y);
-    if (u.lunge > 0) { const k = Math.sin((u.lunge / 0.18) * Math.PI) * 0.35; x += u.lx * hw * k; y += u.ly * 1.5 * size * k; }
-    drawUnitAt(u, x, y, size * 0.78, { enemy: u.team === 1, f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, u.deadT / 0.45) });
-  }
-  for (const p of B.projs) {
-    const [x, y] = cellXY(p.X, p.Y);
-    if (p.trail) { const [tx, ty] = cellXY(p.t.X, p.t.Y); const a = Math.atan2(ty - y, tx - x); ctx.strokeStyle = p.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - Math.cos(a) * size, y - Math.sin(a) * size); ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(x, y, size * p.sz * 1.4, 0, Math.PI * 2); ctx.fillStyle = p.col; ctx.fill();
-  }
-  for (const g of B.fx) {
-    g.t -= dt; const k = 1 - g.t / g.t0;
-    const [x, y] = cellXY(g.X, g.Y);
-    ctx.globalAlpha = Math.max(0, g.t / g.t0);
-    ctx.beginPath(); ctx.arc(x, y, Math.max(1, g.r * size * (0.3 + 0.9 * k)), 0, Math.PI * 2);
-    ctx.strokeStyle = g.col; ctx.lineWidth = 4; ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-  B.fx = B.fx.filter((g) => g.t > 0);
-  for (const f of B.floats) {
-    f.t -= dt; f.Y -= dt * 0.7;
-    const [x, y] = cellXY(f.X, f.Y);
-    ctx.globalAlpha = Math.max(0, Math.min(1, f.t * 2));
-    ctx.fillStyle = f.col; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = font(size * (f.big ? 0.62 : 0.5)); ctx.strokeStyle = "rgba(0,0,0,.65)"; ctx.lineWidth = 3;
-    ctx.strokeText(f.text, x, y); ctx.fillText(f.text, x, y);
-    ctx.globalAlpha = 1;
-  }
-  B.floats = B.floats.filter((f) => f.t > 0);
-  const label = S.type === "pve" ? "몬스터 라운드" : S.opp ? `상대: ${S.opp.name}${S.oppGhost ? " (복제)" : ""}` : "";
-  ctx.fillStyle = TOK["--chalk-dim"]; ctx.font = font(size * 0.55); ctx.textAlign = "left"; ctx.textBaseline = "top";
-  ctx.fillText(label, PAD + 6, PAD + 4);
-}
-function drawCarousel() {
-  const C = S.car, cx = W / 2, cy = boardH / 2, R = Math.min(W, boardH) * 0.36;
-  ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.18, R * 1.0, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(245,215,110,.06)"; ctx.fill();
-  C.opts.forEach((o, i) => {
-    const a = C.ang + (i * 2 * Math.PI) / C.opts.length;
-    o.x = cx + Math.cos(a) * R; o.y = cy + Math.sin(a) * R * 0.85;
-    if (!o.taken) drawUnitAt({ d: o.d, star: 1, items: [o.item] }, o.x, o.y, size * 0.8);
-  });
-  const cur = C.order[C.turn];
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = TOK["--accent"]; ctx.font = font(size * 0.85);
-  ctx.fillText("급식 줄", cx, cy - size * 0.6);
-  ctx.fillStyle = TOK["--chalk"]; ctx.font = font(size * 0.55);
-  const msg = !cur ? "모두 골랐어요" : cur.human ? (C.t >= C.wait ? `지금 고르세요! ${Math.ceil(C.humanT)}초` : "곧 내 차례!") : `${cur.name}이(가) 고르는 중`;
-  ctx.fillText(msg, cx, cy + size * 0.4);
-  const myTurn = C.order.findIndex((p) => p.human);
-  if (cur && myTurn > C.turn) { ctx.fillStyle = TOK["--chalk-dim"]; ctx.fillText(`내 순서: ${myTurn + 1}번째`, cx, cy + size * 1.1); }
+function tag(text, x, y) {
+  if (!text) return;
+  ctx.font = font(Math.max(12, W / 32)); ctx.textAlign = "left"; ctx.textBaseline = "top";
+  const w = ctx.measureText(text).width + 14;
+  ctx.fillStyle = "rgba(16,32,26,.75)"; roundRect(x, y, w, Math.max(12, W / 32) + 10, 8); ctx.fill();
+  ctx.fillStyle = TOK["--chalk"]; ctx.fillText(text, x + 7, y + 5);
 }
 function loop(now) {
   const real = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-  if (S && !$("ov").hidden) { draw(0); }
-  else if (S) {
-    const dt = real * S.speed;
-    if (S.phase === "plan") { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); }
-    else if (S.phase === "combat") {
-      let left = dt;
-      while (left > 0 && !S.battle.done) { const s = Math.min(1 / 60, left); stepBattle(S.battle, s); left -= s; }
-      if (S.battle.done) finishCombat();
-    } else if (S.phase === "result") { S.resultT -= dt; if (S.resultT <= 0) afterResult(); }
-    else if (S.phase === "carousel" && S.car) stepCarousel(dt * (S.fast ? 6 : 1));
-    draw(dt);
+  if (S && HAS3D) {
+    const paused = !$("ov").hidden;
+    const dt = paused ? 0 : real * S.speed;
+    if (!paused) {
+      if (S.phase === "plan") { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); }
+      else if (S.phase === "combat") {
+        let left = dt;
+        while (left > 0 && !S.battle.done) { const s = Math.min(1 / 60, left); stepBattle(S.battle, s); left -= s; }
+        if (S.battle.done) finishCombat();
+      } else if (S.phase === "result") { S.resultT -= dt; if (S.resultT <= 0) afterResult(); }
+      else if (S.phase === "carousel" && S.car) stepCarousel(dt * (S.fast ? 6 : 1));
+    }
+    const R = render3D(paused ? real : dt);
+    drawOverlay(dt, R);
     updateTimer();
   }
   requestAnimationFrame(loop);
 }
 
 // =============== 입력 ===============
+const _ndc = HAS3D ? new THREE.Vector2() : null, _hit = HAS3D ? new THREE.Vector3() : null;
+function groundAt(x, y) {
+  if (y > H3) return null;
+  _ndc.set((x / W) * 2 - 1, -(y / H3) * 2 + 1);
+  raycaster.setFromCamera(_ndc, camera);
+  return raycaster.ray.intersectPlane(pickPlane, _hit) ? _hit.clone() : null;
+}
 function hitTest(x, y) {
-  if (y < boardH) {
-    let best = null, bd = 1e9;
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const [cx, cy] = gXY(r, c); const d = Math.hypot(x - cx, y - cy); if (d < bd) { bd = d; best = { g: "board", r, c }; } }
-    return bd < size * 1.05 ? best : null;
+  if (y >= H3) {
+    if (y >= itemY - 4 && y < itemY + ic) { const i = Math.floor(x / ic); if (i >= 0 && i < ITEM_MAX) return { g: "item", i }; }
+    return null;
   }
-  if (y >= benchY && y < benchY + bc) { const i = Math.floor(x / bc); if (i >= 0 && i < BENCH) return { g: "bench", i }; }
-  if (y >= itemY && y < itemY + ic) { const i = Math.floor(x / ic); if (i >= 0 && i < ITEM_MAX) return { g: "item", i }; }
-  return null;
+  const p = groundAt(x, y); if (!p) return null;
+  if (Math.abs(p.z - BENCH_Z) < 0.9 && p.x > BENCH_X0 && p.x < -BENCH_X0) return { g: "bench", i: Math.min(BENCH - 1, Math.floor((p.x - BENCH_X0) / SLOT_W)) };
+  let best = null, bd = 1e9;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const d = Math.hypot(p.x - worldX(gridX(r, c)), p.z - worldZ(r));
+    if (d < bd) { bd = d; best = { g: "board", r, c }; }
+  }
+  return bd < 1.05 ? best : null;
 }
 function toLoc(h) {
   if (!h) return null;
@@ -1165,12 +1382,13 @@ const shopOpen = () => ["plan", "combat", "result"].includes(S.phase);
 cv.addEventListener("pointerdown", (e) => {
   if (!S || S.phase === "over" || S.phase === "carousel") return;
   const [x, y] = canvasPos(e), loc = toLoc(hitTest(x, y));
-  drag = { loc, obj: objAt(loc), sx: x, sy: y, x, y, moved: false };
+  drag = { loc, obj: objAt(loc), sx: x, sy: y, x, y, moved: false, wp: null };
   cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener("pointermove", (e) => {
   if (!drag) return;
   const [x, y] = canvasPos(e); drag.x = x; drag.y = y;
+  const wp = groundAt(x, y); if (wp) drag.wp = wp;
   if (drag.obj && Math.hypot(x - drag.sx, y - drag.sy) > 8) drag.moved = true;
 });
 cv.addEventListener("pointerup", (e) => {
@@ -1190,8 +1408,8 @@ function carouselTap(x, y) {
   const C = S.car; if (!C) return;
   const cur = C.order[C.turn];
   if (!cur || !cur.human || C.t < C.wait) return toast("아직 내 차례가 아니에요");
-  let best = null, bd = size * 1.1;
-  for (const o of C.opts) if (!o.taken) { const d = Math.hypot(x - o.x, y - o.y); if (d < bd) { bd = d; best = o; } }
+  let best = null, bd = Math.max(30, W * 0.08);
+  for (const o of C.opts) if (!o.taken && o.sx != null) { const d = Math.hypot(x - o.sx, y - o.sy); if (d < bd) { bd = d; best = o; } }
   if (best) carouselPick(cur, best);
 }
 function tap(h, loc) {
@@ -1381,7 +1599,9 @@ $("start").onclick = () => {
 };
 try { const b = +localStorage.getItem("uri-best-place") || 0; if (b) $("best").textContent = `최고 기록: ${b}등`; } catch (e) {}
 window.addEventListener("resize", () => { resize(); });
-if (document.fonts) document.fonts.ready.then(() => { readTokens(); resize(); });
+if (HAS3D) init3D();
+else $("info").innerHTML = `<div class="txt">3D 그래픽을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>`;
+if (document.fonts) document.fonts.ready.then(() => { readTokens(); resize(); if (HAS3D) { repaint(chalk); Object.values(PAPER).forEach(repaint); } });
 newGame();
 resize();
 requestAnimationFrame(loop);
