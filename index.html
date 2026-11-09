@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>우리반 오토배틀</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* 레이아웃: 칠판(보드) 한 장이 화면 중심, 위는 출석부 HUD, 아래는 이름표 상점 */
+:root {
+  --board: #1d3a2f;      /* 칠판 녹색 */
+  --board-line: #2f5545;
+  --bg: #13241d;
+  --panel: #1a2f26;
+  --chalk: #eef2e6;      /* 분필 흰색 */
+  --chalk-dim: #9fb3a6;
+  --accent: #f5d76e;     /* 노란 분필 */
+  --danger: #ff8a7a;
+  --c1: #c9d1cc; --c2: #7fe0b0; --c3: #7fc4ff; --c4: #e39cff; --c5: #ffcc4d;
+  --display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--chalk);
+  font-family: var(--body); font-size: 14px;
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.wrap {
+  max-width: 480px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px 24px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.hud { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hud .title { font-family: var(--display); font-size: 20px; color: var(--accent); letter-spacing: .02em; }
+.stats { display: flex; gap: 12px; font-family: var(--display); font-size: 16px; font-variant-numeric: tabular-nums; }
+.stat-hp { color: var(--danger); } .stat-gold { color: var(--accent); }
+.sub { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--chalk-dim); flex-wrap: wrap; }
+.xpbar { flex: 1; min-width: 100px; height: 6px; background: var(--board-line); border-radius: 3px; overflow: hidden; }
+.xpbar > i { display: block; height: 100%; background: var(--c3); width: 0; transition: width .2s; }
+.traits { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; }
+.trait {
+  font-size: 12px; padding: 3px 8px; border-radius: 12px; border: 1px dashed var(--chalk-dim);
+  color: var(--chalk-dim); white-space: nowrap;
+}
+.trait.on { border-style: solid; border-color: var(--accent); color: var(--bg); background: var(--accent); font-weight: 700; }
+.trait.hint { border: none; padding-left: 0; }
+#cv { display: block; margin: 0 auto; touch-action: none; border-radius: 10px; }
+.info {
+  background: var(--panel); border-radius: 10px; padding: 10px 12px; min-height: 44px;
+  display: flex; gap: 10px; align-items: center; font-size: 13px; line-height: 1.5;
+}
+.info .txt { flex: 1; min-width: 0; }
+.info b { font-family: var(--display); font-weight: 400; font-size: 16px; }
+.btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+button {
+  font-family: var(--display); font-size: 15px; color: var(--chalk); background: var(--panel);
+  border: 2px solid var(--board-line); border-radius: 10px; padding: 10px 6px; cursor: pointer;
+}
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .4; }
+button.go { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+button.sell { color: var(--danger); border-color: var(--danger); padding: 6px 10px; white-space: nowrap; }
+.shop { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.card {
+  background: var(--chalk); color: #1c2a23; border-radius: 8px; padding: 6px 4px 5px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+  border-top: 6px solid var(--cc, var(--c1)); min-width: 0; position: relative;
+  font-family: var(--body);
+}
+.card .nm { font-family: var(--display); font-size: 16px; }
+.card .tr { font-size: 10px; line-height: 1.25; text-align: center; color: #44564c; }
+.card .cost { font-family: var(--display); font-size: 13px; color: #8a6a00; }
+.card.empty { background: transparent; border: 2px dashed var(--board-line); cursor: default; min-height: 78px; }
+.card.own::after {
+  content: "보유"; position: absolute; top: -4px; right: -3px; font-size: 10px;
+  background: var(--accent); color: var(--bg); border-radius: 6px; padding: 0 4px; font-family: var(--display);
+}
+.card.poor { opacity: .45; }
+.odds { font-size: 11px; color: var(--chalk-dim); text-align: center; font-variant-numeric: tabular-nums; }
+.toast {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translateX(-50%);
+  background: var(--chalk); color: var(--bg); font-family: var(--display); padding: 8px 14px; border-radius: 10px;
+  font-size: 15px; z-index: 20; max-width: 86vw; text-align: center; pointer-events: none;
+}
+.overlay {
+  position: fixed; inset: 0; background: rgba(10, 20, 15, .86); z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.ov-box { background: var(--board); border: 3px solid var(--chalk-dim); border-radius: 14px; padding: 22px 20px; max-width: 360px; width: 100%; text-align: center; display: flex; flex-direction: column; gap: 12px; }
+.ov-box h1 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; color: var(--accent); text-wrap: balance; }
+.ov-box p { margin: 0; line-height: 1.6; color: var(--chalk); }
+.ov-box ul { text-align: left; margin: 0; padding-left: 18px; line-height: 1.6; font-size: 13px; color: var(--chalk-dim); }
+.guide { font-size: 12px; color: var(--chalk-dim); line-height: 1.6; }
+@media (prefers-reduced-motion: reduce) { .xpbar > i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hud">
+    <div class="title">우리반 오토배틀</div>
+    <div class="stats">
+      <span class="stat-hp" id="hp">♥ 100</span>
+      <span class="stat-gold" id="gold">● 0</span>
+      <span id="round">1라운드</span>
+    </div>
+  </div>
+  <div class="sub">
+    <span id="lvl">레벨 3 · 배치 0/3</span>
+    <div class="xpbar"><i id="xpfill"></i></div>
+    <span id="xptxt">0/6</span>
+  </div>
+  <div class="traits" id="traits"></div>
+  <canvas id="cv"></canvas>
+  <div class="info" id="info"><div class="txt guide">친구를 탭해서 고르고, 놓을 칸을 탭하세요. 끌어서 옮겨도 돼요. 위쪽 빨간 팀이 이번 상대예요.</div></div>
+  <div class="btns">
+    <button id="reroll">새로고침 2</button>
+    <button id="buyxp">경험치 4</button>
+    <button id="fight" class="go">전투 시작</button>
+  </div>
+  <div class="shop" id="shop"></div>
+  <div class="odds" id="odds"></div>
+</div>
+<div class="overlay" id="ov">
+  <div class="ov-box">
+    <h1>우리반 오토배틀</h1>
+    <p>반 친구들을 모아 팀을 만들고 20라운드를 버티세요.</p>
+    <ul>
+      <li>상점에서 친구를 사서 칠판 아래쪽에 배치해요</li>
+      <li>같은 친구 3명을 모으면 ★2, ★2 셋이면 ★3</li>
+      <li>같은 동아리·역할을 모으면 시너지 보너스</li>
+      <li>전설 유닛 <b style="color:var(--c5)">정주환</b>은 5코스트, 반장 시너지를 가져요</li>
+      <li>남은 골드 10마다 이자 +1 (최대 5)</li>
+    </ul>
+    <p id="best" style="font-size:13px;color:var(--chalk-dim)"></p>
+    <button class="go" id="start">시작하기</button>
+  </div>
+</div>
+<script>
+"use strict";
+// ---------- 데이터 ----------
+const DEFS = [
+  { n: "김예균", c: 1, o: "운동부", k: "수호자" },
+  { n: "박준서", c: 1, o: "게임부", k: "저격수" },
+  { n: "윤동욱", c: 1, o: "음악부", k: "돌격대" },
+  { n: "박현호", c: 1, o: "과학부", k: "응원단" },
+  { n: "진성욱", c: 2, o: "게임부", k: "수호자" },
+  { n: "김현우", c: 2, o: "과학부", k: "천재" },
+  { n: "이보경", c: 2, o: "음악부", k: "응원단" },
+  { n: "임시온", c: 2, o: "운동부", k: "저격수" },
+  { n: "박희찬", c: 3, o: "게임부", k: "돌격대" },
+  { n: "이준희", c: 3, o: "과학부", k: "저격수" },
+  { n: "전하율", c: 3, o: "음악부", k: "천재" },
+  { n: "김민기", c: 3, o: "운동부", k: "수호자" },
+  { n: "이승찬", c: 4, o: "운동부", k: "돌격대" },
+  { n: "최효민", c: 4, o: "게임부", k: "천재" },
+  { n: "이현",   c: 4, o: "음악부", k: "저격수" },
+  { n: "정주환", c: 5, o: "과학부", k: "반장" },
+];
+const TRAITS = {
+  "운동부": { t: [2, 4], d: "운동부 공격 속도 +20% / +45%" },
+  "게임부": { t: [2, 4], d: "게임부 치명타 확률 25% / 50%" },
+  "음악부": { t: [2, 4], d: "음악부 시작 마나 +20 / +45" },
+  "과학부": { t: [2, 4], d: "과학부 스킬 피해 +30% / +70%" },
+  "수호자": { t: [2, 3], d: "수호자 받는 피해 -20% / -40%" },
+  "돌격대": { t: [2, 3], d: "돌격대 체력 +25% / +50%" },
+  "저격수": { t: [2, 4], d: "저격수 공격력 +25% / +55%" },
+  "천재":   { t: [2, 3], d: "천재 마나 회복 +40% / +90%" },
+  "응원단": { t: [2],    d: "아군 전체 보호막 200" },
+  "반장":   { t: [1],    d: "아군 전체 공격력·체력 +12%" },
+};
+const CLASS = {
+  "수호자": { hp: 780, ad: 48, as: 0.6,  rg: 1, ar: 0.25, mm: 60, sk: "철벽 수비" },
+  "돌격대": { hp: 660, ad: 62, as: 0.7,  rg: 1, ar: 0.1,  mm: 50, sk: "돌진 강타" },
+  "저격수": { hp: 480, ad: 58, as: 0.75, rg: 4, ar: 0,    mm: 70, sk: "한 방 저격" },
+  "천재":   { hp: 500, ad: 42, as: 0.65, rg: 3, ar: 0,    mm: 60, sk: "아이디어 폭발" },
+  "응원단": { hp: 540, ad: 38, as: 0.65, rg: 3, ar: 0.05, mm: 70, sk: "힘내라!" },
+  "반장":   { hp: 1050,ad: 80, as: 0.8,  rg: 2, ar: 0.2,  mm: 80, sk: "반장의 명령" },
+};
+const COST_COLOR = ["", "--c1", "--c2", "--c3", "--c4", "--c5"];
+const ODDS = { 1:[100,0,0,0,0], 2:[100,0,0,0,0], 3:[75,25,0,0,0], 4:[55,30,15,0,0], 5:[45,33,20,2,0],
+  6:[30,40,25,5,0], 7:[19,30,35,15,1], 8:[18,25,32,22,3], 9:[10,20,25,35,10] };
+const XPNEED = { 3: 6, 4: 10, 5: 20, 6: 36, 7: 48, 8: 72 };
+const COLS = 7, ROWS = 8, BENCH = 7, MAX_ROUND = 20;
+const STARM = [0, 1, 1.8, 3.2];
+
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const short = (n) => (n.length === 3 ? n.slice(1) : n);
+const rnd = (a) => a[Math.floor(Math.random() * a.length)];
+const $ = (id) => document.getElementById(id);
+let uid = 1;
+
+// ---------- 상태 ----------
+let S;
+function newGame() {
+  S = {
+    round: 1, hp: 100, gold: 8, level: 3, xp: 0,
+    board: Array.from({ length: ROWS }, () => Array(COLS).fill(null)), // 플레이어는 4~7행
+    bench: Array(BENCH).fill(null), shop: [], phase: "plan",
+    sel: null, enemy: [], speed: 1, streak: 0,
+  };
+  S.bench[0] = mkUnit(rnd(DEFS.filter((d) => d.c === 1)));
+  rollShop();
+  S.enemy = genEnemy(S.round);
+  resetCombatView();
+  renderUI();
+}
+function mkUnit(def, star = 1) { return { id: uid++, d: DEFS.indexOf(def), star }; }
+
+// ---------- 상점 ----------
+function rollCost(level) {
+  const o = ODDS[level]; let r = Math.random() * 100;
+  for (let i = 0; i < 5; i++) { if (r < o[i]) return i + 1; r -= o[i]; }
+  return 1;
+}
+function rollShop() {
+  S.shop = Array.from({ length: 5 }, () => { const c = rollCost(S.level); return DEFS.indexOf(rnd(DEFS.filter((d) => d.c === c))); });
+}
+function allUnits() {
+  const out = [];
+  for (let r = 4; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (S.board[r][c]) out.push({ u: S.board[r][c], w: "b", r, c });
+  S.bench.forEach((u, i) => u && out.push({ u, w: "n", i }));
+  return out;
+}
+function boardCount() { return allUnits().filter((x) => x.w === "b").length; }
+function buy(i) {
+  if (S.phase !== "plan") return;
+  const di = S.shop[i]; if (di == null) return;
+  const def = DEFS[di];
+  if (S.gold < def.c) return toast("골드가 부족해요");
+  const free = S.bench.indexOf(null);
+  const copies = allUnits().filter((x) => x.u.d === di && x.u.star === 1).length;
+  if (free < 0 && copies < 2) return toast("대기석이 가득 찼어요");
+  S.gold -= def.c; S.shop[i] = null;
+  if (free >= 0) S.bench[free] = mkUnit(def);
+  else S.bench.push(mkUnit(def)); // 임시 자리, 곧 합쳐짐
+  merge(di, 1);
+  S.bench.length = BENCH;
+  renderUI();
+}
+function merge(di, star) {
+  if (star >= 3) return;
+  const list = allUnits().filter((x) => x.u.d === di && x.u.star === star);
+  if (list.length < 3) return;
+  const [keep, a, b] = list;
+  [a, b].forEach(removeAt);
+  keep.u.star = star + 1;
+  if (S.sel && !getAt(S.sel)) S.sel = null;
+  toast(`${DEFS[di].n} ★${star + 1}!`);
+  merge(di, star + 1);
+}
+function getAt(p) { return p.w === "b" ? S.board[p.r][p.c] : S.bench[p.i]; }
+function setAt(p, u) { if (p.w === "b") S.board[p.r][p.c] = u; else S.bench[p.i] = u; }
+function removeAt(p) { setAt(p, null); }
+function sellValue(u) { const c = DEFS[u.d].c; return u.star === 1 ? c : c * Math.pow(3, u.star - 1) - 1; }
+function sellSel() {
+  if (!S.sel || S.phase !== "plan") return;
+  const u = getAt(S.sel); if (!u) return;
+  S.gold += sellValue(u); removeAt(S.sel); S.sel = null; renderUI();
+}
+function addXp(n) {
+  S.xp += n;
+  while (S.level < 9 && S.xp >= XPNEED[S.level]) { S.xp -= XPNEED[S.level]; S.level++; toast(`레벨 ${S.level}! 이제 ${S.level}명까지 배치할 수 있어요`); }
+  if (S.level >= 9) S.xp = 0;
+}
+function move(from, to) {
+  if (from.w === to.w && from.w === "b" && from.r === to.r && from.c === to.c) return;
+  if (from.w === to.w && from.w === "n" && from.i === to.i) return;
+  const a = getAt(from), b = getAt(to);
+  if (!a) return;
+  if (to.w === "b" && from.w === "n" && !b && boardCount() >= S.level) return toast(`레벨 ${S.level}: 최대 ${S.level}명까지 배치해요`);
+  setAt(to, a); setAt(from, b);
+  S.sel = null; renderUI();
+}
+
+// ---------- 시너지 ----------
+function traitCounts(defIdxs) {
+  const uniq = [...new Set(defIdxs)], cnt = {};
+  uniq.forEach((i) => { const d = DEFS[i]; cnt[d.o] = (cnt[d.o] || 0) + 1; cnt[d.k] = (cnt[d.k] || 0) + 1; });
+  return cnt;
+}
+function traitLvl(t, n) { return TRAITS[t].t.filter((x) => n >= x).length; }
+
+// ---------- 상대 팀 ----------
+function genEnemy(r) {
+  const lvl = Math.min(9, 2 + Math.floor(r / 2));
+  const boss = r % 5 === 0;
+  const count = Math.min(9, 2 + Math.floor((r - 1) / 2));
+  const p2 = Math.min(0.85, Math.max(0, (r - 3) * 0.08) + (boss ? 0.2 : 0));
+  const p3 = Math.min(0.45, Math.max(0, (r - 12) * 0.06) + (boss && r >= 15 ? 0.15 : 0));
+  const list = [];
+  for (let i = 0; i < count; i++) {
+    const cost = rollCost(lvl), def = rnd(DEFS.filter((d) => d.c === cost));
+    const x = Math.random();
+    list.push({ d: DEFS.indexOf(def), star: x < p3 ? 3 : x < p2 + p3 ? 2 : 1 });
+  }
+  // 근접은 앞줄(3행), 원거리는 뒷줄
+  const order = [3, 2, 4, 1, 5, 0, 6];
+  const rows = { 3: [], 2: [], 1: [], 0: [] };
+  list.sort((a, b) => CLASS[DEFS[a.d].k].rg - CLASS[DEFS[b.d].k].rg);
+  const out = [];
+  list.forEach((u) => {
+    const rg = CLASS[DEFS[u.d].k].rg;
+    const pref = rg <= 1 ? [3, 2, 1, 0] : rg === 2 ? [2, 1, 3, 0] : [0, 1, 2, 3];
+    for (const row of pref) {
+      if (rows[row].length < COLS) { const c = order[rows[row].length]; rows[row].push(c); out.push({ ...u, r: row, c }); break; }
+    }
+  });
+  return out;
+}
+
+// ---------- 전투 ----------
+let units = [], projs = [], floats = [], rings = [], combatT = 0;
+function buildFighter(spec, team, r, c, cnt) {
+  const def = DEFS[spec.d], cl = CLASS[def.k];
+  const cf = 1 + (def.c - 1) * 0.22, sm = STARM[spec.star];
+  const f = {
+    team, d: spec.d, star: spec.star, x: c, y: r, px: c, py: r,
+    maxHp: cl.hp * cf * sm, ad: cl.ad * cf * sm, as: cl.as, rg: cl.rg, ar: cl.ar,
+    mana: 0, mm: cl.mm, crit: 0, amp: 1, mgain: 1, shield: 0, atkCd: 0.3 + Math.random() * 0.3, moveCd: 0,
+    alive: true, tgt: null, flash: 0, power: cf * sm,
+  };
+  const L = (t) => traitLvl(t, cnt[t] || 0);
+  const lo = L(def.o), lk = L(def.k);
+  if (def.o === "운동부") f.as *= [1, 1.2, 1.45][lo];
+  if (def.o === "게임부") f.crit = [0, 0.25, 0.5][lo];
+  if (def.o === "음악부") f.mana += [0, 20, 45][lo];
+  if (def.o === "과학부") f.amp = [1, 1.3, 1.7][lo];
+  if (def.k === "수호자") f.ar = Math.min(0.75, f.ar + [0, 0.2, 0.4][lk]);
+  if (def.k === "돌격대") f.maxHp *= [1, 1.25, 1.5][lk];
+  if (def.k === "저격수") f.ad *= [1, 1.25, 1.55][lk];
+  if (def.k === "천재") f.mgain = [1, 1.4, 1.9][lk];
+  if (L("반장") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
+  if (L("응원단") > 0) f.shield += 200;
+  f.hp = f.maxHp;
+  return f;
+}
+function resetCombatView() {
+  units = []; projs = []; floats = []; rings = [];
+}
+function startCombat() {
+  if (S.phase !== "plan") return;
+  const mine = allUnits().filter((x) => x.w === "b");
+  if (!mine.length) return toast("칠판 아래쪽에 친구를 한 명 이상 배치하세요");
+  S.sel = null;
+  const myCnt = traitCounts(mine.map((x) => x.u.d));
+  const enCnt = traitCounts(S.enemy.map((e) => e.d));
+  units = [
+    ...mine.map((x) => buildFighter(x.u, 0, x.r, x.c, myCnt)),
+    ...S.enemy.map((e) => buildFighter(e, 1, e.r, e.c, enCnt)),
+  ];
+  projs = []; floats = []; rings = []; combatT = 0;
+  S.phase = "combat";
+  renderUI();
+}
+const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+function occupied(x, y, self) { return units.some((u) => u.alive && u !== self && u.x === x && u.y === y); }
+function nearestEnemy(u) {
+  let best = null, bd = 1e9;
+  for (const o of units) if (o.alive && o.team !== u.team) {
+    const d = cheb(u, o) + Math.hypot(u.x - o.x, u.y - o.y) * 0.01;
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+function dealDamage(src, t, amt, skill) {
+  if (!t.alive) return;
+  let crit = false;
+  if (skill) amt *= src.amp;
+  else if (Math.random() < src.crit) { amt *= 1.8; crit = true; }
+  amt *= 1 - t.ar;
+  amt = Math.round(amt);
+  const abs = Math.min(t.shield, amt); t.shield -= abs;
+  t.hp -= amt - abs; t.flash = 0.15;
+  t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
+  floats.push({ x: t.px + 0.5, y: t.py + 0.2, text: String(amt), color: crit ? css("--accent") : skill ? css("--c4") : css("--chalk"), t: 0.8, big: crit || skill });
+  if (t.hp <= 0) { t.alive = false; t.hp = 0; }
+}
+function heal(t, amt) {
+  if (!t.alive) return;
+  amt = Math.round(Math.min(amt, t.maxHp - t.hp));
+  t.hp += amt;
+  if (amt > 0) floats.push({ x: t.px + 0.5, y: t.py + 0.2, text: "+" + amt, color: css("--c2"), t: 0.8 });
+}
+function cast(u) {
+  const def = DEFS[u.d], P = u.power, t = u.tgt;
+  const allies = units.filter((o) => o.alive && o.team === u.team);
+  const foes = units.filter((o) => o.alive && o.team !== u.team);
+  floats.push({ x: u.px + 0.5, y: u.py - 0.2, text: CLASS[def.k].sk, color: css("--accent"), t: 1, big: true });
+  switch (def.k) {
+    case "수호자":
+      u.shield += 260 * P; rings.push({ x: u.px, y: u.py, r: 0.6, t: 0.5, color: css("--c3") }); break;
+    case "돌격대":
+      if (t) dealDamage(u, t, u.ad * 2 + 130 * P, true); break;
+    case "저격수":
+      if (t) projs.push({ x: u.px, y: u.py, t, speed: 14, color: css("--accent"), size: 0.14, hit: () => dealDamage(u, t, u.ad * 1.6 + 160 * P, true) }); break;
+    case "천재":
+      if (t) { const tx = t.x, ty = t.y;
+        foes.filter((o) => Math.abs(o.x - tx) <= 1 && Math.abs(o.y - ty) <= 1).forEach((o) => dealDamage(u, o, 170 * P, true));
+        rings.push({ x: tx, y: ty, r: 1.5, t: 0.5, color: css("--c4") }); }
+      break;
+    case "응원단": {
+      const low = allies.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (low) { heal(low, 230 * P); rings.push({ x: low.px, y: low.py, r: 0.7, t: 0.5, color: css("--c2") }); }
+      break; }
+    case "반장":
+      foes.forEach((o) => dealDamage(u, o, 150 * P, true));
+      allies.forEach((o) => heal(o, 110 * P));
+      rings.push({ x: u.px, y: u.py, r: 5, t: 0.7, color: css("--c5") }); break;
+  }
+}
+function stepCombat(dt) {
+  combatT += dt;
+  for (const u of units) {
+    if (!u.alive) continue;
+    u.flash = Math.max(0, u.flash - dt);
+    if (!u.tgt || !u.tgt.alive || cheb(u, u.tgt) > u.rg) u.tgt = nearestEnemy(u);
+    const t = u.tgt; if (!t) continue;
+    if (cheb(u, t) <= u.rg) {
+      u.atkCd -= dt;
+      if (u.atkCd <= 0) {
+        u.atkCd = 1 / u.as;
+        if (u.rg > 1) projs.push({ x: u.px, y: u.py, t, speed: 9, color: u.team ? css("--danger") : css("--chalk"), size: 0.08, hit: () => dealDamage(u, t, u.ad, false) });
+        else dealDamage(u, t, u.ad, false);
+        u.mana += 10 * u.mgain;
+        if (u.mana >= u.mm) { u.mana = 0; cast(u); }
+      }
+    } else {
+      u.moveCd -= dt;
+      if (u.moveCd <= 0) {
+        u.moveCd = 0.45;
+        let best = null, bd = Math.hypot(u.x - t.x, u.y - t.y) - 0.01;
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+          const nx = u.x + dx, ny = u.y + dy;
+          if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || occupied(nx, ny, u)) continue;
+          const d = Math.hypot(nx - t.x, ny - t.y) + (dx && dy ? 0.05 : 0);
+          if (d < bd) { bd = d; best = [nx, ny]; }
+        }
+        if (best) { u.x = best[0]; u.y = best[1]; }
+      }
+    }
+  }
+  for (const p of projs) {
+    if (!p.t.alive) { p.done = true; continue; }
+    const dx = p.t.px - p.x, dy = p.t.py - p.y, d = Math.hypot(dx, dy), s = p.speed * dt;
+    if (d <= s) { p.done = true; p.hit(); } else { p.x += (dx / d) * s; p.y += (dy / d) * s; }
+  }
+  projs = projs.filter((p) => !p.done);
+  const a0 = units.some((u) => u.alive && u.team === 0), a1 = units.some((u) => u.alive && u.team === 1);
+  if (!a0 || !a1 || combatT > 35) endCombat(a0 && !a1);
+}
+function endCombat(win) {
+  S.phase = "result";
+  const left = units.filter((u) => u.alive && u.team === 1);
+  let msg;
+  if (win) {
+    S.streak = Math.max(1, S.streak + 1);
+    msg = "승리!";
+  } else {
+    S.streak = Math.min(-1, S.streak - 1);
+    const dmg = 2 + Math.floor(S.round / 2) + left.reduce((s, u) => s + u.star, 0);
+    S.hp -= dmg;
+    msg = `패배… 체력 -${dmg}`;
+  }
+  banner = { text: win ? "승리!" : "패배", color: win ? css("--accent") : css("--danger"), t: 1.6 };
+  setTimeout(() => {
+    if (S.hp <= 0) return gameOver(false);
+    if (win && S.round >= MAX_ROUND) return gameOver(true);
+    const interest = Math.min(5, Math.floor(S.gold / 10));
+    const streakBonus = Math.abs(S.streak) >= 5 ? 3 : Math.abs(S.streak) >= 3 ? 2 : Math.abs(S.streak) >= 2 ? 1 : 0;
+    const inc = 5 + interest + (win ? 1 : 0) + streakBonus;
+    S.gold += inc; S.round++; addXp(2);
+    rollShop();
+    S.enemy = genEnemy(S.round);
+    resetCombatView();
+    S.phase = "plan";
+    toast(`${msg} +${inc}골드 (이자 ${interest})`);
+    renderUI();
+  }, 1600 / S.speed);
+  renderUI();
+}
+let banner = null;
+
+function gameOver(won) {
+  S.phase = "over";
+  let best = 0; try { best = +localStorage.getItem("uri-best") || 0; } catch (e) {}
+  const reached = won ? MAX_ROUND + 1 : S.round;
+  if (reached > best) { best = reached; try { localStorage.setItem("uri-best", String(best)); } catch (e) {} }
+  const box = $("ov").querySelector(".ov-box");
+  box.querySelector("h1").textContent = won ? "전교 1등!" : "게임 오버";
+  box.querySelector("p").textContent = won ? `${MAX_ROUND}라운드를 모두 버텼어요. 우리반 최고!` : `${S.round}라운드에서 탈락했어요.`;
+  box.querySelector("ul").hidden = true;
+  $("best").textContent = `최고 기록: ${best > MAX_ROUND ? "클리어" : best + "라운드"}`;
+  $("start").textContent = "다시 하기";
+  $("ov").hidden = false;
+}
+
+// ---------- 그리기 ----------
+const cv = $("cv"), ctx = cv.getContext("2d");
+let cell = 50, gap = 14, W = 0, H = 0;
+function resize() {
+  const wrap = document.querySelector(".wrap"), cs = getComputedStyle(wrap);
+  const w = Math.min(448, wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+  cell = Math.floor(w / COLS); gap = Math.round(cell * 0.3);
+  W = cell * COLS; H = cell * ROWS + gap + cell;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function drawUnit(spec, px, py, opts = {}) {
+  const def = DEFS[spec.d], R = cell * 0.4, cx = px + cell / 2, cy = py + cell / 2;
+  const enemy = opts.team === 1;
+  ctx.globalAlpha = opts.alpha ?? 1;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = opts.flash ? "#ffffff" : enemy ? "#4a2420" : "#20352c"; ctx.fill();
+  ctx.lineWidth = spec.star >= 2 ? 3.5 : 2.5;
+  ctx.strokeStyle = css(COST_COLOR[def.c]); ctx.stroke();
+  if (enemy) { ctx.beginPath(); ctx.arc(cx, cy, R + 3, 0, Math.PI * 2); ctx.strokeStyle = css("--danger"); ctx.lineWidth = 1.5; ctx.stroke(); }
+  ctx.fillStyle = css("--chalk"); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = `${Math.round(cell * 0.3)}px ${css("--display")}`;
+  ctx.fillText(short(def.n), cx, cy + 1);
+  ctx.fillStyle = css("--accent"); ctx.font = `${Math.round(cell * 0.22)}px ${css("--display")}`;
+  ctx.fillText("★".repeat(spec.star), cx, py + cell * 0.08);
+  if (opts.f) {
+    const f = opts.f, bw = cell * 0.8, bx = px + cell * 0.1, by = py + cell * 0.9;
+    ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(bx, by, bw, 5);
+    ctx.fillStyle = enemy ? css("--danger") : css("--c2"); ctx.fillRect(bx, by, bw * (f.hp / f.maxHp), 5);
+    if (f.shield > 0) { ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(bx, by, Math.min(bw, bw * (f.shield / f.maxHp)), 2); }
+    ctx.fillStyle = css("--c3"); ctx.fillRect(bx, by + 6, bw * (f.mana / f.mm), 2.5);
+  }
+  ctx.globalAlpha = 1;
+}
+let drag = null;
+function draw(dt) {
+  ctx.clearRect(0, 0, W, H);
+  // 칠판
+  ctx.fillStyle = css("--board"); roundRect(0, 0, W, cell * ROWS, 10); ctx.fill();
+  ctx.strokeStyle = css("--board-line"); ctx.lineWidth = 1;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    ctx.strokeRect(c * cell + 0.5, r * cell + 0.5, cell - 1, cell - 1);
+  }
+  ctx.setLineDash([6, 6]); ctx.strokeStyle = css("--chalk-dim"); ctx.beginPath();
+  ctx.moveTo(4, cell * 4); ctx.lineTo(W - 4, cell * 4); ctx.stroke(); ctx.setLineDash([]);
+  // 대기석
+  const by = cell * ROWS + gap;
+  for (let i = 0; i < BENCH; i++) {
+    ctx.fillStyle = css("--panel"); roundRect(i * cell + 2, by + 2, cell - 4, cell - 4, 8); ctx.fill();
+  }
+  ctx.fillStyle = css("--chalk-dim"); ctx.font = `11px ${css("--body")}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillText("대기석", 4, cell * ROWS + gap / 2);
+  // 선택 칸 표시
+  const selRect = (p) => p.w === "b" ? [p.c * cell, p.r * cell] : [p.i * cell, by];
+  if (S.phase === "plan" && S.sel) {
+    const [x, y] = selRect(S.sel);
+    ctx.strokeStyle = css("--accent"); ctx.lineWidth = 3; roundRect(x + 2, y + 2, cell - 4, cell - 4, 8); ctx.stroke();
+    // 놓을 수 있는 칸 힌트
+    ctx.fillStyle = "rgba(245,215,110,.07)"; ctx.fillRect(0, cell * 4, W, cell * 4);
+  }
+  if (S.phase === "plan" || S.phase === "over") {
+    S.enemy.forEach((e) => drawUnit(e, e.c * cell, e.r * cell, { team: 1, alpha: 0.85 }));
+    for (let r = 4; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const u = S.board[r][c]; if (u && !(drag && drag.moved && drag.u === u)) drawUnit(u, c * cell, r * cell);
+    }
+  } else {
+    for (const u of units) {
+      u.px += (u.x - u.px) * Math.min(1, dt * 8); u.py += (u.y - u.py) * Math.min(1, dt * 8);
+      if (u.alive) drawUnit(u, u.px * cell, u.py * cell, { team: u.team, f: u, flash: u.flash > 0 });
+    }
+    for (const p of projs) {
+      ctx.beginPath(); ctx.arc(p.x * cell + cell / 2, p.y * cell + cell / 2, cell * p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color; ctx.fill();
+    }
+  }
+  S.bench.forEach((u, i) => { if (u && !(drag && drag.moved && drag.u === u)) drawUnit(u, i * cell, by); });
+  // 효과
+  for (const g of rings) {
+    g.t -= dt;
+    ctx.globalAlpha = Math.max(0, g.t * 2);
+    ctx.beginPath(); ctx.arc(g.x * cell + cell / 2, g.y * cell + cell / 2, g.r * cell * (1.2 - g.t), 0, Math.PI * 2);
+    ctx.strokeStyle = g.color; ctx.lineWidth = 3; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  rings = rings.filter((g) => g.t > 0);
+  for (const f of floats) {
+    f.t -= dt; f.y -= dt * 0.8;
+    ctx.globalAlpha = Math.min(1, f.t * 2);
+    ctx.fillStyle = f.color; ctx.textAlign = "center";
+    ctx.font = `${Math.round(cell * (f.big ? 0.3 : 0.24))}px ${css("--display")}`;
+    ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 3;
+    ctx.strokeText(f.text, f.x * cell, f.y * cell); ctx.fillText(f.text, f.x * cell, f.y * cell);
+    ctx.globalAlpha = 1;
+  }
+  floats = floats.filter((f) => f.t > 0);
+  if (drag && drag.moved) drawUnit(drag.u, drag.x - cell / 2, drag.y - cell / 2, { alpha: 0.85 });
+  if (banner) {
+    banner.t -= dt;
+    ctx.globalAlpha = Math.min(1, banner.t * 2);
+    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(0, cell * 3.3, W, cell * 1.4);
+    ctx.fillStyle = banner.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `${Math.round(cell * 0.8)}px ${css("--display")}`; ctx.fillText(banner.text, W / 2, cell * 4);
+    ctx.globalAlpha = 1;
+    if (banner.t <= 0) banner = null;
+  }
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+let last = performance.now();
+function loop(now) {
+  const real = Math.min(0.05, (now - last) / 1000); last = now;
+  const dt = real * (S && S.phase !== "plan" ? S.speed : 1);
+  if (S) {
+    if (S.phase === "combat") { let left = dt; while (left > 0) { const s = Math.min(1 / 60, left); stepCombat(s); left -= s; if (S.phase !== "combat") break; } }
+    draw(dt);
+  }
+  requestAnimationFrame(loop);
+}
+
+// ---------- 입력 ----------
+function hit(x, y) {
+  const by = cell * ROWS + gap;
+  if (y >= 0 && y < cell * ROWS) { const r = Math.floor(y / cell), c = Math.floor(x / cell); if (c >= 0 && c < COLS) return { w: "b", r, c }; }
+  if (y >= by && y < by + cell) { const i = Math.floor(x / cell); if (i >= 0 && i < BENCH) return { w: "n", i }; }
+  return null;
+}
+const validDrop = (p) => p && (p.w === "n" || p.r >= 4);
+function pos(e) { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; }
+cv.addEventListener("pointerdown", (e) => {
+  if (!S || S.phase !== "plan") return;
+  const [x, y] = pos(e), p = hit(x, y);
+  const u = p && validDrop(p) ? getAt(p) : null;
+  drag = { p, u, sx: x, sy: y, x, y, moved: false };
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const [x, y] = pos(e); drag.x = x; drag.y = y;
+  if (drag.u && Math.hypot(x - drag.sx, y - drag.sy) > 8) drag.moved = true;
+});
+cv.addEventListener("pointerup", (e) => {
+  if (!drag) return;
+  const [x, y] = pos(e), p = hit(x, y), d = drag; drag = null;
+  if (d.moved) { if (validDrop(p)) move(d.p, p); else renderUI(); return; }
+  // 탭
+  if (!validDrop(p)) {
+    const en = p && S.enemy.find((e) => p.w === "b" && e.r === p.r && e.c === p.c);
+    S.sel = null; renderUI(); if (en) showInfo(en, true);
+    return;
+  }
+  if (S.sel) {
+    const same = S.sel.w === p.w && (p.w === "n" ? S.sel.i === p.i : S.sel.r === p.r && S.sel.c === p.c);
+    if (same) { S.sel = null; renderUI(); return; }
+    if (getAt(S.sel)) { move(S.sel, p); return; }
+  }
+  S.sel = getAt(p) ? p : null; renderUI();
+});
+cv.addEventListener("pointercancel", () => { drag = null; });
+
+// ---------- UI ----------
+let toastTimer;
+function toast(msg) {
+  let t = document.querySelector(".toast");
+  if (!t) { t = document.createElement("div"); t.className = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 1700);
+}
+function statLine(spec) {
+  const def = DEFS[spec.d], cl = CLASS[def.k], cf = 1 + (def.c - 1) * 0.22, sm = STARM[spec.star], P = cf * sm;
+  const skill = {
+    "수호자": `자신에게 보호막 ${Math.round(260 * P)}`,
+    "돌격대": `대상에게 공격력×2 + ${Math.round(130 * P)} 피해`,
+    "저격수": `대상에게 공격력×1.6 + ${Math.round(160 * P)} 저격`,
+    "천재": `대상 주변 적 모두에게 ${Math.round(170 * P)} 피해`,
+    "응원단": `체력이 가장 낮은 아군 ${Math.round(230 * P)} 회복`,
+    "반장": `적 전체 ${Math.round(150 * P)} 피해, 아군 전체 ${Math.round(110 * P)} 회복`,
+  }[def.k];
+  return `체력 ${Math.round(cl.hp * cf * sm)} · 공격 ${Math.round(cl.ad * cf * sm)} · 사거리 ${cl.rg}<br>스킬 <b style="font-size:14px">${cl.sk}</b>: ${skill}`;
+}
+function showInfo(spec, enemy) {
+  const def = DEFS[spec.d];
+  const info = $("info");
+  info.innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${def.n}</b> ${"★".repeat(spec.star)} · ${def.c}코스트 · ${def.o} / ${def.k}${enemy ? " · <span style='color:var(--danger)'>상대</span>" : ""}<br>${statLine(spec)}</div>`;
+  if (!enemy && S.phase === "plan") {
+    const b = document.createElement("button"); b.className = "sell"; b.id = "sellbtn";
+    b.textContent = `판매 +${sellValue(spec)}`; b.onclick = sellSel; info.appendChild(b);
+  }
+}
+function renderUI() {
+  $("hp").textContent = `♥ ${Math.max(0, S.hp)}`;
+  $("gold").textContent = `● ${S.gold}`;
+  $("round").textContent = `${S.round}/${MAX_ROUND}라운드${S.round % 5 === 0 ? " (보스)" : ""}`;
+  const bc = boardCount();
+  $("lvl").textContent = `레벨 ${S.level} · 배치 ${bc}/${S.level}`;
+  const need = XPNEED[S.level];
+  $("xpfill").style.width = need ? `${(S.xp / need) * 100}%` : "100%";
+  $("xptxt").textContent = need ? `${S.xp}/${need}` : "MAX";
+  // 시너지
+  const cnt = traitCounts(allUnits().filter((x) => x.w === "b").map((x) => x.u.d));
+  const keys = Object.keys(cnt).sort((a, b) => traitLvl(b, cnt[b]) - traitLvl(a, cnt[a]) || cnt[b] - cnt[a]);
+  $("traits").innerHTML = keys.length
+    ? keys.map((k) => { const on = traitLvl(k, cnt[k]) > 0; const next = TRAITS[k].t.find((x) => x > cnt[k]) ?? TRAITS[k].t.at(-1);
+        return `<span class="trait${on ? " on" : ""}" title="${TRAITS[k].d}">${k} ${cnt[k]}/${on && cnt[k] >= TRAITS[k].t.at(-1) ? cnt[k] : next}</span>`; }).join("")
+    : `<span class="trait hint">배치한 친구들의 시너지가 여기에 표시돼요</span>`;
+  // 상점
+  const owned = new Set(allUnits().map((x) => x.u.d));
+  $("shop").innerHTML = S.shop.map((di, i) => {
+    if (di == null) return `<div class="card empty"></div>`;
+    const d = DEFS[di];
+    return `<div class="card${owned.has(di) ? " own" : ""}${S.gold < d.c ? " poor" : ""}" data-i="${i}" style="--cc:var(${COST_COLOR[d.c]})" role="button" tabindex="0">
+      <span class="nm">${d.n}</span><span class="tr">${d.o}<br>${d.k}</span><span class="cost">● ${d.c}</span></div>`;
+  }).join("");
+  $("shop").querySelectorAll(".card[data-i]").forEach((el) => {
+    el.onclick = () => buy(+el.dataset.i);
+    el.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); buy(+el.dataset.i); } };
+  });
+  $("odds").textContent = "등장 확률 " + ODDS[S.level].map((p, i) => `${i + 1}코 ${p}%`).join(" · ");
+  const plan = S.phase === "plan";
+  $("reroll").disabled = !plan; $("buyxp").disabled = !plan || S.level >= 9;
+  $("fight").textContent = plan ? "전투 시작" : `속도 ×${S.speed}`;
+  $("fight").classList.toggle("go", plan);
+  if (S.sel && getAt(S.sel)) showInfo(getAt(S.sel), false);
+  else if (plan) {
+    const tc = Object.entries(cnt).filter(([k, n]) => traitLvl(k, n) > 0).map(([k]) => TRAITS[k].d);
+    $("info").innerHTML = `<div class="txt guide">${tc.length ? "적용 중: " + tc.join(" · ") : "친구를 탭해서 고르고, 놓을 칸을 탭하세요. 끌어서 옮겨도 돼요. 위쪽 빨간 팀이 이번 상대예요."}</div>`;
+  } else $("info").innerHTML = `<div class="txt guide">전투 중… 자동으로 싸워요. 버튼으로 속도를 바꿀 수 있어요.</div>`;
+}
+$("reroll").onclick = () => { if (S.phase !== "plan") return; if (S.gold < 2) return toast("골드가 부족해요"); S.gold -= 2; rollShop(); renderUI(); };
+$("buyxp").onclick = () => { if (S.phase !== "plan" || S.level >= 9) return; if (S.gold < 4) return toast("골드가 부족해요"); S.gold -= 4; addXp(4); renderUI(); };
+$("fight").onclick = () => { if (S.phase === "plan") startCombat(); else { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 3 : 1; renderUI(); } };
+$("start").onclick = () => { $("ov").hidden = true; newGame(); };
+try { const b = +localStorage.getItem("uri-best") || 0; if (b) $("best").textContent = `최고 기록: ${b > MAX_ROUND ? "클리어" : b + "라운드"}`; } catch (e) {}
+window.addEventListener("resize", resize);
+resize();
+newGame();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
