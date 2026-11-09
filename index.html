@@ -135,6 +135,26 @@ button:disabled { opacity: .45; }
 .ov-box ul { text-align: left; margin: 0; padding-left: 18px; line-height: 1.6; font-size: 13px; color: var(--chalk-dim); }
 .go { background: linear-gradient(#f1cf78, #b98a33); color: #2a1a06; border: 2px solid var(--hud-line); border-radius: 10px; padding: 10px; font-size: 17px; }
 #rotate { display: none; }
+.track { display: flex; gap: calc(var(--u) * .45); align-items: center; }
+.track i { width: calc(var(--u) * 1.3); height: calc(var(--u) * 1.3); border-radius: 50%; background: #56636a; display: block; }
+.track i.pvp { background: #e0675a; } .track i.pve { background: #4fa8ff; } .track i.carousel { background: #f0cf74; }
+.track i.done { opacity: .35; } .track i.cur { outline: calc(var(--u) * .3) solid #fff; transform: scale(1.25); }
+#goldsub { font-size: calc(var(--u) * 1.25); color: var(--gold); }
+.shop.selling::after { content: attr(data-sell); position: absolute; inset: 0; display: grid; place-items: center; background: rgba(120, 25, 20, .82); border: calc(var(--u) * .4) solid var(--danger); border-radius: var(--u); font-family: var(--display); font-size: calc(var(--u) * 4); color: #fff; }
+.dm { display: grid; grid-template-columns: 4.6em 1fr 3.4em; white-space: nowrap; align-items: center; gap: .5em; }
+.dm i { display: block; height: .7em; border-radius: .3em; background: linear-gradient(90deg, #ff9a5a, #ffd75a); }
+.dm em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
+.augwrap { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 2); }
+.augtier { font-family: var(--display); font-weight: 400; margin: 0; font-size: calc(var(--u) * 3.6); color: #e6edf2; text-shadow: 0 2px 8px #000; }
+.augtier.t-골드 { color: var(--gold); } .augtier.t-프리즘 { background: linear-gradient(90deg, #ff9ad5, #9ad5ff, #c6ff9a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.augs { display: flex; gap: calc(var(--u) * 2); flex-wrap: wrap; justify-content: center; }
+.augcard { width: calc(var(--u) * 24); min-height: calc(var(--u) * 30); display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 1.2); padding: calc(var(--u) * 2); border-radius: calc(var(--u) * 1.4); color: #fff; font-family: var(--body); font-size: calc(var(--u) * 1.8); line-height: 1.45; background: linear-gradient(#26343c, #10181c); border: calc(var(--u) * .45) solid #a9b6be; box-shadow: 0 0 calc(var(--u) * 3) rgba(169,182,190,.35); }
+.augcard b { font-family: var(--display); font-weight: 400; font-size: calc(var(--u) * 2.5); }
+.augcard.t-골드 { border-color: var(--gold); box-shadow: 0 0 calc(var(--u) * 3) rgba(240,207,116,.45); }
+.augcard.t-프리즘 { border-color: #c9a0ff; box-shadow: 0 0 calc(var(--u) * 3) rgba(201,160,255,.55); }
+.augicon { width: calc(var(--u) * 9); height: calc(var(--u) * 10); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: grid; place-items: center; background: linear-gradient(#e6edf2, #6f7f8a); color: #10181c; font-family: var(--display); font-size: calc(var(--u) * 4); }
+.augcard.t-골드 .augicon { background: linear-gradient(#ffe88a, #b98a33); }
+.augcard.t-프리즘 .augicon { background: linear-gradient(135deg, #ff9ad5, #9ad5ff, #c6ff9a); }
 @media (orientation: portrait) { #rotate:not(.dismissed) { display: flex; } }
 </style>
 </head>
@@ -143,7 +163,7 @@ button:disabled { opacity: .45; }
   <canvas id="gl"></canvas><canvas id="cv"></canvas>
   <div class="hud mini"><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button></div>
   <div class="hud topbar">
-    <div class="pill"><span id="stage">1-1</span><span class="rtype" id="rtype">급식 줄</span></div>
+    <div class="pill"><span id="stage">1-1</span><span class="track" id="track"></span><span class="rtype" id="rtype">급식 줄</span></div>
     <div class="timer"><i id="timerfill"></i></div>
     <div class="pill stat-hp" id="hp">♥ 100</div>
   </div>
@@ -156,7 +176,10 @@ button:disabled { opacity: .45; }
   <button id="lock" title="상점 잠금">잠금<small></small></button>
   <button class="round" id="reroll">새로고침<small>● 2</small></button>
   <button id="ready">준비 완료</button>
-  <div class="round" id="goldbag"><small>골드</small><span id="gold">0</span></div>
+  <div class="round" id="goldbag"><small>골드</small><span id="gold">0</span><small id="goldsub"></small></div>
+</div>
+<div class="overlay" id="aug" hidden>
+  <div class="augwrap"><h2 class="augtier" id="augtier">실버 증강</h2><div class="augs" id="augs"></div><button class="go" id="augre">다시 뽑기 (1번)</button></div>
 </div>
 <div class="overlay" id="rotate">
   <div class="ov-box"><h1>가로로 돌려주세요</h1><p>이 게임은 가로 화면에 맞춰져 있어요.</p><button class="go" id="rotok">그래도 세로로 하기</button></div>
@@ -275,6 +298,22 @@ const MON = {
   fin:  { mn: "기말고사", hp: 5200, ad: 160, as: .55, rg: 1, ar: .25, col: "#ffcc4d", boss: 1 },
   mock: { mn: "모의고사", hp: 8000, ad: 220, as: .6,  rg: 1, ar: .3,  col: "#ff8a7a", boss: 1 },
 };
+// 증강: 2-1(은), 3-2(금), 4-2(프리즘) 라운드에 3개 중 1개 선택
+const AUGS = [
+  { id: "money", n: "두둑한 용돈", d: "즉시 15골드", f: (P) => (P.gold += 15) },
+  { id: "lunch", n: "점심시간", d: "매 라운드 시작마다 골드 +2", f: (P) => (P.gpr += 2) },
+  { id: "study", n: "선행 학습", d: "즉시 경험치 +12", f: (P) => addXp(P, 12) },
+  { id: "supplies", n: "준비물 챙기기", d: "아이템 재료 3개", f: (P) => { for (let i = 0; i < 3; i++) giveItem(P, rnd(COMP).id); } },
+  { id: "complete", n: "완성품 선물", d: "무작위 완성 아이템 1개", f: (P) => giveItem(P, rnd(Object.keys(COMBOS))) },
+  { id: "sports", n: "체육대회", d: "아군 전체 공격 속도 +15%", f: (P) => (P.buff.as += 0.15) },
+  { id: "wall", n: "철벽 수비", d: "아군 전체 받는 피해 -10%", f: (P) => (P.buff.ar += 0.1) },
+  { id: "meat", n: "급식 고기반찬", d: "아군 전체 공격력 +12%, 체력 +8%", f: (P) => { P.buff.ad += 0.12; P.buff.hp += 0.08; } },
+  { id: "nurse", n: "보건실 이용권", d: "내 체력 +20", f: (P) => (P.hp += 20) },
+  { id: "pres", n: "반장 선거", d: "정주환 ★1을 대기석으로", f: (P) => { const d = DEFS.findIndex((x) => x.n === "정주환"), i = P.bench.indexOf(null); if (i >= 0) { P.bench[i] = mkUnit(d); if (S.pool[d] > 0) S.pool[d]--; } else P.gold += 5; } },
+  { id: "honor", n: "우등생", d: "무작위 2코스트 친구 ★2", f: (P) => { const i = P.bench.indexOf(null); const d = rnd(DEFS.map((_, j) => j).filter((j) => DEFS[j].c === 2)); if (i >= 0) P.bench[i] = mkUnit(d, 2); else P.gold += 6; } },
+  ...["체육부", "승부욕", "모범생", "착한 친구", "축구부"].map((t) => ({ id: "emb-" + t, n: `${t} 배지`, d: `${t} 시너지 숫자 +1`, f: (P) => (P.emb[t] = (P.emb[t] || 0) + 1) })),
+];
+const AUG_ROUNDS = { "2-1": "실버", "3-2": "골드", "4-2": "프리즘" };
 const COST_COLOR = ["", "--c1", "--c2", "--c3", "--c4", "--c5"];
 const ODDS = { 1: [100,0,0,0,0], 2: [100,0,0,0,0], 3: [75,25,0,0,0], 4: [55,30,15,0,0], 5: [45,33,20,2,0],
   6: [30,40,25,5,0], 7: [19,30,35,15,1], 8: [18,25,32,22,3], 9: [10,20,25,35,10], 10: [5,10,20,40,25] };
@@ -325,6 +364,7 @@ function newPlayer(i) {
     bench: Array(BENCH).fill(null), items: [], shop: [null, null, null, null, null],
     locked: false, streak: 0, alive: true, place: 0, lastOpp: -1,
     plan: shuffle([...MAIN_TRAITS]).slice(0, 2),
+    gpr: 0, buff: { as: 0, ar: 0, ad: 0, hp: 0 }, emb: {}, augs: [],
   };
 }
 function newGame() {
@@ -334,7 +374,7 @@ function newGame() {
     pool: DEFS.map((d) => POOL_SIZE[d.c]),
     speed: S ? S.speed : 1, fast: S ? S.fast : false,
     battle: null, results: [], car: null, sel: null, scout: null, opp: null,
-    banner: null, resultT: 0, shake: 0,
+    banner: null, resultT: 0, shake: 0, orbs: [], augPending: false,
   };
   startRound(true);
 }
@@ -400,6 +440,10 @@ function merge(P, d, star) {
     for (const it of o.u.items) if (!addItem(keep.u, it)) giveItem(P, it);
   }
   keep.u.star = star + 1;
+  if (P.human && typeof WFX !== "undefined") {
+    const x = keep.w === "b" ? worldX(gridX(4 + keep.r, keep.c)) : benchX(keep.i), z = keep.w === "b" ? worldZ(4 + keep.r) : BENCH_Z;
+    WFX.push({ w: 1, X: x, Y: z, r: 1.4, col: "#ffd75a", t: 0.7, t0: 0.7 }, { w: 1, kind: "spark", X: x, Y: z, col: "#ffe9a0", t: 0.6, t0: 0.6 });
+  }
   if (P.human) { sfx("merge"); toast(`${DEFS[d].n} ★${star + 1}!`); }
   merge(P, d, star + 1);
 }
@@ -471,7 +515,7 @@ function startRound(first) {
       const base = S.stage === 1 ? (S.k <= 3 ? 2 : 3) : 5;
       const interest = Math.min(5, Math.floor(P.gold / 10));
       const st = Math.abs(P.streak), sb = st >= 6 ? 3 : st >= 5 ? 2 : st >= 3 ? 1 : 0;
-      const inc = base + interest + sb;
+      const inc = base + interest + sb + P.gpr;
       P.gold += inc;
       addXp(P, 2);
       if (!P.locked || P.shop.every((x) => x == null)) refreshShop(P);
@@ -489,8 +533,29 @@ function startPlan() {
   S.phase = "plan";
   S.timer = S.timerMax = S.stage === 1 ? 20 : 30;
   S.battle = null; S.sel = null; S.scout = null; S.opp = null;
-  for (const P of alivePlayers()) { mergeAll(P); if (!P.human) aiPlan(P); }
+  const tier = AUG_ROUNDS[`${S.stage}-${S.k}`];
+  for (const P of alivePlayers()) {
+    mergeAll(P);
+    if (tier && !P.human) { const a = rnd(augOptions(P)); P.augs.push(a.id); a.f(P); }
+    if (!P.human) aiPlan(P);
+  }
+  if (tier && human().alive) showAugments(tier);
   renderUI();
+}
+function augOptions(P) { return shuffle(AUGS.filter((a) => a.id.startsWith("emb-") || !P.augs.includes(a.id))).slice(0, 3); }
+function showAugments(tier, rerolled) {
+  const P = human(), opts = augOptions(P);
+  S.augPending = true;
+  $("augre").hidden = !!rerolled;
+  $("augre").onclick = () => showAugments(tier, true);
+  $("augtier").textContent = `${tier} 증강`;
+  $("augtier").className = "augtier t-" + tier;
+  $("augs").innerHTML = opts.map((a, i) => `<button class="augcard t-${tier}" data-i="${i}"><span class="augicon">${a.n[0]}</span><b>${a.n}</b><span>${a.d}</span></button>`).join("");
+  $("augs").querySelectorAll(".augcard").forEach((el) => (el.onclick = () => {
+    const a = opts[+el.dataset.i]; P.augs.push(a.id); a.f(P);
+    S.augPending = false; $("aug").hidden = true; sfx("level"); toast(`증강: ${a.n}`); mergeAll(P); renderUI();
+  }));
+  $("aug").hidden = false;
 }
 function sideOf(P) {
   const out = [];
@@ -524,13 +589,14 @@ function pairUp() {
   return best.pairs;
 }
 function startCombat() {
-  if (S.phase !== "plan") return;
+  if (S.phase !== "plan" || S.augPending) return;
+  collectOrbs(true);
   S.sel = null; S.scout = null; drag = null;
   autoFill(human());
   S.results = [];
   if (S.type === "pve") {
     for (const P of alivePlayers()) {
-      const B = makeBattle(sideOf(P), pveTeam(S.stage, S.k), P.human);
+      const B = makeBattle(sideOf(P), pveTeam(S.stage, S.k), P.human, P, null);
       if (P.human) S.battle = B; else runBattle(B);
       S.results.push({ kind: "pve", a: P, B });
     }
@@ -538,7 +604,7 @@ function startCombat() {
   } else {
     for (const pr of pairUp()) {
       const isH = pr.a.human;
-      const B = makeBattle(sideOf(pr.a), sideOf(pr.b), isH);
+      const B = makeBattle(sideOf(pr.a), sideOf(pr.b), isH, pr.a, pr.b);
       if (isH) { S.battle = B; S.opp = pr.b; S.oppGhost = pr.ghost; } else runBattle(B);
       S.results.push({ kind: "pvp", ...pr, B });
     }
@@ -551,9 +617,25 @@ function loot(P, win) {
   let comps = S.stage === 1 ? (S.k === 4 ? 2 : 1) : 2;
   let gold = S.stage === 1 ? S.k - 2 : 3;
   if (!win) { comps = Math.max(1, comps - 1); gold = 0; }
-  for (let i = 0; i < comps; i++) giveItem(P, rnd(COMP).id);
-  P.gold += gold;
-  if (P.human) setTimeout(() => toast(`전리품: 아이템 재료 ${comps}개${gold ? ` · ${gold}골드` : ""}`), 600);
+  const items = Array.from({ length: comps }, () => rnd(COMP).id);
+  if (!P.human) { items.forEach((id) => giveItem(P, id)); P.gold += gold; return; }
+  // 사람은 경기장에 떨어진 구슬을 마스코트로 주워요
+  const drops = items.map((id) => ({ items: [id], gold: 0 }));
+  if (gold) drops.push({ items: [], gold });
+  drops.forEach((o) => S.orbs.push({ ...o, x: -5 + Math.random() * 10, z: 1.6 + Math.random() * 3.2, born: performance.now() }));
+  setTimeout(() => toast("전리품 구슬! 마스코트로 주우세요 (빈 땅을 탭)"), 700);
+}
+function collectOrbs(all) {
+  if (!S.orbs || !S.orbs.length) return;
+  const P = human(), keep = [];
+  for (const o of S.orbs) {
+    if (all || Math.hypot(o.x - TACT.x, o.z - TACT.z) < 0.9) {
+      o.items.forEach((id) => giveItem(P, id)); P.gold += o.gold;
+      if (!all) { sfx("item"); toast(o.gold ? `+${o.gold}골드` : `${ITEMS[o.items[0]].n} 획득!`); }
+      if (typeof WFX !== "undefined") WFX.push({ w: 1, X: o.x, Y: o.z, r: 1.2, col: o.gold ? "#f5d76e" : "#7fc4ff", t: 0.5, t0: 0.5 });
+    } else keep.push(o);
+  }
+  S.orbs = keep; renderUI();
 }
 function finishCombat() {
   S.phase = "result";
@@ -713,7 +795,7 @@ function aiItems(P) {
 }
 
 // =============== 전투 엔진 ===============
-function makeFighter(spec, team, r, c, cnt) {
+function makeFighter(spec, team, r, c, cnt, buff) {
   const f = { team, r, c, X: c + (r & 1) * 0.5, Y: r, alive: true, shield: 0, mana: 0, crit: 0, amp: 1, mgain: 1,
     asStack: 0, atkCd: 0.25 + Math.random() * 0.3, moveCd: 0, sec: 0, tgt: null, flash: 0, lunge: 0, lx: 0, ly: 0, deadT: 0, items: [], star: 1 };
   if (spec.mon) {
@@ -739,15 +821,20 @@ function makeFighter(spec, team, r, c, cnt) {
   f.ar = Math.min(0.75, f.ar + (st.ar || 0)); f.amp += st.amp || 0; f.mana += st.mana || 0;
   f.crit += st.crit || 0; f.mgain *= 1 + (st.mgainPct || 0);
   for (const k of ["stackAs", "lifesteal", "splash", "skillCrit", "manaOnHit", "lowHpAs", "thorns", "manaTick", "lowShield", "regen", "teamShield", "castShield", "castHeal", "refund"]) f[k] = st[k] || 0;
+  if (buff) { f.as0 *= 1 + buff.as; f.ar = Math.min(0.75, f.ar + buff.ar); f.ad *= 1 + buff.ad; f.maxHp *= 1 + buff.hp; }
   f.hp = f.maxHp; f.mana = Math.min(f.mana, f.mm - 1);
   return f;
 }
-function makeBattle(sideA, sideB, visual) {
-  const cA = traitCounts(sideA.filter((x) => !x.spec.mon).map((x) => x.spec.d));
-  const cB = traitCounts(sideB.filter((x) => !x.spec.mon).map((x) => x.spec.d));
+function teamCounts(side, P) {
+  const c = traitCounts(side.filter((x) => !x.spec.mon).map((x) => x.spec.d));
+  if (P && side.length) for (const [t, n] of Object.entries(P.emb)) c[t] = (c[t] || 0) + n;
+  return c;
+}
+function makeBattle(sideA, sideB, visual, PA, PB) {
+  const cA = teamCounts(sideA, PA), cB = teamCounts(sideB, PB);
   const f = [];
-  sideA.forEach((x) => f.push(makeFighter(x.spec, 0, 4 + x.lr, x.c, cA)));
-  sideB.forEach((x) => f.push(makeFighter(x.spec, 1, 3 - x.lr, COLS - 1 - x.c, cB)));
+  sideA.forEach((x) => f.push(makeFighter(x.spec, 0, 4 + x.lr, x.c, cA, PA && PA.buff)));
+  sideB.forEach((x) => f.push(makeFighter(x.spec, 1, 3 - x.lr, COLS - 1 - x.c, cB, PB && PB.buff)));
   for (const u of f) if (u.teamShield) for (const o of f) if (o !== u && o.team === u.team && hexDist(u, o) <= 1) o.shield += u.teamShield;
   return { f, projs: [], fx: [], floats: [], t: 0, done: false, win: null, visual };
 }
@@ -782,6 +869,7 @@ function dealDamage(B, src, t, amt, kind) {
   if ((kind === "atk" || (kind === "skill" && src.skillCrit)) && Math.random() < src.crit) { amt *= 1.5; crit = true; }
   amt = Math.max(1, Math.round(amt * (1 - t.ar)));
   const abs = Math.min(t.shield, amt); t.shield -= abs; t.hp -= amt - abs; t.flash = 0.12;
+  if (src && !src.mon) src.dmg = (src.dmg || 0) + amt;
   if (t.mm !== Infinity && kind !== "thorn") t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
   if (t.lowShield && !t.lsUsed && t.hp > 0 && t.hp < t.maxHp * 0.4) { t.lsUsed = 1; t.shield += t.lowShield; addFx(B, t.X, t.Y, 0.7, TOK["--c3"]); }
   if (B.visual && kind !== "thorn" && kind !== "splash") B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : "#ffe9c0", t: 0.3, t0: 0.3 });
@@ -1105,6 +1193,7 @@ function stepTactician(dt) {
   const dx = TACT.tx - TACT.x, dz = TACT.tz - TACT.z, d = Math.hypot(dx, dz);
   const sp = Math.min(d, dt * 4.5);
   if (d > 0.02) { TACT.x += (dx / d) * sp; TACT.z += (dz / d) * sp; TACT.face = Math.atan2(dx, dz); TACT.walk += dt * 14; }
+  if (S.orbs && S.orbs.length) collectOrbs(false);
   const moving = d > 0.05 ? 1 : 0;
   tact.position.set(TACT.x, 0.17 + Math.abs(Math.sin(TACT.walk)) * 0.12 * moving + Math.sin(clock3d * 2) * 0.02, TACT.z);
   const cur = tact.rotation.y, df = ((((TACT.face) - cur) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
@@ -1479,6 +1568,29 @@ function placeUnit(it, dt) {
   it.g = g;
 }
 const additive = (col) => new THREE.MeshBasicMaterial({ color: new THREE.Color(col), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+let WFX = [];
+function drawFx(list, dt) {
+  for (const g of list) {
+    g.t -= dt;
+    const k = 1 - g.t / g.t0, x = g.w ? g.X : worldX(g.X), z = g.w ? g.Y : worldZ(g.Y);
+    if (g.kind === "spark") {
+      const grp = useMesh(g, () => {
+        const gg = new THREE.Group(), mat = additive(g.col);
+        gg.userData.dirs = [];
+        for (let i = 0; i < 7; i++) { const s = new THREE.Mesh(GEO.spark, mat); gg.add(s); gg.userData.dirs.push(new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.8 + 0.2, Math.random() - 0.5).normalize()); }
+        return gg;
+      });
+      grp.position.set(x, 0.9, z);
+      grp.children.forEach((s, i) => { s.position.copy(grp.userData.dirs[i]).multiplyScalar(k * 0.7); s.scale.setScalar(1 - k * 0.7); });
+      grp.children[0].material.opacity = Math.max(0, 1 - k);
+    } else {
+      const m = useMesh(g, () => { const mm = new THREE.Mesh(GEO.ringFx, additive(g.col)); mm.rotation.x = -Math.PI / 2; return mm; });
+      m.position.set(x, 0.24, z); m.scale.setScalar(Math.max(0.05, g.r * (0.3 + 0.9 * k)));
+      m.material.opacity = Math.max(0, g.t / g.t0);
+    }
+  }
+  return list.filter((g) => g.t > 0);
+}
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -1506,26 +1618,13 @@ function render3D(dt) {
       m.lookAt(worldX(p.t.X), 1.05, worldZ(p.t.Y));
       if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
     }
-    for (const g of B.fx) {
-      g.t -= dt;
-      const k = 1 - g.t / g.t0, x = worldX(g.X), z = worldZ(g.Y);
-      if (g.kind === "spark") {
-        const grp = useMesh(g, () => {
-          const gg = new THREE.Group(), mat = additive(g.col);
-          gg.userData.dirs = [];
-          for (let i = 0; i < 7; i++) { const s = new THREE.Mesh(GEO.spark, mat); gg.add(s); gg.userData.dirs.push(new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.8 + 0.2, Math.random() - 0.5).normalize()); }
-          return gg;
-        });
-        grp.position.set(x, 0.9, z);
-        grp.children.forEach((s, i) => { s.position.copy(grp.userData.dirs[i]).multiplyScalar(k * 0.7); s.scale.setScalar(1 - k * 0.7); });
-        grp.children[0].material.opacity = Math.max(0, 1 - k);
-      } else {
-        const m = useMesh(g, () => { const mm = new THREE.Mesh(GEO.ringFx, additive(g.col)); mm.rotation.x = -Math.PI / 2; return mm; });
-        m.position.set(x, 0.24, z); m.scale.setScalar(Math.max(0.05, g.r * (0.3 + 0.9 * k)));
-        m.material.opacity = Math.max(0, g.t / g.t0);
-      }
-    }
-    B.fx = B.fx.filter((g) => g.t > 0);
+    B.fx = drawFx(B.fx, dt);
+
+  }
+  WFX = drawFx(WFX, dt);
+  for (const o of S.orbs || []) {
+    const m = useMesh(o, () => { const g = new THREE.Group(); const core = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 16), new THREE.MeshStandardMaterial({ color: lin(o.gold ? 0xffd75a : 0x7fc4ff), emissive: lin(o.gold ? 0xb08a20 : 0x2a6ab0), roughness: 0.2, metalness: 0.3 })); core.castShadow = true; g.add(core); const halo = new THREE.Mesh(GEO.ringFx, additive(o.gold ? "#f5d76e" : "#7fc4ff")); halo.rotation.x = -Math.PI / 2; halo.position.y = -0.55; halo.scale.setScalar(0.55); g.add(halo); return g; });
+    m.position.set(o.x, 0.75 + Math.sin(clock3d * 3 + o.x) * 0.12, o.z); m.rotation.y += dt;
   }
   sweep();
   if (camBase) {
@@ -1575,6 +1674,7 @@ function drawOverlay(dt, R) {
       const f = it.f, bw = u0 * 2.6, bx = sx - bw / 2, by = sy + 2;
       ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(bx - 1, by - 1, bw + 2, 7);
       ctx.fillStyle = it.enemy ? TOK["--danger"] : TOK["--c2"]; ctx.fillRect(bx, by, bw * Math.max(0, f.hp / f.maxHp), 5);
+      ctx.fillStyle = "rgba(0,0,0,.6)"; for (let v = 300; v < f.maxHp; v += 300) ctx.fillRect(bx + (bw * v) / f.maxHp, by, 1, v % 1500 === 0 ? 5 : 3);
       if (f.shield > 0) { ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(bx, by, Math.min(bw, bw * (f.shield / f.maxHp)), 2); }
       if (f.mm !== Infinity) { ctx.fillStyle = TOK["--c3"]; ctx.fillRect(bx, by + 6, bw * Math.min(1, f.mana / f.mm), 3); }
     }
@@ -1659,7 +1759,7 @@ function loop(now) {
     const paused = !$("ov").hidden;
     const dt = paused ? 0 : real * S.speed;
     if (!paused) {
-      if (S.phase === "plan") { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); }
+      if (S.phase === "plan") { if (S.augPending && S.fast) { const b = $("augs").querySelector(".augcard"); if (b) b.click(); } if (!S.augPending) { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); } }
       else if (S.phase === "combat") {
         let left = dt;
         while (left > 0 && !S.battle.done) { const s = Math.min(1 / 60, left); stepBattle(S.battle, s); left -= s; }
@@ -1670,6 +1770,7 @@ function loop(now) {
     const R = render3D(paused ? real : dt);
     drawOverlay(dt, R);
     updateTimer();
+    if ((S.meterT = (S.meterT || 0) + real) > 0.4) { S.meterT = 0; updateMeter(); }
   }
   requestAnimationFrame(loop);
 }
@@ -1712,12 +1813,21 @@ cv.addEventListener("pointermove", (e) => {
   const [x, y] = canvasPos(e); drag.x = x; drag.y = y;
   const wp = groundAt(x, y); if (wp) drag.wp = wp;
   if (drag.obj && Math.hypot(x - drag.sx, y - drag.sy) > 8) drag.moved = true;
+  const over = drag.moved && drag.loc && drag.loc.w !== "i" && overShop(e);
+  $("shop").classList.toggle("selling", !!over);
+  if (over) $("shop").dataset.sell = `판매 +${sellValue(drag.obj)}골드`;
 });
 cv.addEventListener("pointerup", (e) => {
   const [x, y] = canvasPos(e);
   if (S && S.phase === "carousel") return carouselTap(x, y);
   if (!drag) return;
   const h = hitTest(x, y), loc = toLoc(h), d = drag; drag = null;
+  $("shop").classList.remove("selling");
+  if (d.moved && d.loc && d.loc.w !== "i" && overShop(e)) {
+    if (d.loc.w === "b" && S.phase !== "plan") { toast("전투 중에는 보드 위 친구를 팔 수 없어요"); return; }
+    if (!shopOpen()) return;
+    sell(human(), d.loc); S.sel = null; sfx("sell"); renderUI(); return;
+  }
   if (d.moved) {
     if (d.loc.w === "i") { if (loc && loc.w !== "i") humanEquip(d.loc.i, loc); }
     else if (loc && loc.w !== "i") humanMove(d.loc, loc);
@@ -1726,6 +1836,7 @@ cv.addEventListener("pointerup", (e) => {
   tap(h, loc);
 });
 cv.addEventListener("pointercancel", () => { drag = null; });
+function overShop(e) { const r = $("shop").getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom + 20; }
 function carouselTap(x, y) {
   const C = S.car; if (!C) return;
   const cur = C.order[C.turn];
@@ -1824,7 +1935,15 @@ function showItem(id) {
   else html += `<br><span class="guide">재료: ${it.parts.map((p) => ITEMS[p].n).join(" + ")}</span>`;
   $("info").innerHTML = html + `<br><span class="guide">친구를 탭하면 장착돼요</span></div>`;
 }
+function updateMeter() {
+  if (!S.battle || S.sel || (S.infoHold || 0) > performance.now() || !["combat", "result"].includes(S.phase)) return;
+  const list = S.battle.f.filter((f) => f.team === 0 && !f.mon).sort((a, b) => (b.dmg || 0) - (a.dmg || 0)).slice(0, 6);
+  if (!list.length) return;
+  const mx = Math.max(1, ...list.map((f) => f.dmg || 0));
+  $("info").innerHTML = `<div class="txt"><b>피해량</b>${list.map((f) => `<div class="dm"><span>${short(DEFS[f.d].n)}${"★".repeat(f.star)}</span><i style="width:${((f.dmg || 0) / mx) * 100}%"></i><em>${Math.round(f.dmg || 0)}</em></div>`).join("")}</div>`;
+}
 function showFighter(f) {
+  S.infoHold = performance.now() + 3000;
   if (f.mon) { $("info").innerHTML = `<div class="txt"><b>${f.mon.mn}</b> 몬스터 · 체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)}</div>`; return; }
   const def = DEFS[f.d];
   $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${def.n}</b> ${"★".repeat(f.star)} ${f.team ? "<span style='color:var(--danger)'>상대</span>" : ""}<br>
@@ -1842,6 +1961,10 @@ function renderUI() {
   $("rtype").textContent = TYPE_LABEL[S.type] + (S.opp && S.phase !== "plan" ? ` · 상대 ${S.opp.name}${S.oppGhost ? "(복제)" : ""}` : S.scout != null ? ` · 정찰 ${S.players[S.scout].name}` : ""); $("rtype").className = "rtype " + S.type;
   $("hp").textContent = `♥ ${Math.max(0, P.hp)}`;
   $("gold").textContent = P.gold;
+  const intr = Math.min(5, Math.floor(P.gold / 10)), st = P.streak;
+  $("goldsub").textContent = `이자 +${intr}${Math.abs(st) >= 2 ? ` · ${Math.abs(st)}${st > 0 ? "연승" : "연패"}` : ""}`;
+  const maxK = S.stage === 1 ? 4 : 7;
+  $("track").innerHTML = Array.from({ length: maxK }, (_, i) => `<i class="${roundType(S.stage, i + 1)}${i + 1 < S.k ? " done" : i + 1 === S.k ? " cur" : ""}" title="${S.stage}-${i + 1} ${TYPE_LABEL[roundType(S.stage, i + 1)]}"></i>`).join("");
   const need = XPNEED[P.level];
   $("lvl").textContent = P.level;
   $("xpwrap").style.setProperty("--p", need ? `${(P.xp / need) * 100}%` : "100%");
@@ -1857,7 +1980,7 @@ function renderUI() {
     S.scout = S.scout === i ? null : i; renderUI();
   }));
   // 시너지
-  const cnt = traitCounts(unitsOf(P).filter((x) => x.w === "b").map((x) => x.u.d));
+  const cnt = teamCounts(unitsOf(P).filter((x) => x.w === "b").map((x) => ({ spec: x.u })), P);
   const keys = Object.keys(cnt).sort((a, b) => traitLvl(b, cnt[b]) - traitLvl(a, cnt[a]) || cnt[b] - cnt[a]);
   $("traits").innerHTML = keys.length
     ? keys.map((k) => {
@@ -1918,6 +2041,14 @@ $("reroll").onclick = () => { const P = human(); if (!shopOpen()) return; if (!r
 $("buyxp").onclick = () => { const P = human(); if (!shopOpen()) return; if (!buyXp(P)) return toast("골드가 부족해요"); sfx("place"); renderUI(); };
 $("lock").onclick = () => { const P = human(); P.locked = !P.locked; renderUI(); };
 $("ready").onclick = () => startCombat();
+document.addEventListener("keydown", (e) => {
+  if (!S || !$("ov").hidden || e.repeat) return;
+  const k = e.key.toLowerCase();
+  if (k === "d") $("reroll").click();
+  else if (k === "f") $("buyxp").click();
+  else if (k === "e" && S.sel && S.sel.w !== "i" && getAt(human(), S.sel) && (S.sel.w === "n" ? shopOpen() : S.phase === "plan")) { sell(human(), S.sel); S.sel = null; sfx("sell"); renderUI(); }
+  else if (k === " " && S.phase === "plan") { e.preventDefault(); startCombat(); }
+});
 $("speed").onclick = () => { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 3 : 1; renderUI(); };
 $("mute").onclick = () => { muted = !muted; try { localStorage.setItem("uri-mute", muted ? "1" : "0"); } catch (e) {} renderUI(); };
 $("start").onclick = () => {
