@@ -22,7 +22,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   if (has("수학왕")) f.mgain = 1.6;
   if (has("프로게이머")) f.as0 *= 1.3;
   if (has("전교 1등")) f.amp += 0.4;
-  if (L("반장") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
+  if (L("신") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
   f.shield += [0, 150, 350][L("다 퍼줌")];
   const st = {};
   for (const id of f.items) for (const [k, v] of Object.entries(ITEMS[id].st)) st[k] = (st[k] || 0) + v;
@@ -143,7 +143,7 @@ function cast(B, u) {
       if (low) { heal(B, low, 230 * P); addFx(B, low.X, low.Y, 0.8, TOK["--c2"]); }
       break;
     }
-    case "반장":
+    case "신":
       foes.forEach((o) => dealDamage(B, u, o, 150 * P, "skill"));
       allies.forEach((o) => heal(B, o, 110 * P));
       addFx(B, u.X, u.Y, 6, TOK["--c5"], 0.8);

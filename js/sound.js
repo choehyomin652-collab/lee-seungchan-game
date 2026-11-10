@@ -27,8 +27,15 @@ function sfx(name) {
     case "start": tone(392, 0.1, "square", 0.03); tone(587, 0.15, "square", 0.03, null, 0.1); break;
     case "win": [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.05, null, i * 0.1)); break;
     case "lose": [392, 330, 262].forEach((f, i) => tone(f, 0.25, "triangle", 0.05, null, i * 0.14)); break;
-    case "order": [392, 523, 659, 784].forEach((f, i) => tone(f, 0.22, "sawtooth", 0.03, null, i * 0.06)); tone(110, 0.5, "square", 0.04, 55); break;
-    case "order2": [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.3, "triangle", 0.05, null, i * 0.05)); tone(1568, 0.6, "sine", 0.03, 2093, 0.2); break;
+    case "charge": tone(80, 0.7, "sawtooth", 0.04, 640); tone(1200, 0.5, "square", 0.012, 3000, 0.15); break;
+    case "thunder": { // 지지직 + 우르릉 (잡음)
+      const len = 0.6, buf = AC.createBuffer(1, AC.sampleRate * len, AC.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) { const k = i / d.length; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - k, 2.2) * (k < 0.05 ? 1 : 0.6); }
+      const src = AC.createBufferSource(), lp = AC.createBiquadFilter(), g = AC.createGain();
+      src.buffer = buf; lp.type = "lowpass"; lp.frequency.setValueAtTime(5000, now); lp.frequency.exponentialRampToValueAtTime(200, now + len);
+      g.gain.value = 0.12; src.connect(lp).connect(g).connect(AC.destination); src.start(now);
+      break;
+    }
     case "item": tone(880, 0.06, "sine", 0.05); tone(1320, 0.1, "sine", 0.05, null, 0.05); break;
   }
 }

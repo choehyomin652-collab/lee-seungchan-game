@@ -112,10 +112,12 @@ const WEAPONS = {
     const sc = e.put(wg("scr", () => cylG(0.05, 0.05, 0.32, 14)), e.mk(0xf4ecd0, 0.7), 0, -0.46, 0.1, e.R); sc.rotation.z = 1.2;
     const rb = e.put(wg("scrr", () => new THREE.TorusGeometry(0.053, 0.012, 6, 16)), e.mk(0xc8323a, 0.5), 0, 0, 0, sc); rb.rotation.x = Math.PI / 2;
   } },
-  "정주환": { n: "교사용 지시봉", pr: { col: "#ff5a4a", shape: "orb" }, build(e) {
-    const [tx, ty, tz] = wStick(e, e.mk(0xc0c8cc, 0.3, { metalness: 0.7 }), 0.8, 0.02, 0, -0.45, 0.1, 0.6);
-    e.put(wg("ptip", () => sphG(0.04)), e.mk(0xd0302a, 0.4), tx, ty, tz, e.R);
-    wStick(e, e.mk(0x1c1c1c, 0.5), 0.16, 0.02, 0, -0.45 - Math.cos(0.6) * 0.27, 0.1 - Math.sin(0.6) * 0.27, 0.6);
+  "정주환": { n: "신의 번개", pr: { col: "#9fdcff", shape: "orb" }, build(e) {
+    // 손에 쥔 지그재그 번개
+    const m = e.mk(0xffe66b, 0.3, { emissive: new THREE.Color(0xffd23a), emissiveIntensity: 1.4 });
+    const seg = wg("bolt", () => new THREE.BoxGeometry(0.05, 0.2, 0.05));
+    [[0, -0.40, 0.10, 0.5], [0, -0.48, 0.20, -0.6], [0, -0.40, 0.30, 0.5], [0, -0.48, 0.40, -0.6]].forEach(([x, y, z, r]) => { const b = e.put(seg, m, x, y, z, e.R); b.rotation.x = Math.PI / 2 + r; });
+    e.put(wg("btip", () => new THREE.ConeGeometry(0.05, 0.14, 6)), m, 0, -0.44, 0.52, e.R).rotation.x = Math.PI / 2;
   } },
 };
 function projSpecial(p) {
