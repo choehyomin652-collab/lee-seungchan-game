@@ -156,7 +156,7 @@ function skillText(def, star) {
     "저격수": `대상에게 공격력×1.6 + ${Math.round(160 * P)} 저격`,
     "천재": `대상과 주변 적 모두에게 ${Math.round(170 * P)} 피해`,
     "응원단": `체력이 가장 낮은 아군 ${Math.round(230 * P)} 회복`,
-    "반장": `적 전체 ${Math.round(150 * P)} 피해, 아군 전체 ${Math.round(110 * P)} 회복`,
+    "신": `적 전체 ${Math.round(150 * P)} 피해, 아군 전체 ${Math.round(110 * P)} 회복`,
   }[def.k];
 }
 const itemTag = (id) => `<span class="it" style="background:${ITEMS[id].comp ? ITEMS[id].col : "var(--c5)"}">${ITEMS[id].n}</span>`;

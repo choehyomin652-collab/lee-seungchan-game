@@ -829,7 +829,7 @@ function buildStudent(def, enemy) {
   const [L, R] = ud.arms;
   const WP = WEAPONS[def.n];
   if (WP) WP.build({ put, mk, L, R, torso, ud, g, def });
-  if (!WP || def.k === "반장") switch (def.k) {
+  if (!WP || def.k === "신") switch (def.k) {
     case "수호자": {
       const sd = put(GEO.shield, mk(0xb8c4bc, 0.35, { metalness: 0.7 }), -0.1, -0.3, 0.06, L); sd.rotation.z = Math.PI / 2;
       put(GEO.boss, mk(COST_HEX[def.c], 0.4, { metalness: 0.5 }), -0.14, -0.3, 0.06, L);
@@ -853,11 +853,10 @@ function buildStudent(def, enemy) {
       put(GEO.pom, pm, 0, -0.45, 0.02, L); put(GEO.pom, pm, 0, -0.45, 0.02, R);
       break;
     }
-    case "반장": {
-      const tex = textTex("armband", 256, 64, (gg, w, hh) => { gg.fillStyle = "#c8323a"; gg.fillRect(0, 0, w, hh); gg.fillStyle = "#fff"; gg.font = `44px ${DF()}`; gg.textAlign = "center"; gg.textBaseline = "middle"; for (let i = 0; i < 2; i++) gg.fillText("반장", w * (0.25 + i * 0.5), hh / 2 + 2); });
-      const am = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, side: THREE.DoubleSide }); ud.mats.push(am);
-      put(GEO.band, am, 0, -0.12, 0, L);
-      put(GEO.pin, mk(0xffcc4d, 0.3, { metalness: 0.8 }), -0.12, 0.4, 0.17, torso).scale.setScalar(1.3);
+    case "신": { // 머리 위 금빛 후광 + 금 목걸이
+      const gm = mk(0xffd86b, 0.25, { metalness: 0.6, emissive: lin(0xffb020), emissiveIntensity: 0.9 });
+      const halo = put(new THREE.TorusGeometry(0.17, 0.022, 8, 32), gm, 0, 0.36, -0.03, ud.head); halo.rotation.x = Math.PI / 2 - 0.2;
+      put(GEO.pin, gm, 0, 0.42, 0.17, torso).scale.setScalar(1.4);
       break;
     }
   }
@@ -1072,6 +1071,74 @@ function drawFx(list, dt) {
   }
   return list.filter((g) => g.t > 0);
 }
+// 정주환 "천벌" 3D 연출: 몸 주위 전기 · 하늘의 번개 소용돌이 · 적마다 내리꽂는 지그재그 번개
+let BGEO = null;
+const _up = HAS3D ? new THREE.Vector3(0, 1, 0) : null;
+function makeBolt(h, jag, w, cols, branches) {
+  if (!BGEO) BGEO = new THREE.CylinderGeometry(1, 1, 1, 6, 1, true);
+  const grp = new THREE.Group(), mats = cols.map((c) => additive(c));
+  const line = (pts, wk) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], d = b.clone().sub(a), len = d.length();
+      mats.forEach((mt, j) => {
+        const m = new THREE.Mesh(BGEO, mt); m.position.copy(a).addScaledVector(d, 0.5);
+        m.quaternion.setFromUnitVectors(_up, d.normalize()); m.scale.set(w * wk * (1 + j * 2.2), len, w * wk * (1 + j * 2.2)); grp.add(m);
+      });
+    }
+  };
+  const n = 9, pts = [];
+  for (let i = 0; i <= n; i++) { const k = i / n, j = i === 0 || i === n ? 0 : jag; pts.push(new THREE.Vector3((Math.random() - 0.5) * j * 2, h * (1 - k), (Math.random() - 0.5) * j * 2)); }
+  line(pts, 1);
+  for (let bI = 0; bI < branches; bI++) {
+    const s0 = pts[2 + Math.floor(Math.random() * (n - 4))], bp = [s0.clone()];
+    for (let i = 1; i <= 3; i++) bp.push(bp[i - 1].clone().add(new THREE.Vector3((Math.random() - 0.5) * jag * 3, -h * 0.07, (Math.random() - 0.5) * jag * 3)));
+    line(bp, 0.5);
+  }
+  grp.userData.mats = mats; return grp;
+}
+function drawSmite(z, dt) {
+  const t = z.t, x = worldX(z.X), y = worldZ(z.Y), end = Math.max(0, Math.min(1, (z.dur - t) / 0.5));
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.aura = new THREE.Group(); grp.add(ud.aura);
+    ud.rings = ["#9fdcff", "#ffffff", "#ffe66b"].map((c, i) => { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2 + (i - 1) * 0.5; m.position.y = 1.1; grp.add(m); return m; });
+    ud.sky = new THREE.Group(); ud.sky.position.y = 7.5; grp.add(ud.sky);
+    for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(GEO.ringFx, additive(i === 1 ? "#ffffff" : "#6fb8ff")); m.rotation.x = -Math.PI / 2; m.scale.setScalar(1.5 + i * 1.3); ud.sky.add(m); }
+    return grp;
+  });
+  const ud = g.userData; g.position.set(x, 0, y);
+  // 몸 주위 지지직: 짧은 번개를 계속 새로 그려요
+  if (!ud.aT || (ud.aT -= dt) <= 0) {
+    ud.aT = 0.06;
+    while (ud.aura.children.length) { const c = ud.aura.children.pop(); c.userData.mats.forEach((m) => m.dispose()); }
+    if (t < SMITE_CHARGE + 0.3) for (let i = 0; i < 3; i++) { const b = makeBolt(0.9, 0.12, 0.012, ["#ffffff", "#7fc8ff"], 0); const a = Math.random() * 6.3; b.position.set(Math.cos(a) * 0.4, 1.7, Math.sin(a) * 0.4); b.rotation.set(Math.random() - 0.5, 0, Math.random() - 0.5); ud.aura.add(b); }
+  }
+  const ck = Math.min(1, t / SMITE_CHARGE);
+  ud.rings.forEach((r, i) => { r.rotation.z += dt * (5 + i * 3) * (i % 2 ? -1 : 1); r.scale.setScalar(0.4 + (1 - ck) * 1.2 + Math.sin(t * 30 + i) * 0.05); r.material.opacity = (t < SMITE_CHARGE + 0.2 ? 0.8 : 0) * ck; });
+  ud.sky.rotation.y += dt * 2.5; ud.sky.scale.setScalar(0.3 + 0.7 * ck);
+  ud.sky.children.forEach((m) => (m.material.opacity = 0.35 * ck * end));
+  for (const s of (z.strikes || []).concat(z.big ? [z.big] : [])) {
+    const k = t - s.at, life = s.big ? 0.55 : 0.3; if (k < -0.18 || k > life) continue;
+    const m = useMesh(s, () => {
+      const grp = new THREE.Group();
+      grp.userData.ring = new THREE.Mesh(GEO.ringFx, additive("#bfe8ff")); grp.userData.ring.rotation.x = -Math.PI / 2; grp.userData.ring.position.y = 0.26; grp.add(grp.userData.ring);
+      return grp;
+    });
+    const ud2 = m.userData, sx = s.hit ? s.X : s.o.X, sy = s.hit ? s.Y : s.o.Y;
+    m.position.set(worldX(sx), 0, worldZ(sy));
+    if (k < 0) { const q = 1 + k / 0.18; ud2.ring.scale.setScalar((s.big ? 2.6 : 1.4) - q); ud2.ring.material.opacity = q; continue; }
+    // 번개는 0.05초마다 모양이 바뀌며 번쩍여요
+    if (!ud2.bT || (ud2.bT -= dt) <= 0) {
+      ud2.bT = 0.05;
+      if (ud2.bolt) { m.remove(ud2.bolt); ud2.bolt.userData.mats.forEach((mt) => mt.dispose()); }
+      ud2.bolt = s.big ? makeBolt(14, 0.55, 0.16, ["#ffffff", "#9fdcff", "#ffe66b"], 4) : makeBolt(12, 0.35, 0.08, ["#ffffff", "#7fc8ff"], 2);
+      m.add(ud2.bolt);
+    }
+    const q = Math.max(0, 1 - k / life), fl = 0.6 + Math.random() * 0.4;
+    ud2.bolt.userData.mats.forEach((mt, j) => (mt.opacity = q * fl * (j ? 0.45 : 1)));
+    ud2.ring.scale.setScalar((s.big ? 1 : 0.5) + k * (s.big ? 8 : 5)); ud2.ring.material.opacity = q;
+  }
+}
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -1102,6 +1169,7 @@ function render3D(dt) {
     }
     B.fx = drawFx(B.fx, dt);
     for (const z of B.zones) {
+      if (z.kind === "smite") { drawSmite(z, dt); continue; }
       const g = useMesh(z, () => {
         const grp = new THREE.Group();
         const core = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x000000 })); core.scale.setScalar(4.5); grp.add(core);
@@ -1277,6 +1345,42 @@ function drawOverlay(dt, R) {
       ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = "#cff8ff"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
       ctx.fillText("합체 준비…", tx, ty); ctx.globalAlpha = 1;
     }
+  }
+  // 정주환 "천벌": 하늘이 어두워지고, 번개가 칠 때마다 화면이 번쩍
+  const sz = S.battle && S.battle.zones.find((z) => z.kind === "smite");
+  if (sz) {
+    const t = sz.t, fade = Math.max(0, Math.min(1, (sz.dur - t) / 0.5)), dark = Math.min(1, t / 0.4) * fade;
+    ctx.fillStyle = `rgba(8,12,40,${0.32 * dark})`; ctx.fillRect(0, 0, W, H);
+    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, `rgba(0,0,10,${0.5 * dark})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    let fl = 0;
+    for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) { const k = t - s.at; if (k >= 0 && k < 0.12) fl = Math.max(fl, (1 - k / 0.12) * (s.big ? 0.55 : 0.2)); }
+    if (fl > 0) { ctx.fillStyle = `rgba(225,240,255,${fl})`; ctx.fillRect(0, 0, W, H); }
+    // 화면 위에서 적에게 내리꽂는 지그재그 번개 (어두운 화면 위에 그려서 잘 보여요)
+    for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) {
+      const k = t - s.at, life = s.big ? 0.4 : 0.2; if (k < 0 || k > life) continue;
+      const [gx, gy] = proj(worldX(s.X), 0.9, worldZ(s.Y)), q = 1 - k / life, wd = s.big ? 2.2 : 1;
+      const zig = (x0, y0, x1, y1, n, jag) => { const pts = [[x0, y0]]; for (let i = 1; i < n; i++) { const kk = i / n; pts.push([x0 + (x1 - x0) * kk + (Math.random() - 0.5) * jag, y0 + (y1 - y0) * kk]); } pts.push([x1, y1]); return pts; };
+      const main = zig(gx + (Math.random() - 0.5) * u0 * 6, 0, gx, gy, 10, u0 * 2.6 * wd), paths = [main];
+      for (let b = 0; b < (s.big ? 4 : 2); b++) { const p0 = main[2 + Math.floor(Math.random() * 6)]; paths.push(zig(p0[0], p0[1], p0[0] + (Math.random() - 0.5) * u0 * 8, p0[1] + u0 * (3 + Math.random() * 4), 4, u0 * 1.5)); }
+      ctx.save(); ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.globalAlpha = q * (0.7 + Math.random() * 0.3);
+      for (const [lw, col, blur] of [[u0 * 0.9 * wd, "rgba(110,190,255,.55)", 30], [u0 * 0.35 * wd, s.big ? "#fff3a0" : "#e8f6ff", 12], [u0 * 0.14 * wd, "#ffffff", 0]]) {
+        ctx.strokeStyle = col; ctx.shadowColor = "#7fc8ff"; ctx.shadowBlur = blur;
+        paths.forEach((pp, i) => { ctx.lineWidth = i ? lw * 0.45 : lw; ctx.beginPath(); pp.forEach(([x, y], j) => (j ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); });
+      }
+      const rg = ctx.createRadialGradient(gx, gy, 0, gx, gy, u0 * 4 * wd); rg.addColorStop(0, "rgba(255,255,255,.9)"); rg.addColorStop(0.4, "rgba(150,210,255,.5)"); rg.addColorStop(1, "rgba(150,210,255,0)");
+      ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(gx, gy, u0 * 4 * wd, 0, 7); ctx.fill(); ctx.restore();
+    }
+    const big = (text, x, y, q, size) => {
+      const sc = 1 + (1 - q) * 1.2, j = (Math.random() - 0.5) * u0 * 0.25; ctx.save(); ctx.translate(x + j, y + j); ctx.scale(sc, sc); ctx.globalAlpha = q * fade;
+      ctx.font = font(u0 * size); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.shadowColor = "#7fc8ff"; ctx.shadowBlur = 30; ctx.lineWidth = 8; ctx.strokeStyle = "#06102a"; ctx.strokeText(text, 0, 0);
+      const gr = ctx.createLinearGradient(0, -u0 * size / 2, 0, u0 * size / 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.45, "#bfe8ff"); gr.addColorStop(1, "#ffe66b");
+      ctx.fillStyle = gr; ctx.fillText(text, 0, 0); ctx.restore();
+    };
+    const [ox, oy] = proj(worldX(sz.X), 3.4, worldZ(sz.Y));
+    if (t < SMITE_CHARGE) big("천벌", ox, oy, Math.min(1, t / 0.15), 3.2);
+    else if (sz.big && t >= sz.big.at - 0.05) big("심판!", W / 2, H3 * 0.36, Math.min(1, (t - sz.big.at + 0.05) / 0.12), 4.6);
   }
   // 승패 배너
   if (S.banner) {
