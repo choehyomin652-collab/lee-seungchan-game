@@ -62,7 +62,16 @@
       <li>빈 땅을 탭하면 내 마스코트가 걸어가요</li>
     </ul>
     <p id="best" style="font-size:13px;color:var(--chalk-dim)"></p>
-    <button class="go" id="start">시작하기</button>
+    <div class="ovbtns" id="ovbtns"><button class="go" id="start">혼자 하기</button><button class="go alt" id="online" disabled>친구와 같이 하기</button></div>
+    <p class="netnote" id="netnote">온라인 연결을 확인하는 중…</p>
+    <div class="net" id="net" hidden>
+      <div class="netrow"><label for="netname">내 이름</label><input id="netname" maxlength="8" autocomplete="nickname" placeholder="예: 예균"></div>
+      <div class="netrow"><label for="netcode">방 코드</label><input id="netcode" maxlength="12" autocomplete="off"></div>
+      <p class="netguide">친구들과 같은 방 코드를 쓰면 한 방에 모여요. 친구도 이 링크를 열 수 있어야 해요.</p>
+      <button class="go" id="netjoin">방 들어가기</button>
+      <div class="netlobby" id="netlobby" hidden><ul class="netlist" id="netlist"></ul><p class="netmsg" id="netmsg"></p><button class="go" id="netstart" hidden>게임 시작</button></div>
+      <button class="linkbtn" id="netback">뒤로</button>
+    </div>
   </div>
 </div>
 
@@ -83,6 +92,7 @@
 <script src="js/robot.js"></script>
 <script src="js/weapons.js"></script>
 <script src="js/sound.js"></script>
+<script src="js/online.js"></script>
 <script src="js/render3d.js"></script>
 <script src="js/ui.js"></script>
 </body>

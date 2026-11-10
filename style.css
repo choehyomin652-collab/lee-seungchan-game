@@ -248,3 +248,27 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .augcard:active { transform: scale(.97); filter: brightness(1.12); }
 @media (hover: hover) { .augcard:hover { transform: translateY(calc(var(--u) * -.8)); filter: brightness(1.1); } }
 .augicon { clip-path: none; width: calc(var(--u) * 11); height: calc(var(--u) * 11); border-radius: 50%; font-size: calc(var(--u) * 4.6); box-shadow: 0 0 0 calc(var(--u) * .35) rgba(0, 0, 0, .45), 0 0 0 calc(var(--u) * .7) rgba(240, 207, 116, .35), 0 0 calc(var(--u) * 3) rgba(240, 207, 116, .45); }
+
+/* ===== 친구와 같이 하기 ===== */
+.ovbtns { display: flex; gap: 10px; }
+.ovbtns .go { flex: 1; }
+.go.alt { background: linear-gradient(#5fb4e8, #2a6aa8); color: #fff; border-color: #c4e6ff; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.go:disabled { opacity: .5; filter: saturate(.5); }
+.netnote { font-size: 12px; color: var(--chalk-dim); }
+.net { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.netrow { display: grid; grid-template-columns: 4.5em 1fr; align-items: center; gap: 8px; }
+.netrow label { font-family: var(--display); color: var(--gold); font-size: 15px; }
+.net input { font: 16px var(--body); color: #fff; background: rgba(4, 14, 20, .8); border: 1px solid rgba(228, 192, 114, .45); border-radius: 10px; padding: 9px 12px; min-width: 0; user-select: text; -webkit-user-select: text; touch-action: manipulation; }
+.net input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.netguide, .netmsg { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--chalk-dim); }
+.netmsg { color: var(--chalk); }
+.netlobby { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(4, 14, 20, .55); border: 1px solid rgba(255, 255, 255, .1); }
+.netlist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-family: var(--display); font-size: 16px; }
+.netlist li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.netlist .dot { width: 8px; height: 8px; border-radius: 50%; background: #5fe08a; box-shadow: 0 0 6px #5fe08a; flex: none; }
+.netlist .dot.g { background: #ffd36b; box-shadow: 0 0 6px #ffd36b; }
+.netlist em { font-style: normal; font-size: 12px; color: #10201a; background: var(--accent); border-radius: 6px; padding: 0 5px; }
+.netlist small { font-size: 12px; color: var(--gold); }
+.linkbtn { align-self: center; background: none; border: 0; color: var(--chalk-dim); font-size: 14px; padding: 4px 10px; text-decoration: underline; }
+.pl .nm { max-width: calc(var(--u) * 9); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(var(--u) * 1.4); color: #cfe9ff; }
+.pl.net .av { border-color: #6fc3ff; }

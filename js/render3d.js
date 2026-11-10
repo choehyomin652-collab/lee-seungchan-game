@@ -8,7 +8,10 @@ const gl = $("gl"), cv = $("cv"), ctx = cv.getContext("2d");
 const HAS3D = typeof THREE !== "undefined";
 let W = 0, H3 = 0, H = 0, ic = 0, itemY = 0;
 const CX = 3.25 * SQ3, BENCH_Z = 7.7, SLOT_W = 13.2 / BENCH, BENCH_X0 = -6.6;
-const worldX = (X) => X * SQ3 - CX, worldZ = (Y) => Y * 1.5 - 5.25;
+// FLIP: 온라인에서 내가 '원정' 쪽일 때 전투를 180도 돌려서 내 친구들이 항상 아래쪽에 보여요
+let FLIP = false;
+const worldX = (X) => (FLIP ? CX - X * SQ3 : X * SQ3 - CX), worldZ = (Y) => (FLIP ? 5.25 - Y * 1.5 : Y * 1.5 - 5.25);
+const isFoe = (u) => u.team !== (FLIP ? 1 : 0);
 const benchX = (i) => BENCH_X0 + SLOT_W * (i + 0.5);
 const gridX = (r, c) => c + (r & 1) * 0.5;
 let renderer, scene, camera, raycaster, pickPlane, carousel, camBase = null, chalk = null;
@@ -977,15 +980,15 @@ function collect(dt) {
       if (u.combo && u.combo.t < u.combo.dur) {
         const t = u.combo.t; if (t < 1.3) continue;
         const q = Math.min(1, (t - 1.3) / 0.7), drop = q < 1 ? 4.5 * (1 - q) * (1 - q) : Math.abs(Math.sin((t - 2.0) * 9)) * 0.25 * Math.max(0, 1 - (t - 2.0) / 0.4);
-        push(u, u, worldX(u.X), worldZ(u.Y), { f: u, enemy: u.team === 1, face: u.team ? 0 : Math.PI, lift: drop, alpha: 1 });
+        push(u, u, worldX(u.X), worldZ(u.Y), { f: u, enemy: isFoe(u), face: isFoe(u) ? 0 : Math.PI, lift: drop, alpha: 1 });
         continue;
       }
       if (!u.alive) { if (u.deadT <= 0) continue; u.deadT -= dt; }
       let x = worldX(u.X), z = worldZ(u.Y);
       if (u.lunge > 0) { const k = Math.sin((u.lunge / 0.18) * Math.PI) * 0.3; x += u.lx * SQ3 * k; z += u.ly * 1.5 * k; }
-      let face = u.team ? 0 : Math.PI;
+      let face = isFoe(u) ? 0 : Math.PI;
       if (u.alive && u.tgt) face = Math.atan2(worldX(u.tgt.X) - worldX(u.X), worldZ(u.tgt.Y) - worldZ(u.Y));
-      push(u, u, x, z, { hit: u.alive ? { g: "board", r: u.r, c: u.c } : null, enemy: u.team === 1, f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, u.deadT / 0.45), face,
+      push(u, u, x, z, { hit: u.alive ? { g: "board", r: u.r, c: u.c } : null, enemy: isFoe(u), f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, u.deadT / 0.45), face,
         jump: u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive });
     }
   } else {
@@ -1409,12 +1412,14 @@ function loop(now) {
     if (!paused) {
       if (S.phase === "plan") { if (S.augPending && !S.fast) { S.augT -= real; $("augtier").dataset.t = Math.max(0, Math.ceil(S.augT)); if (S.augT <= 0 && S.augChoose) S.augChoose(); } if (S.augPending && S.fast) { const b = $("augs").querySelector(".augcard"); if (b) b.click(); } if (!S.augPending) { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); } }
       else if (S.phase === "combat") {
-        let left = dt;
-        while (left > 0 && !S.battle.done) { const s = Math.min(1 / 60, left); stepBattle(S.battle, s); left -= s; }
-        if (S.battle.done) finishCombat();
+        // 1/60초씩 똑같이 잘라서 계산해요 (온라인 상대 화면과 결과가 같아지도록)
+        const B = S.battle; B.acc = (B.acc || 0) + dt;
+        withRng(B.rng, () => { while (B.acc >= 1 / 60 && !B.done) { stepBattle(B, 1 / 60); B.acc -= 1 / 60; } });
+        if (B.done) finishCombat();
       } else if (S.phase === "result") { S.resultT -= dt; if (S.resultT <= 0) afterResult(); }
       else if (S.phase === "carousel" && S.car) stepCarousel(dt * (S.fast ? 6 : 1));
     }
+    if (!paused) netTick(real);
     const R = render3D(paused ? real : dt);
     drawOverlay(dt, R);
     updateTimer();

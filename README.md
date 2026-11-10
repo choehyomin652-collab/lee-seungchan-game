@@ -19,6 +19,7 @@
 | 터치 · 정보창 · 설정 메뉴 | `js/ui.js` |
 | 레벨 확률 · 몬스터 · 기본 숫자 | `js/constants.js` |
 | 효과음 | `js/sound.js` |
+| 친구와 같이 하기(온라인 방 · 실시간 대전) | `js/online.js` |
 
 처음이라면 **`js/friends.js`, `js/skills.js`, `js/weapons.js`** 세 개만 보면 돼요.
 세 파일 모두 맨 위에 쓰는 법이 적혀 있어요.
@@ -53,5 +54,6 @@
 
 ## 파일 순서 (바꾸지 마세요)
 
-`index.html`이 `js/friends.js → skills → augments → constants → game → battle → robot → weapons → sound → render3d → ui` 순서로 불러와요.
+`index.html`이 `js/friends.js → skills → augments → constants → game → battle → robot → weapons → sound → online → render3d → ui` 순서로 불러와요.
+"친구와 같이 하기"는 claude.ai 아티팩트로 올린 페이지에서만 켜져요 (`index.html`을 그냥 열면 "혼자 하기"만 돼요).
 새 파일을 만들면 `index.html`에 `<script>` 줄을 같은 방식으로 추가해야 해요.

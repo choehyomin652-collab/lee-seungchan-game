@@ -25,6 +25,7 @@ function newGame() {
     battle: null, results: [], car: null, sel: null, scout: null, opp: null,
     banner: null, resultT: 0, shake: 0, orbs: [], augPending: false,
   };
+  if (NET.on) netSetup();
   startRound(true);
 }
 
@@ -160,7 +161,7 @@ const alivePlayers = () => S.players.filter((p) => p.alive);
 function startRound(first) {
   S.type = roundType(S.stage, S.k);
   if (!first) {
-    for (const P of alivePlayers()) {
+    for (const P of alivePlayers().filter(isLocal)) {
       const base = S.stage === 1 ? (S.k <= 3 ? 2 : 3) : 5;
       const interest = Math.min(5, Math.floor(P.gold / 10));
       const st = Math.abs(P.streak), sb = st >= 6 ? 3 : st >= 5 ? 2 : st >= 3 ? 1 : 0;
@@ -181,9 +182,9 @@ function nextRound() {
 function startPlan() {
   S.phase = "plan";
   S.timer = S.timerMax = S.stage === 1 ? 20 : 30;
-  S.battle = null; S.sel = null; S.scout = null; S.opp = null;
+  S.battle = null; S.sel = null; S.scout = null; S.opp = null; FLIP = false;
   const tier = AUG_ROUNDS[`${S.stage}-${S.k}`];
-  for (const P of alivePlayers()) {
+  for (const P of alivePlayers().filter(isLocal)) {
     mergeAll(P);
     if (tier && !P.human) { const a = rnd(augOptions(P)); P.augs.push(a.id); a.f(P); }
     if (!P.human) aiPlan(P);
@@ -252,27 +253,29 @@ function pairUp() {
   }
   return best.pairs;
 }
-function startCombat() {
-  if (S.phase !== "plan" || S.augPending) return;
+function startCombat() { if (NET.on && S.phase === "plan") return netWait(); startCombatNow(); }
+function startCombatNow() {
+  if ((S.phase !== "plan" && S.phase !== "wait") || S.augPending) return;
   collectOrbs(true);
   S.sel = null; S.scout = null; drag = null;
   autoFill(human());
   S.results = [];
   if (S.type === "pve") {
-    for (const P of alivePlayers()) {
+    for (const P of alivePlayers().filter(isLocal)) {
       const B = makeBattle(sideOf(P), pveTeam(S.stage, S.k), P.human, P, null);
       if (P.human) S.battle = B; else runBattle(B);
       S.results.push({ kind: "pve", a: P, B });
     }
     S.opp = null;
   } else {
-    for (const pr of pairUp()) {
-      const isH = pr.a.human;
-      const B = makeBattle(sideOf(pr.a), sideOf(pr.b), isH, pr.a, pr.b);
-      if (isH) { S.battle = B; S.opp = pr.b; S.oppGhost = pr.ghost; } else runBattle(B);
+    for (const pr of NET.on ? netPairs() : pairUp()) {
+      const isH = pr.a.human || pr.b.human;
+      const B = pr.net ? netBattle(pr) : makeBattle(sideOf(pr.a), sideOf(pr.b), isH, pr.a, pr.b);
+      if (isH) { S.battle = B; S.opp = pr.a.human ? pr.b : pr.a; S.oppGhost = pr.ghost; } else runBattle(B);
       S.results.push({ kind: "pvp", ...pr, B });
     }
   }
+  if (!S.battle) S.battle = makeBattle(sideOf(human()), [], true, human(), null);
   S.phase = "combat";
   sfx("start");
   renderUI();
@@ -306,8 +309,8 @@ function collectOrbs(all) {
 function finishCombat() {
   S.phase = "result";
   let hWin = null, hDmg = 0;
-  const win = (P) => { P.streak = Math.max(1, P.streak + 1); P.gold += 1; };
-  const lose = (P, d) => { P.hp -= d; P.streak = Math.min(-1, P.streak - 1); if (P.human) hDmg = d; };
+  const win = (P) => { if (P.remote) return; P.streak = Math.max(1, P.streak + 1); P.gold += 1; };
+  const lose = (P, d) => { if (P.remote) return; P.hp -= d; P.streak = Math.min(-1, P.streak - 1); if (P.human) hDmg = d; };
   for (const R of S.results) {
     const B = R.B;
     const surv = (team) => B.f.filter((f) => f.alive && f.team === team && !(f.mon && f.mon.summon));
@@ -322,7 +325,7 @@ function finishCombat() {
       if (B.win === 0) { win(a); if (!ghost) lose(b, dmgFrom(0)); }
       else if (B.win === 1) { lose(a, dmgFrom(1)); if (!ghost) win(b); }
       else { lose(a, dmgFrom(1)); if (!ghost) lose(b, dmgFrom(0)); }
-      if (a.human) hWin = B.win === 0;
+      if (a.human) hWin = B.win === 0; else if (b.human) hWin = B.win === 1;
     }
   }
   // 탈락 처리
@@ -330,7 +333,7 @@ function finishCombat() {
   let n = alivePlayers().length;
   for (const p of dead) {
     p.place = n--; p.alive = false;
-    unitsOf(p).forEach((x) => (S.pool[x.u.d] += Math.pow(3, x.u.star - 1)));
+    if (!p.remote) unitsOf(p).forEach((x) => (S.pool[x.u.d] += Math.pow(3, x.u.star - 1)));
     p.shop.forEach((d) => d != null && S.pool[d]++); p.shop = [];
     if (!p.human) setTimeout(() => toast(`${p.name} 탈락! (${p.place}등)`), 900);
   }
@@ -347,20 +350,22 @@ function afterResult() {
 }
 function gameOver(place) {
   S.phase = "over";
+  netFinish();
+  $("ovrules").hidden = true; $("ovbtns").hidden = false; $("ovtext").hidden = false;
   let best = 0; try { best = +localStorage.getItem("uri-best-place") || 0; } catch (e) {}
   if (!best || place < best) { best = place; try { localStorage.setItem("uri-best-place", String(best)); } catch (e) {} }
   $("ovtitle").textContent = place === 1 ? "1등! 우리반 최고!" : `${place}등`;
   $("ovtext").textContent = place === 1 ? "8개 반 중에서 끝까지 살아남았어요." : `${S.stage}-${S.k} 라운드에서 탈락했어요.`;
   $("ovrules").hidden = true;
   $("best").textContent = `최고 기록: ${best}등`;
-  $("start").textContent = "다시 하기";
+  $("start").textContent = "혼자 다시 하기";
   $("ov").hidden = false;
   sfx(place <= 4 ? "win" : "lose");
 }
 
 // =============== 급식 줄 (회전 선택 라운드) ===============
 function startCarousel() {
-  S.phase = "carousel"; S.battle = null; S.sel = null; S.scout = null; S.opp = null;
+  S.phase = "carousel"; S.battle = null; S.sel = null; S.scout = null; S.opp = null; FLIP = false;
   const s = S.stage;
   const costs = s === 1 ? [1] : s === 2 ? [1, 2] : s === 3 ? [2, 3] : s === 4 ? [3, 4] : [3, 4, 5];
   const opts = [];
@@ -368,7 +373,7 @@ function startCarousel() {
     const cost = rnd(costs);
     opts.push({ d: rnd(DEFS.map((_, j) => j).filter((j) => DEFS[j].c === cost)), item: ITEMS_ON ? rnd(COMP).id : null, taken: false });
   }
-  const order = shuffle(alivePlayers()).sort((a, b) => a.hp - b.hp);
+  const order = shuffle(alivePlayers().filter(isLocal)).sort((a, b) => a.hp - b.hp);
   S.car = { opts, order, turn: 0, t: 0, ang: 0, wait: 1.5, humanT: 12 };
   S.timer = S.timerMax = 1;
   renderUI();
