@@ -317,8 +317,8 @@ const SK = {
     run(B, u, P, t, al, fo) { near(fo, u, 1).forEach((o) => dealDamage(B, u, o, u.ad * 1.6 + 110 * P, "skill")); heal(B, u, u.maxHp * 0.12); addFx(B, u.X, u.Y, 1.7, C("--danger")); } },
   "박준서": { s: "수학 문제 폭격", d: (P) => `무작위 적에게 문제 5개를 떨어뜨려 각각 ${R0(130 * P)} 피해`,
     run(B, u, P, t, al, fo) { for (let i = 0; i < 5; i++) { const live = fo.filter((o) => o.alive); if (!live.length) break; const o = rnd(live); dealDamage(B, u, o, 130 * P, "skill"); addFx(B, o.X, o.Y, 0.7, C("--c4"), 0.4); } } },
-  "조하윤": { s: "헤드샷", d: (P) => `체력 비율이 가장 낮은 적을 저격해 공격력×1.5 + ${R0(180 * P)} 피해, 처치하면 마나 절반 회복`,
-    run(B, u, P, t, al, fo) { const o = fo.slice().sort(byHp)[0]; if (!o) return; B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 20, col: "#7ff0ff", sz: 0.16, trail: 1, hit: () => { dealDamage(B, u, o, u.ad * 1.5 + 180 * P, "skill"); if (!o.alive) { u.mana = Math.min(u.mm - 1, u.mana + u.mm * 0.5); addFloat(B, u, "킬!", "#7ff0ff", true); } addFx(B, o.X, o.Y, 0.6, "#7ff0ff", 0.35); } }); } },
+  "조하윤": { s: "¡Adiós!", d: (P) => `스페인어로 "잘 가!" 하며 체력 비율이 가장 낮은 적을 저격해 공격력×1.5 + ${R0(180 * P)} 피해, 처치하면 "¡Olé!"와 함께 마나 절반 회복. 기본 공격 때도 스페인어로 외쳐요`,
+    run(B, u, P, t, al, fo) { const o = fo.slice().sort(byHp)[0]; if (!o) return; B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 20, col: "#ff5a4a", sz: 0.16, trail: 1, hit: () => { dealDamage(B, u, o, u.ad * 1.5 + 180 * P, "skill"); if (!o.alive) { u.mana = Math.min(u.mm - 1, u.mana + u.mm * 0.5); addFloat(B, u, "¡Olé!", "#ffd36b", true); } addFx(B, o.X, o.Y, 0.6, "#7ff0ff", 0.35); } }); } },
   "손태민": { s: "만점 답안지", d: (P) => `대상 주변 2칸 안의 적 모두에게 ${R0(190 * P)} 피해`,
     run(B, u, P, t, al, fo) { if (!t) return; near(fo, t, 2).forEach((o) => dealDamage(B, u, o, 190 * P, "skill")); addFx(B, t.X, t.Y, 2.6, C("--c5"), 0.7); if (B.visual) S.shake = 0.12; } },
   "정주환": { s: "반장의 명령", d: (P) => `적 전체 ${R0(150 * P)} 피해, 아군 전체 ${R0(110 * P)} 회복 + 4초 동안 공격 속도 +20%`,
@@ -979,9 +979,11 @@ function onHit(B, u, t) {
   if (u.rg <= 1 && t.thorns && u.alive) dealDamage(B, t, u, dealt * t.thorns, "thorn");
   if (B.visual) sfx("hit");
 }
+const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", "¡Fuego!", "¡Venga!", "¡Qué fácil!"];
 function attack(B, u, t) {
+  if (B.visual && u.d >= 0 && DEFS[u.d].n === "조하윤" && Math.random() < 0.7) addFloat(B, { X: u.X + (Math.random() - 0.5) * 0.8, Y: u.Y - 0.3 }, rnd(SPANISH), "#ffd36b", false);
   u.atkT = 0.22;
-  if (u.rg > 1) B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: u.team ? TOK["--danger"] : TOK["--chalk"], sz: 0.1, hit: () => onHit(B, u, t) });
+  if (u.rg > 1) B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: u.d >= 0 && DEFS[u.d].n === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : u.team ? TOK["--danger"] : TOK["--chalk"], sz: 0.1, hit: () => onHit(B, u, t) });
   else { u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; onHit(B, u, t); }
   gainMana(B, u, 10 + u.manaOnHit);
 }
