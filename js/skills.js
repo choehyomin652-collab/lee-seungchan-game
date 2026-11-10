@@ -44,8 +44,8 @@ const SK = {
     run(B, u, P, t, al, fo) { for (let i = 0; i < 5; i++) { const live = fo.filter((o) => o.alive); if (!live.length) break; const o = rnd(live); dealDamage(B, u, o, 130 * P, "skill"); addFx(B, o.X, o.Y, 0.7, C("--c4"), 0.4); } } },
   "조하윤": { s: "¡Adiós!", d: (P) => `스페인어로 "잘 가!" 하며 체력 비율이 가장 낮은 적을 저격해 공격력×1.5 + ${R0(180 * P)} 피해, 처치하면 "¡Olé!"와 함께 마나 절반 회복. 기본 공격 때도 스페인어로 외쳐요`,
     run(B, u, P, t, al, fo) { const o = fo.slice().sort(byHp)[0]; if (!o) return; B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 20, col: "#ff5a4a", sz: 0.16, trail: 1, hit: () => { dealDamage(B, u, o, u.ad * 1.5 + 180 * P, "skill"); if (!o.alive) { u.mana = Math.min(u.mm - 1, u.mana + u.mm * 0.5); addFloat(B, u, "¡Olé!", "#ffd36b", true); } addFx(B, o.X, o.Y, 0.6, "#7ff0ff", 0.35); } }); } },
-  "손태민": { s: "만점 답안지", d: (P) => `대상 주변 2칸 안의 적 모두에게 ${R0(190 * P)} 피해`,
-    run(B, u, P, t, al, fo) { if (!t) return; near(fo, t, 2).forEach((o) => dealDamage(B, u, o, 190 * P, "skill")); addFx(B, t.X, t.Y, 2.6, C("--c5"), 0.7); if (B.visual) S.shake = 0.12; } },
+  "손태민": { s: "블랙홀", d: (P) => `대상 자리에 블랙홀을 열어 2.5초 동안 주변 3칸의 적을 빨아들이고, 0.25초마다 ${R0(16 * P)} 피해. 마지막에 폭발해 ${R0(100 * P)} 피해`,
+    run(B, u, P, t) { if (!t) return; B.zones.push({ team: u.team, owner: u, P, r: t.r, c: t.c, X: t.c + (t.r & 1) * 0.5, Y: t.r, t: 0, dur: 2.5, tick: 0, pull: 0 }); addFloat(B, t, "블랙홀!", "#c9a0ff", true); if (B.visual) { S.shake = 0.15; sfx("boom"); } } },
   "정주환": { s: "반장의 명령", d: (P) => `적 전체 ${R0(150 * P)} 피해, 아군 전체 ${R0(110 * P)} 회복 + 4초 동안 공격 속도 +20%`,
     run(B, u, P, t, al, fo) { fo.forEach((o) => dealDamage(B, u, o, 150 * P, "skill")); al.forEach((o) => { heal(B, o, 110 * P); o.asBuff = Math.max(o.asBuff || 0, 0.2); o.asBuffT = 4; }); addFx(B, u.X, u.Y, 6, C("--c5"), 0.8); if (B.visual) { S.shake = 0.35; sfx("boom"); } } },
 };

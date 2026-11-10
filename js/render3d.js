@@ -792,6 +792,20 @@ function render3D(dt) {
       if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
     }
     B.fx = drawFx(B.fx, dt);
+    for (const z of B.zones) {
+      const g = useMesh(z, () => {
+        const grp = new THREE.Group();
+        const core = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x000000 })); core.scale.setScalar(4.5); grp.add(core);
+        const d1 = new THREE.Mesh(GEO.ringFx, additive("#b06bff")); d1.rotation.x = -Math.PI / 2; d1.scale.setScalar(1.7); grp.add(d1);
+        const d2 = new THREE.Mesh(GEO.ringFx, additive("#ff9a5a")); d2.rotation.x = -Math.PI / 2 + 0.35; d2.scale.setScalar(1.15); grp.add(d2);
+        const d3 = new THREE.Mesh(GEO.ringFx, additive("#7fc4ff")); d3.rotation.x = -Math.PI / 2 - 0.3; d3.scale.setScalar(2.4); grp.add(d3);
+        grp.userData.d = [d1, d2, d3]; return grp;
+      });
+      const k = z.t / z.dur, grow = Math.min(1, z.t / 0.3) * (k > 0.85 ? Math.max(0.05, (1 - k) / 0.15) : 1);
+      g.position.set(worldX(z.X), 1.0, worldZ(z.Y)); g.scale.setScalar(Math.max(0.01, grow) * (1 + Math.sin(clock3d * 12) * 0.04));
+      g.userData.d[0].rotation.z += dt * 6; g.userData.d[1].rotation.z -= dt * 9; g.userData.d[2].rotation.z += dt * 3;
+      g.userData.d[2].material.opacity = 0.5;
+    }
 
   }
   const crb = B && B.f.find((u) => u.combo && u.combo.t < u.combo.dur);

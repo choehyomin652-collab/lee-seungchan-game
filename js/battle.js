@@ -47,7 +47,7 @@ function makeBattle(sideA, sideB, visual, PA, PB) {
   sideB.forEach((x) => f.push(makeFighter(x.spec, 1, 3 - x.lr, COLS - 1 - x.c, cB, PB && PB.buff)));
   for (const team of [0, 1]) combineRobot(f, team, visual);
   for (const u of f) if (u.teamShield) for (const o of f) if (o !== u && o.team === u.team && hexDist(u, o) <= 1) o.shield += u.teamShield;
-  return { f, projs: [], fx: [], floats: [], t: 0, done: false, win: null, visual };
+  return { f, projs: [], fx: [], floats: [], zones: [], t: 0, done: false, win: null, visual };
 }
 function runBattle(B) { let n = 0; while (!B.done && n++ < 4000) stepBattle(B, 1 / 20); }
 const speedOf = (u) => Math.min(4, u.as0 * (1 + u.asStack + (u.asBuffT > 0 ? u.asBuff : 0) + (u.lowHpAs && u.hp < u.maxHp * 0.5 ? u.lowHpAs : 0)));
@@ -182,6 +182,33 @@ function stepBattle(B, dt) {
     if (d <= s) { p.done = 1; p.hit(); } else { p.X += (dx / d) * s; p.Y += (dy / d) * s; }
   }
   B.projs = B.projs.filter((p) => !p.done);
+  if (B.zones.length) stepZones(B, dt);
   const a0 = B.f.some((u) => u.alive && u.team === 0), a1 = B.f.some((u) => u.alive && u.team === 1);
   if (!a0 || !a1 || B.t >= 30) { B.done = true; B.win = a0 && !a1 ? 0 : a1 && !a0 ? 1 : -1; }
+}
+// 블랙홀 같은 "장판": 주변 적을 끌어당기고 계속 피해를 줘요
+function stepZones(B, dt) {
+  for (const z of B.zones) {
+    z.t += dt; z.tick += dt; z.pull += dt;
+    const foes = B.f.filter((o) => o.alive && o.team !== z.team);
+    const dist = (o) => hexDistRC(o.r, o.c, z.r, z.c);
+    if (z.tick >= 0.25) { z.tick -= 0.25; foes.forEach((o) => { if (dist(o) <= 2) dealDamage(B, z.owner, o, 16 * z.P, "skill"); }); }
+    if (z.pull >= 0.45) {
+      z.pull -= 0.45;
+      const occ = new Set(B.f.filter((o) => o.alive).map((o) => o.r * COLS + o.c));
+      foes.sort((a, b) => dist(a) - dist(b)).forEach((o) => {
+        const d = dist(o); if (d < 1 || d > 3) return;
+        let best = null, bd = d;
+        for (const [nr, nc] of neighbors(o.r, o.c)) { const nd = hexDistRC(nr, nc, z.r, z.c); if (nd < bd && !occ.has(nr * COLS + nc)) { bd = nd; best = [nr, nc]; } }
+        if (best) { occ.delete(o.r * COLS + o.c); o.r = best[0]; o.c = best[1]; occ.add(o.r * COLS + o.c); o.moveCd = 0.5; }
+      });
+    }
+    if (z.t >= z.dur) {
+      z.done = 1;
+      foes.forEach((o) => { if (dist(o) <= 2) dealDamage(B, z.owner, o, 100 * z.P, "skill"); });
+      addFx(B, z.X, z.Y, 3, "#b06bff", 0.6); addFx(B, z.X, z.Y, 1.6, "#ffffff", 0.4);
+      if (B.visual) { S.shake = 0.3; sfx("boom"); }
+    }
+  }
+  B.zones = B.zones.filter((z) => !z.done);
 }
