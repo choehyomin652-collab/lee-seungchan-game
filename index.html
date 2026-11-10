@@ -261,8 +261,8 @@ const DEFS = [
   // 2코스트
   { n: "이준희", c: 2, k: "돌격대", t: ["운동광"], s: "덩크슛" },
   { n: "김현우", c: 2, k: "천재",   t: ["공부는 잘함", "지는 거 못 참음"] },
-  { n: "이보경", c: 2, k: "수호자", t: ["축구부"], s: "태클 수비" },
-  { n: "윤동욱", c: 2, k: "돌격대", t: ["운동광", "지는 거 못 참음"] },
+  { n: "이보경", c: 2, k: "수호자", t: ["축구부", "합체로봇"], s: "태클 수비" },
+  { n: "윤동욱", c: 2, k: "돌격대", t: ["운동광", "지는 거 못 참음", "합체로봇"] },
   // 3코스트
   { n: "김민기", c: 3, k: "천재",   t: ["공부는 잘함", "다 퍼줌"] },
   { n: "임시온", c: 3, k: "수호자", t: ["축구부", "다 퍼줌"], s: "골문 사수" },
@@ -286,7 +286,7 @@ const TRAITS = {
   "수학왕":   { t: [1],       d: "박준서 마나 회복 +60%" },
   "프로게이머": { t: [1],     d: "조하윤 공격 속도 +30%" },
   "전교 1등": { t: [1],      d: "손태민 스킬 피해 +40%" },
-  "합체로봇": { t: [2],      d: "조하윤 + 박희찬이 둘 다 보드에 있으면 전투 시작 때 합체로봇으로 합체!" },
+  "합체로봇": { t: [4],      d: "조하윤·박희찬·윤동욱·이보경 4명이 모두 보드에 있으면 전투 시작 때 4인 합체로봇으로 합체!" },
   "반장":     { t: [1],       d: "아군 전체 공격력·체력 +12%" },
 };
 const MAIN_TRAITS = ["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"];
@@ -955,30 +955,34 @@ function makeBattle(sideA, sideB, visual, PA, PB) {
   return { f, projs: [], fx: [], floats: [], t: 0, done: false, win: null, visual };
 }
 // 조하윤 + 박희찬 → 합체로봇
-const ROBOT_NAME = "하윤희찬 합체로봇";
+const ROBOT_NAME = "4인 합체로봇 (하윤·희찬·동욱·보경)";
+const ROBOT_MEMBERS = ["조하윤", "박희찬", "윤동욱", "이보경"];
 function combineRobot(f, team, visual) {
-  const a = f.find((x) => x.team === team && x.d >= 0 && DEFS[x.d].n === "조하윤");
-  const b = f.find((x) => x.team === team && x.d >= 0 && DEFS[x.d].n === "박희찬");
-  if (!a || !b) return;
-  // 박희찬 자리에 로봇이 서고, 조하윤은 로봇 안으로 들어가요
-  Object.assign(b, {
-    robot: 1, star: Math.max(a.star, b.star),
-    maxHp: (a.maxHp + b.maxHp) * 1.1, ad: (a.ad + b.ad) * 0.85, as0: Math.max(a.as0, b.as0),
-    rg: 3, ar: Math.min(0.75, Math.max(a.ar, b.ar) + 0.15), mm: 80, mana: 20,
-    amp: Math.max(a.amp, b.amp), crit: Math.max(a.crit, b.crit), power: a.power + b.power,
-    shield: a.shield + b.shield,
+  const ms = ROBOT_MEMBERS.map((n) => f.find((x) => x.team === team && x.d >= 0 && DEFS[x.d].n === n));
+  if (ms.some((m) => !m)) return;
+  const b = ms[1], sum = (k) => ms.reduce((s2, m) => s2 + m[k], 0);
+  const robot = Object.assign({}, b, {
+    robot: 1, star: Math.max(...ms.map((m) => m.star)), items: [],
+    maxHp: sum("maxHp") * 0.8, ad: sum("ad") * 0.45, as0: sum("as0") / 4,
+    rg: 2, ar: Math.min(0.75, Math.max(...ms.map((m) => m.ar)) + 0.1), mm: 90, mana: 10,
+    amp: Math.max(...ms.map((m) => m.amp)), crit: Math.max(...ms.map((m) => m.crit)), power: sum("power") * 0.45,
+    shield: sum("shield"), tgt: null, dmg: 0, flash: 0, lunge: 0,
   });
-  b.hp = b.maxHp;
-  f.splice(f.indexOf(a), 1);
-  b.combineT = 1.2;
+  robot.hp = robot.maxHp;
+  for (const m of ms) { m.alive = false; m.deadT = 0; m.merged = 1; }
+  f.push(robot);
+  if (visual) {
+    const cx = worldX(robot.X), cz = worldZ(robot.Y);
+    robot.combo = { t: 0, dur: 2.4, cx, cz, members: ms.map((m) => { const x = worldX(m.X), z = worldZ(m.Y); return { m, a0: Math.atan2(z - cz, x - cx), r0: Math.max(0.8, Math.hypot(x - cx, z - cz)) }; }), ring: 0 };
+  }
 }
-const ROBOT_SK = { s: "합체 필살기: ¡Gol Final!", d: () => "축구공 5개를 연속으로 차서 대상과 주변 적에게 큰 피해",
+const ROBOT_SK = { s: "합체 필살기: ¡Gol Final!", d: () => "축구공 5개를 연속으로 차서 대상과 주변 적에게 피해",
   run(B, u, P, t, al, fo) {
     const live = fo.filter((o) => o.alive); if (!live.length) return;
     for (let i = 0; i < 5; i++) {
       const o = i === 0 && t ? t : rnd(live);
       B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 13 + i, col: "#ffffff", sz: 0.22, trail: 1, ball: 1, hit: () => {
-        const dmg = u.ad * 0.9 + 110 * P;
+        const dmg = u.ad * 0.7 + 80 * P;
         dealDamage(B, u, o, dmg, "skill");
         near(B.f.filter((x) => x.alive && x.team !== u.team), o, 1).forEach((x) => x !== o && dealDamage(B, u, x, dmg * 0.4, "skill"));
         addFx(B, o.X, o.Y, 1.1, "#7ff0ff", 0.4);
@@ -986,6 +990,18 @@ const ROBOT_SK = { s: "합체 필살기: ¡Gol Final!", d: () => "축구공 5개
     }
     if (B.visual) { S.shake = 0.25; sfx("boom"); }
   } };
+function stepCombo(B, u, dt) {
+  const k = u.combo, t0 = k.t; k.t += dt;
+  const cross = (x) => t0 < x && k.t >= x;
+  if (cross(0.0001)) sfx("cast");
+  if (k.t < 1.25 && Math.floor(k.t / 0.22) !== k.ring) { k.ring = Math.floor(k.t / 0.22); addFx(B, u.X, u.Y, 1.2 + k.ring * 0.15, k.ring % 2 ? "#7ff0ff" : "#ff7a5a", 0.5); }
+  if (cross(1.25)) { S.shake = 0.5; sfx("boom"); }
+  if (cross(2.0)) {
+    S.shake = 0.6; sfx("merge");
+    [2.2, 3.4, 4.6].forEach((r, i) => addFx(B, u.X, u.Y, r, ["#ffffff", "#7ff0ff", "#ffd36b"][i], 0.6 + i * 0.15));
+    B.fx.push({ kind: "spark", X: u.X, Y: u.Y, col: "#ffe9a0", t: 0.6, t0: 0.6 }, { kind: "spark", X: u.X, Y: u.Y, col: "#7ff0ff", t: 0.7, t0: 0.7 });
+  }
+}
 function runBattle(B) { let n = 0; while (!B.done && n++ < 4000) stepBattle(B, 1 / 20); }
 const speedOf = (u) => Math.min(4, u.as0 * (1 + u.asStack + (u.asBuffT > 0 ? u.asBuff : 0) + (u.lowHpAs && u.hp < u.maxHp * 0.5 ? u.lowHpAs : 0)));
 function nearest(B, u) {
@@ -1067,7 +1083,7 @@ function summon(B, u, P, max) {
   }
 }
 function attack(B, u, t) {
-  const sh = u.robot ? SHOUT["조하윤"] : u.d >= 0 && SHOUT[DEFS[u.d].n];
+  const sh = u.robot ? (Math.random() < 0.5 ? SHOUT["조하윤"] : SHOUT["윤동욱"]) : u.d >= 0 && SHOUT[DEFS[u.d].n];
   if (B.visual && sh && Math.random() < sh[2]) addFloat(B, { X: u.X + (Math.random() - 0.5) * 0.8, Y: u.Y - 0.3 }, rnd(sh[0]), sh[1], false);
   u.atkT = 0.22;
   if (u.rg > 1) B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: u.d >= 0 && DEFS[u.d].n === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : u.team ? TOK["--danger"] : TOK["--chalk"], sz: 0.1, hit: () => onHit(B, u, t) });
@@ -1109,10 +1125,8 @@ function cast(B, u) {
   if (u.castHeal) allies.filter((o) => hexDist(o, u) <= 2).forEach((o) => heal(B, o, u.castHeal));
 }
 function stepBattle(B, dt) {
-  if (!B.started) {
-    B.started = 1;
-    for (const u of B.f) if (u.robot) { addFloat(B, u, "합체!", "#7ff0ff", true); addFx(B, u.X, u.Y, 2.4, "#7ff0ff", 0.9); addFx(B, u.X, u.Y, 1.4, "#ff7a5a", 0.7); if (B.visual) { S.shake = 0.4; sfx("merge"); } }
-  }
+  const cr = B.f.find((u) => u.combo && u.combo.t < u.combo.dur);
+  if (cr) { stepCombo(B, cr, dt); return; }
   B.t += dt;
   for (const u of B.f) {
     const k = Math.min(1, dt * 9);
@@ -1758,12 +1772,12 @@ function buildRobot(enemy) {
   const ud = g.userData; ud.mats = []; ud.walk = 0; ud.move = 0; ud.restZ = [-0.15, 0.15];
   const mk = (hex, rough = 0.75, extra) => { const m = M(hex, rough, { metalness: 0, ...extra }); ud.mats.push(m); return m; };
   const box = (w, h, d, mat, x, y, z, parent = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
-  const teal = mk(0x0f8a9c), red = mk(0xc23324), white = mk(0xdfe5e8, 0.4), dark = mk(0x23272b, 0.45);
+  const teal = mk(0x0f8a9c), red = mk(0xc23324), white = mk(0xdfe5e8, 0.4), dark = mk(0x23272b, 0.45), green = mk(0x2f8a5a), navy = mk(0x27324a);
   const glow = mk(0x7ff0ff, 0.2, { emissive: lin(0x3fd8ff), emissiveIntensity: 1.2 });
   const rm = new THREE.MeshBasicMaterial({ color: lin(enemy ? 0xff5a4a : 0x5ae0a0), transparent: true, opacity: 0.9 }); ud.mats.push(rm);
   const ring = new THREE.Mesh(GEO.teamRing, rm); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.21; ring.scale.setScalar(1.15); g.add(ring);
   ud.legs = [];
-  for (const [sx, mat] of [[-1, teal], [1, red]]) {
+  for (const [sx, mat] of [[-1, green], [1, navy]]) {
     const hip = new THREE.Group(); hip.position.set(sx * 0.15, 0.62, 0); g.add(hip);
     box(0.18, 0.42, 0.22, mat, 0, -0.2, 0, hip); box(0.24, 0.1, 0.32, dark, 0, -0.44, 0.04, hip);
     ud.legs.push(hip);
@@ -1785,6 +1799,7 @@ function buildRobot(enemy) {
     box(0.14, 0.4, 0.16, mat, 0, -0.2, 0, sh); box(0.16, 0.12, 0.18, dark, 0, -0.44, 0, sh);
     ud.arms.push(sh);
   }
+  const shd = new THREE.Mesh(GEO.shield, mk(0xb8c4bc, 0.4)); shd.rotation.z = Math.PI / 2; shd.position.set(-0.12, -0.3, 0.05); shd.scale.setScalar(1.15); shd.castShadow = true; ud.arms[0].add(shd);
   return g;
 }
 function buildUnit(sp, enemy) {
@@ -1852,6 +1867,7 @@ function resize() {
 const IT = { x0: 12, y0: 300, s: 40, cols: 3 };
 const itemRect = (i) => [IT.x0 + (i % IT.cols) * (IT.s + 6), IT.y0 + Math.floor(i / IT.cols) * (IT.s + 6)];
 let drag = null, lastT = performance.now();
+function comboOf(m) { const B = S.battle; if (!B) return null; const r = B.f.find((u) => u.combo && u.combo.members.some((q) => q.m === m)); return r && r.combo.t < r.combo.dur ? r.combo : null; }
 function collect(dt) {
   const out = [], P = human(), dragging = drag && drag.moved && drag.loc.w !== "i" ? drag.obj : null;
   const push = (key, sp, x, z, o = {}) => out.push({ key, sp, x, z, ...o });
@@ -1864,6 +1880,19 @@ function collect(dt) {
     });
   } else if (S.battle && (S.phase === "combat" || S.phase === "result")) {
     for (const u of S.battle.f) {
+      if (u.merged) {
+        const k = comboOf(u);
+        if (!k || k.t >= 1.25) continue;
+        const mm = k.members.find((q) => q.m === u), p = Math.min(1, k.t / 1.2), ang = mm.a0 + p * 7, rad = mm.r0 * (1 - p * p);
+        push(u, u, k.cx + Math.cos(ang) * rad, k.cz + Math.sin(ang) * rad, { f: null, face: ang + Math.PI, lift: p * 1.6 + Math.sin(p * Math.PI) * 0.3, alpha: 1, walking: 1 });
+        continue;
+      }
+      if (u.combo && u.combo.t < u.combo.dur) {
+        const t = u.combo.t; if (t < 1.3) continue;
+        const q = Math.min(1, (t - 1.3) / 0.7), drop = q < 1 ? 4.5 * (1 - q) * (1 - q) : Math.abs(Math.sin((t - 2.0) * 9)) * 0.25 * Math.max(0, 1 - (t - 2.0) / 0.4);
+        push(u, u, worldX(u.X), worldZ(u.Y), { f: u, enemy: u.team === 1, face: u.team ? 0 : Math.PI, lift: drop, alpha: 1 });
+        continue;
+      }
       if (!u.alive) { if (u.deadT <= 0) continue; u.deadT -= dt; }
       let x = worldX(u.X), z = worldZ(u.Y);
       if (u.lunge > 0) { const k = Math.sin((u.lunge / 0.18) * Math.PI) * 0.3; x += u.lx * SQ3 * k; z += u.ly * 1.5 * k; }
@@ -1891,7 +1920,7 @@ function collect(dt) {
 }
 function placeUnit(it, dt) {
   const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
-  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? 0.85 : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.35 : 1)) * (it.bench ? 0.8 : 1);
+  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? 0.85 : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.6 : 1)) * (it.bench ? 0.8 : 1);
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
   const pv = ud.prev || { x: it.x, z: it.z };
@@ -1985,6 +2014,13 @@ function render3D(dt) {
     }
     B.fx = drawFx(B.fx, dt);
 
+  }
+  const crb = B && B.f.find((u) => u.combo && u.combo.t < u.combo.dur);
+  if (crb && (S.phase === "combat" || S.phase === "result")) {
+    const k = crb.combo, pil = useMesh(k, () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 14, 32, 1, true), additive("#9ff6ff")); return m; });
+    const up = Math.min(1, k.t / 1.0), fade = k.t < 1.25 ? 1 : Math.max(0, 1 - (k.t - 1.25) / 0.5);
+    pil.position.set(k.cx, 7 * up, k.cz); pil.scale.set(0.3 + up * 0.6 + Math.sin(k.t * 30) * 0.05, up, 0.3 + up * 0.6);
+    pil.material.opacity = 0.55 * fade;
   }
   WFX = drawFx(WFX, dt);
   for (const o of S.orbs || []) {
@@ -2105,6 +2141,24 @@ function drawOverlay(dt, R) {
     if (id && !(drag && drag.moved && drag.loc.w === "i" && drag.loc.i === i)) { const s = IT.s * 0.74; drawItemBox(id, x + (IT.s - s) / 2, y + (IT.s - s) / 2, s); }
   }
   if (drag && drag.moved && drag.obj && drag.loc.w === "i") { const s = IT.s * 0.8; drawItemBox(drag.obj, drag.x - s / 2, drag.y - s / 2, s); }
+  }
+  // 합체 연출: 섬광과 큰 글자
+  const crb2 = S.battle && S.battle.f.find((u) => u.combo && u.combo.t < u.combo.dur);
+  if (crb2) {
+    const t = crb2.combo.t;
+    if (t > 1.1 && t < 1.7) { ctx.fillStyle = `rgba(255,255,255,${Math.max(0, 1 - Math.abs(t - 1.28) / 0.4) * 0.95})`; ctx.fillRect(0, 0, W, H); }
+    if (t > 1.95) {
+      const q = Math.min(1, (t - 1.95) / 0.18), sc = 1 + (1 - q) * 0.8, [tx, ty] = proj(crb2.combo.cx, 3.2, crb2.combo.cz);
+      ctx.save(); ctx.translate(tx, ty); ctx.scale(sc, sc); ctx.globalAlpha = q;
+      ctx.font = font(u0 * 4.2); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.shadowColor = "#7ff0ff"; ctx.shadowBlur = 24; ctx.lineWidth = 8; ctx.strokeStyle = "#0b2a3a"; ctx.strokeText("합체!", 0, 0);
+      const gr = ctx.createLinearGradient(0, -u0 * 2, 0, u0 * 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.5, "#7ff0ff"); gr.addColorStop(1, "#ffd36b");
+      ctx.fillStyle = gr; ctx.fillText("합체!", 0, 0); ctx.restore();
+    } else if (t < 1.2) {
+      const [tx, ty] = proj(crb2.combo.cx, 3.0, crb2.combo.cz);
+      ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = "#cff8ff"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
+      ctx.fillText("합체 준비…", tx, ty); ctx.globalAlpha = 1;
+    }
   }
   // 승패 배너
   if (S.banner) {
@@ -2369,7 +2423,7 @@ function showItem(id) {
 }
 function updateMeter() {
   if (!S.battle || S.sel || (S.infoHold || 0) > performance.now() || !["combat", "result"].includes(S.phase)) return;
-  const list = S.battle.f.filter((f) => f.team === 0 && !f.mon).sort((a, b) => (b.dmg || 0) - (a.dmg || 0)).slice(0, 6);
+  const list = S.battle.f.filter((f) => f.team === 0 && !f.mon && !f.merged).sort((a, b) => (b.dmg || 0) - (a.dmg || 0)).slice(0, 6);
   if (!list.length) return;
   const mx = Math.max(1, ...list.map((f) => f.dmg || 0));
   $("info").innerHTML = `<div class="txt"><b>피해량</b>${list.map((f) => `<div class="dm"><span>${f.robot ? "합체로봇" : short(DEFS[f.d].n)}${"★".repeat(f.star)}</span><i style="width:${((f.dmg || 0) / mx) * 100}%"></i><em>${Math.round(f.dmg || 0)}</em></div>`).join("")}</div>`;
