@@ -301,14 +301,14 @@ const SK = {
     run(B, u, P, t) { if (!t) return; dealDamage(B, u, t, 200 * P * (t.hp < t.maxHp * 0.5 ? 2 : 1), "skill"); addFx(B, t.X, t.Y, 0.9, C("--c4")); } },
   "이보경": { s: "태클 수비", d: (P) => `대상에게 ${R0(90 * P)} 피해 + 1.5초 기절, 자신에게 보호막 ${R0(200 * P)}`,
     run(B, u, P, t) { if (t) { dealDamage(B, u, t, 90 * P, "skill"); t.stunT = 1.5; } u.shield += 200 * P; addFx(B, u.X, u.Y, 0.8, C("--c3")); } },
-  "윤동욱": { s: "돌파", d: (P) => `대상에게 공격력×2 + ${R0(120 * P)} 피해, 준 피해의 40% 회복`,
-    run(B, u, P, t) { if (!t) return; const d = dealDamage(B, u, t, u.ad * 2 + 120 * P, "skill"); heal(B, u, d * 0.4); addFx(B, t.X, t.Y, 0.6, C("--danger"), 0.3); } },
+  "윤동욱": { s: "음양의 조화", d: (P) => `양(陽)의 기운으로 대상에게 공격력×2 + ${R0(120 * P)} 피해, 음(陰)의 기운으로 준 피해의 40% 회복. 기본 공격 때 동양철학 한마디`,
+    run(B, u, P, t) { if (!t) return; const d = dealDamage(B, u, t, u.ad * 2 + 120 * P, "skill"); heal(B, u, d * 0.4); addFx(B, t.X, t.Y, 0.9, "#fff6e0", 0.45); addFx(B, u.X, u.Y, 0.9, "#6a5acd", 0.45); addFloat(B, { X: t.X, Y: t.Y - 0.3 }, "陽", "#ffe7a0", true); addFloat(B, { X: u.X, Y: u.Y - 0.3 }, "陰", "#b9b0ff", true); } },
   "김민기": { s: "노트 필기 공유", d: (P) => `대상 주변 적 ${R0(150 * P)} 피해, 주변 아군 ${R0(90 * P)} 회복`,
     run(B, u, P, t, al, fo) { if (t) { near(fo, t, 1).forEach((o) => dealDamage(B, u, o, 150 * P, "skill")); addFx(B, t.X, t.Y, 1.5, C("--c4")); } near(al, u, 2).forEach((o) => heal(B, o, 90 * P)); addFx(B, u.X, u.Y, 2, C("--c2")); } },
   "임시온": { s: "골문 사수", d: (P) => `자신에게 보호막 ${R0(280 * P)}, 붙어 있는 아군에게 ${R0(140 * P)}`,
     run(B, u, P, t, al) { u.shield += 280 * P; near(al, u, 1).forEach((o) => o !== u && (o.shield += 140 * P)); addFx(B, u.X, u.Y, 1.6, C("--c3")); } },
-  "김예균": { s: "몸싸움", d: (P) => `붙어 있는 적 모두 ${R0(110 * P)} 피해 + 1초 기절, 자신에게 보호막 ${R0(160 * P)}`,
-    run(B, u, P, t, al, fo) { near(fo, u, 1).forEach((o) => { dealDamage(B, u, o, 110 * P, "skill"); o.stunT = 1; }); u.shield += 160 * P; addFx(B, u.X, u.Y, 1.6, C("--accent")); } },
+  "김예균": { s: "이다연 소환", d: (P) => `소환수 이다연을 최대 4명까지 불러내요 (각각 체력 ${R0(260 * P)}, 공격력 ${R0(28 * P)}). 자신에게 보호막 ${R0(120 * P)}`,
+    run(B, u, P) { summon(B, u, P, 4); u.shield += 120 * P; addFx(B, u.X, u.Y, 1.8, "#7ff0e0", 0.6); } },
   "박현호": { s: "응원가", d: (P) => `아군 전체 5초 동안 공격 속도 +25%, ${R0(70 * P)} 회복`,
     run(B, u, P, t, al) { al.forEach((o) => { o.asBuff = Math.max(o.asBuff || 0, 0.25); o.asBuffT = 5; heal(B, o, 70 * P); }); addFx(B, u.X, u.Y, 4, C("--c2"), 0.8); } },
   "박희찬": { s: "무회전 프리킥", d: (P) => `대상에게 공격력×1.8 + ${R0(220 * P)} 피해, 주변 적에게 55%`,
@@ -724,7 +724,7 @@ function finishCombat() {
   const lose = (P, d) => { P.hp -= d; P.streak = Math.min(-1, P.streak - 1); if (P.human) hDmg = d; };
   for (const R of S.results) {
     const B = R.B;
-    const surv = (team) => B.f.filter((f) => f.alive && f.team === team);
+    const surv = (team) => B.f.filter((f) => f.alive && f.team === team && !(f.mon && f.mon.summon));
     const dmgFrom = (team) => STAGE_DMG[Math.min(S.stage, 7)] + surv(team).reduce((s, f) => s + (f.star >= 3 ? 2 : 1), 0);
     if (R.kind === "pve") {
       const w = B.win === 0;
@@ -980,8 +980,29 @@ function onHit(B, u, t) {
   if (B.visual) sfx("hit");
 }
 const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", "¡Fuego!", "¡Venga!", "¡Qué fácil!"];
+const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아일체", "도(道)", "호접지몽", "지행합일"];
+const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5] };
+// 소환수 이다연: 김예균 주변 빈칸에 나타나요
+const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
+function summon(B, u, P, max) {
+  const mine = B.f.filter((o) => o.alive && o.owner === u).length;
+  let need = max - mine; if (need <= 0) return;
+  const occ = new Set(B.f.filter((o) => o.alive).map((o) => o.r * COLS + o.c));
+  const seen = new Set([u.r * COLS + u.c]), q = [[u.r, u.c]];
+  while (q.length && need > 0) {
+    const [r, c] = q.shift();
+    for (const [nr, nc] of neighbors(r, c)) {
+      const k = nr * COLS + nc; if (seen.has(k)) continue; seen.add(k); q.push([nr, nc]);
+      if (occ.has(k) || need <= 0) continue;
+      const f = makeFighter({ mon: { mn: "다연", hp: 260 * P, ad: 28 * P, as: 0.8, rg: 1, ar: 0.1, col: "#7ff0e0", summon: 1 } }, u.team, nr, nc, {});
+      f.owner = u; f.X = u.X; f.Y = u.Y; occ.add(k); B.f.push(f); need--;
+      addFx(B, nc + (nr & 1) * 0.5, nr, 0.7, "#7ff0e0", 0.5);
+    }
+  }
+}
 function attack(B, u, t) {
-  if (B.visual && u.d >= 0 && DEFS[u.d].n === "조하윤" && Math.random() < 0.7) addFloat(B, { X: u.X + (Math.random() - 0.5) * 0.8, Y: u.Y - 0.3 }, rnd(SPANISH), "#ffd36b", false);
+  const sh = u.d >= 0 && SHOUT[DEFS[u.d].n];
+  if (B.visual && sh && Math.random() < sh[2]) addFloat(B, { X: u.X + (Math.random() - 0.5) * 0.8, Y: u.Y - 0.3 }, rnd(sh[0]), sh[1], false);
   u.atkT = 0.22;
   if (u.rg > 1) B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: u.d >= 0 && DEFS[u.d].n === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : u.team ? TOK["--danger"] : TOK["--chalk"], sz: 0.1, hit: () => onHit(B, u, t) });
   else { u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; onHit(B, u, t); }
@@ -1615,7 +1636,15 @@ function buildMonster(mon, enemy) {
   }
   return g;
 }
-function buildUnit(sp, enemy) { return sp.mon ? buildMonster(sp.mon, enemy) : buildStudent(DEFS[sp.d], enemy); }
+function buildUnit(sp, enemy) {
+  if (sp.mon && sp.mon.summon) {
+    const g = buildStudent(SUMMON_DEF, enemy);
+    for (const m of g.userData.mats) if (m.emissive) { m.emissive.copy(lin(0x1a6a60)); m.emissiveIntensity = 0.8; }
+    const aura = new THREE.Mesh(GEO.ringFx, additive("#7ff0e0")); aura.rotation.x = -Math.PI / 2; aura.position.y = 0.24; aura.scale.setScalar(0.7); g.add(aura);
+    return g;
+  }
+  return sp.mon ? buildMonster(sp.mon, enemy) : buildStudent(DEFS[sp.d], enemy);
+}
 // 키(유닛·투사체 등)마다 3D 물체를 하나씩 두고, 이번 프레임에 안 쓰인 것은 지워요
 const pool = new Map(); let frameId = 0, clock3d = 0;
 function useMesh(key, make) {
@@ -1709,7 +1738,7 @@ function collect(dt) {
 }
 function placeUnit(it, dt) {
   const g = useMesh(it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
-  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.45 : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star]) * (it.bench ? 0.8 : 1);
+  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? 0.85 : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star]) * (it.bench ? 0.8 : 1);
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
   const pv = ud.prev || { x: it.x, z: it.z };
@@ -2134,7 +2163,7 @@ function updateMeter() {
 }
 function showFighter(f) {
   S.infoHold = performance.now() + 3000;
-  if (f.mon) { $("info").innerHTML = `<div class="txt"><b>${f.mon.mn}</b> 몬스터 · 체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)}</div>`; return; }
+  if (f.mon) { $("info").innerHTML = `<div class="txt"><b>${f.mon.summon ? "이다연" : f.mon.mn}</b> ${f.mon.summon ? "소환수 (김예균이 불러냄)" : "몬스터"} · 체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)}</div>`; return; }
   const def = DEFS[f.d];
   $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${def.n}</b> ${"★".repeat(f.star)} ${f.team ? "<span style='color:var(--danger)'>상대</span>" : ""}<br>
     체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)} · 공속 ${speedOf(f).toFixed(2)} · 마나 ${Math.round(f.mana)}/${f.mm}${f.items.length ? "<br>" + f.items.map(itemTag).join(" ") : ""}</div>`;
