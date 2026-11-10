@@ -189,6 +189,7 @@ function stepBattle(B, dt) {
 // 블랙홀 같은 "장판": 주변 적을 끌어당기고 계속 피해를 줘요
 function stepZones(B, dt) {
   for (const z of B.zones) {
+    if (z.step) { z.step(B, z, dt); continue; }
     z.t += dt; z.tick += dt; z.pull += dt;
     const foes = B.f.filter((o) => o.alive && o.team !== z.team);
     const dist = (o) => hexDistRC(o.r, o.c, z.r, z.c);

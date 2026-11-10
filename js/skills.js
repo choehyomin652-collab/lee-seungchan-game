@@ -46,8 +46,11 @@ const SK = {
     run(B, u, P, t, al, fo) { const o = fo.slice().sort(byHp)[0]; if (!o) return; B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 20, col: "#ff5a4a", sz: 0.16, trail: 1, hit: () => { dealDamage(B, u, o, u.ad * 1.5 + 180 * P, "skill"); if (!o.alive) { u.mana = Math.min(u.mm - 1, u.mana + u.mm * 0.5); addFloat(B, u, "¡Olé!", "#ffd36b", true); } addFx(B, o.X, o.Y, 0.6, "#7ff0ff", 0.35); } }); } },
   "손태민": { s: "블랙홀", d: (P) => `대상 자리에 블랙홀을 열어 2.5초 동안 주변 3칸의 적을 빨아들이고, 0.25초마다 ${R0(16 * P)} 피해. 마지막에 폭발해 ${R0(100 * P)} 피해`,
     run(B, u, P, t) { if (!t) return; B.zones.push({ team: u.team, owner: u, P, r: t.r, c: t.c, X: t.c + (t.r & 1) * 0.5, Y: t.r, t: 0, dur: 2.5, tick: 0, pull: 0 }); addFloat(B, t, "블랙홀!", "#c9a0ff", true); if (B.visual) { S.shake = 0.15; sfx("boom"); } } },
-  "정주환": { s: "반장의 명령", d: (P) => `적 전체 ${R0(150 * P)} 피해, 아군 전체 ${R0(110 * P)} 회복 + 4초 동안 공격 속도 +20%`,
-    run(B, u, P, t, al, fo) { fo.forEach((o) => dealDamage(B, u, o, 150 * P, "skill")); al.forEach((o) => { heal(B, o, 110 * P); o.asBuff = Math.max(o.asBuff || 0, 0.2); o.asBuffT = 4; }); addFx(B, u.X, u.Y, 6, C("--c5"), 0.8); if (B.visual) { S.shake = 0.35; sfx("boom"); } } },
+  "정주환": { s: "반장의 명령", d: (P) => `"차렷!" 외침이 금빛 충격파로 퍼져 닿는 적마다 ${R0(60 * P)} 피해 + 0.8초 기절. 이어서 "경례!" 하면 하늘에서 금빛 기둥이 적마다 하나씩 떨어져 ${R0(100 * P)} 피해. 아군 전체 ${R0(110 * P)} 회복 + 4초 동안 공격 속도 +30%`,
+    run(B, u, P) {
+      B.zones.push({ kind: "order", step: stepOrder, team: u.team, owner: u, P, r: u.r, c: u.c, X: u.X, Y: u.Y, t: 0, dur: 2, hitW: new Set(), strikes: null });
+      if (B.visual) { S.shake = 0.2; sfx("order"); }
+    } },
 };
 
 const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", "¡Fuego!", "¡Venga!", "¡Qué fácil!"];
@@ -70,4 +73,28 @@ function summon(B, u, P, max) {
       addFx(B, nc + (nr & 1) * 0.5, nr, 0.7, "#7ff0e0", 0.5);
     }
   }
+}
+
+// 정주환 "반장의 명령": ① 차렷! 충격파가 퍼지며 기절 → ② 경례! 적마다 금빛 기둥이 차례로 떨어져요
+const ORDER_WAVE = 9; // 충격파가 1초에 퍼지는 칸 수
+function stepOrder(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  const foes = B.f.filter((o) => o.alive && o.team !== z.team), dist = (o) => hexDistRC(o.r, o.c, z.r, z.c);
+  for (const o of foes) if (!z.hitW.has(o) && dist(o) <= z.t * ORDER_WAVE) {
+    z.hitW.add(o); o.stunT = Math.max(o.stunT || 0, 0.8);
+    dealDamage(B, z.owner, o, 60 * z.P, "skill"); addFx(B, o.X, o.Y, 0.9, "#ffd36b", 0.45);
+  }
+  if (t0 < 0.95 && z.t >= 0.95) {
+    z.strikes = foes.slice().sort((a, b) => dist(a) - dist(b)).map((o, i) => ({ o, at: 1.05 + i * 0.07, X: o.X, Y: o.Y }));
+    z.dur = (z.strikes.length ? z.strikes[z.strikes.length - 1].at : 1.05) + 0.5;
+    B.f.filter((o) => o.alive && o.team === z.team).forEach((o) => { heal(B, o, 110 * z.P); o.asBuff = Math.max(o.asBuff || 0, 0.3); o.asBuffT = 4; addFx(B, o.X, o.Y, 0.8, "#fff1b0", 0.6); });
+    if (B.visual) { S.shake = 0.25; sfx("order2"); }
+  }
+  if (z.strikes) for (const s of z.strikes) if (!s.hit && z.t >= s.at) {
+    s.hit = 1; s.X = s.o.X; s.Y = s.o.Y;
+    if (s.o.alive) dealDamage(B, z.owner, s.o, 100 * z.P, "skill");
+    addFx(B, s.X, s.Y, 1.4, "#fff3c0", 0.5); addFx(B, s.X, s.Y, 0.8, "#ffb43a", 0.7);
+    if (B.visual) { S.shake = Math.max(S.shake, 0.1); sfx("boom"); }
+  }
+  if (z.t >= z.dur) z.done = 1;
 }

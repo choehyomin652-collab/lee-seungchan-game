@@ -1072,6 +1072,56 @@ function drawFx(list, dt) {
   }
   return list.filter((g) => g.t > 0);
 }
+// 정주환 "반장의 명령" 3D 연출: 금빛 기둥 · 퍼지는 충격파 · 왕관 고리 · 하늘에서 떨어지는 빛기둥
+let OGEO = null;
+function drawOrder(z, dt) {
+  if (!OGEO) OGEO = { pil: new THREE.CylinderGeometry(1, 1, 12, 32, 1, true), beam: new THREE.CylinderGeometry(1, 1, 14, 16, 1, true), star: new THREE.OctahedronGeometry(0.28, 0) };
+  const t = z.t, x = worldX(z.X), y = worldZ(z.Y);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.pil = new THREE.Mesh(OGEO.pil, additive("#ffd36b")); ud.pil.position.y = 6; grp.add(ud.pil);
+    ud.waves = ["#ffe9a0", "#ffffff", "#ffb43a"].map((col) => { const m = new THREE.Mesh(GEO.ringFx, additive(col)); m.rotation.x = -Math.PI / 2; m.position.y = 0.3; grp.add(m); return m; });
+    ud.crown = new THREE.Group(); ud.crown.position.y = 2.5; grp.add(ud.crown);
+    for (let i = 0; i < 2; i++) { const r = new THREE.Mesh(GEO.ringFx, additive(i ? "#fff6d0" : "#ffc94a")); r.rotation.x = -Math.PI / 2 + (i ? 0.25 : -0.25); r.scale.setScalar(0.55 + i * 0.15); ud.crown.add(r); }
+    ud.stars = [];
+    for (let i = 0; i < 5; i++) { const st = new THREE.Mesh(OGEO.star, additive("#fff1b0")); ud.crown.add(st); ud.stars.push(st); }
+    return grp;
+  });
+  const ud = g.userData, end = Math.max(0, Math.min(1, (z.dur - t) / 0.4));
+  g.position.set(x, 0, y);
+  const pk = Math.min(1, t / 0.12), pf = Math.max(0, 1 - t / 0.9);
+  ud.pil.scale.set(0.2 + 0.55 * pk + Math.sin(t * 40) * 0.04, 1, 0.2 + 0.55 * pk);
+  ud.pil.material.opacity = 0.65 * pk * pf;
+  ud.waves.forEach((w, i) => {
+    const rr = t * ORDER_WAVE * SQ3 * (1 - i * 0.12);
+    w.scale.setScalar(Math.max(0.05, rr)); w.material.opacity = Math.max(0, 1 - t / 1.1) * (i === 1 ? 0.9 : 0.6);
+  });
+  ud.crown.rotation.y += dt * 3; ud.crown.position.y = 2.4 + Math.sin(t * 6) * 0.08;
+  ud.crown.children.forEach((c) => c.material && (c.material.opacity = Math.min(1, t / 0.2) * end));
+  ud.stars.forEach((st, i) => { const a = (i / 5) * Math.PI * 2; st.position.set(Math.cos(a) * 0.75, Math.sin(t * 8 + i) * 0.1, Math.sin(a) * 0.75); st.rotation.y += dt * 8; });
+  for (const s of z.strikes || []) {
+    const k = t - s.at; if (k < -0.22 || k > 0.45) continue;
+    const m = useMesh(s, () => {
+      const grp = new THREE.Group();
+      const core = new THREE.Mesh(OGEO.beam, additive("#ffffff")); core.position.y = 7; grp.add(core);
+      const glow = new THREE.Mesh(OGEO.beam, additive("#ffc94a")); glow.position.y = 7; grp.add(glow);
+      const ring = new THREE.Mesh(GEO.ringFx, additive("#ffd36b")); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.26; grp.add(ring);
+      grp.userData.p = [core, glow, ring]; return grp;
+    });
+    const [core, glow, ring] = m.userData.p, sx = s.hit ? s.X : s.o.X, sy = s.hit ? s.Y : s.o.Y;
+    m.position.set(worldX(sx), 0, worldZ(sy));
+    if (k < 0) { // 떨어지기 직전: 가는 조준선 + 바닥에 모이는 고리
+      const q = 1 + k / 0.22;
+      core.scale.set(0.03, 1, 0.03); core.material.opacity = 0.5 * q; glow.material.opacity = 0;
+      ring.scale.setScalar(1.4 - q * 0.9); ring.material.opacity = 0.8 * q;
+    } else { // 쾅! 굵은 빛기둥이 꽂혔다가 가늘어져요
+      const q = Math.max(0, 1 - k / 0.45), w = 0.12 + 0.35 * Math.min(1, k / 0.05) * q;
+      core.scale.set(w * 0.5, 1, w * 0.5); core.material.opacity = q;
+      glow.scale.set(w * 1.4, 1, w * 1.4); glow.material.opacity = 0.55 * q;
+      ring.scale.setScalar(0.6 + k * 4); ring.material.opacity = q;
+    }
+  }
+}
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -1102,6 +1152,7 @@ function render3D(dt) {
     }
     B.fx = drawFx(B.fx, dt);
     for (const z of B.zones) {
+      if (z.kind === "order") { drawOrder(z, dt); continue; }
       const g = useMesh(z, () => {
         const grp = new THREE.Group();
         const core = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x000000 })); core.scale.setScalar(4.5); grp.add(core);
@@ -1277,6 +1328,27 @@ function drawOverlay(dt, R) {
       ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = "#cff8ff"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
       ctx.fillText("합체 준비…", tx, ty); ctx.globalAlpha = 1;
     }
+  }
+  // 정주환 "반장의 명령": 금빛 테두리 · 차렷!/경례! 큰 글자 · 섬광
+  const oz = S.battle && S.battle.zones.find((z) => z.kind === "order");
+  if (oz) {
+    const t = oz.t, [ox, oy] = proj(worldX(oz.X), 3.4, worldZ(oz.Y)), fade = Math.max(0, Math.min(1, (oz.dur - t) / 0.4));
+    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, "rgba(255,200,80,0)"); vg.addColorStop(1, `rgba(255,190,60,${0.45 * fade})`);
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    const bar = u0 * 2.4 * Math.min(1, t / 0.2) * fade;
+    ctx.fillStyle = "rgba(10,8,0,.55)"; ctx.fillRect(0, 0, W, bar); ctx.fillRect(0, H - bar, W, bar);
+    ctx.fillStyle = "#ffd36b"; ctx.fillRect(0, bar - 2, W, 2); ctx.fillRect(0, H - bar, W, 2);
+    const big = (text, x, y, q, size, glow) => {
+      const sc = 1 + (1 - q) * 1.2; ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); ctx.globalAlpha = q * fade;
+      ctx.font = font(u0 * size); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.shadowColor = glow; ctx.shadowBlur = 26; ctx.lineWidth = 8; ctx.strokeStyle = "#3a2600"; ctx.strokeText(text, 0, 0);
+      const gr = ctx.createLinearGradient(0, -u0 * size / 2, 0, u0 * size / 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.5, "#ffd36b"); gr.addColorStop(1, "#ff9a2a");
+      ctx.fillStyle = gr; ctx.fillText(text, 0, 0); ctx.restore();
+    };
+    if (t < 0.95) big("차렷!", ox, oy, Math.min(1, t / 0.15) * Math.min(1, (0.95 - t) / 0.2), 3.6, "#ffb43a");
+    else big("경례!", W / 2, H3 * 0.38, Math.min(1, (t - 0.95) / 0.15), 4.4, "#fff1b0");
+    if (t > 0.95 && t < 1.35) { ctx.fillStyle = `rgba(255,248,220,${(1 - (t - 0.95) / 0.4) * 0.7})`; ctx.fillRect(0, 0, W, H); }
   }
   // 승패 배너
   if (S.banner) {

@@ -27,6 +27,8 @@ function sfx(name) {
     case "start": tone(392, 0.1, "square", 0.03); tone(587, 0.15, "square", 0.03, null, 0.1); break;
     case "win": [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.05, null, i * 0.1)); break;
     case "lose": [392, 330, 262].forEach((f, i) => tone(f, 0.25, "triangle", 0.05, null, i * 0.14)); break;
+    case "order": [392, 523, 659, 784].forEach((f, i) => tone(f, 0.22, "sawtooth", 0.03, null, i * 0.06)); tone(110, 0.5, "square", 0.04, 55); break;
+    case "order2": [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.3, "triangle", 0.05, null, i * 0.05)); tone(1568, 0.6, "sine", 0.03, 2093, 0.2); break;
     case "item": tone(880, 0.06, "sine", 0.05); tone(1320, 0.1, "sine", 0.05, null, 0.05); break;
   }
 }
