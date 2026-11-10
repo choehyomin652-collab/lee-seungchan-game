@@ -1249,6 +1249,91 @@ function drawFreekick(z, dt) {
   ud.mark.position.set(tx, 0, ty); ud.mark.scale.setScalar(1.3 - k * 0.7); ud.mark.material.opacity = k;
   ud.cross.position.set(tx, 0, ty); ud.cross.rotation.y += dt * 4; ud.cross.scale.setScalar(1.6 - k * 0.8); ud.cross.children.forEach((b) => (b.material.opacity = k));
 }
+// ----- 2코스트 스킬 3D 연출 -----
+// 이준희: 대상 위에 농구 골대가 나타났다가, 공과 함께 내리꽂혀요
+function drawDunk(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    const hoop = (ud.hoop = new THREE.Group()); grp.add(hoop);
+    const white = (ud.white = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide }));
+    const board = new THREE.Mesh(zgeo().cube, white); board.scale.set(1.3, 0.85, 0.05); board.position.set(0, 0.45, -0.5); hoop.add(board);
+    const sq = new THREE.Mesh(zgeo().cube, (ud.red = new THREE.MeshBasicMaterial({ color: 0xe8402e, transparent: true }))); sq.scale.set(0.5, 0.36, 0.06); sq.position.set(0, 0.32, -0.49); hoop.add(sq);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.045, 8, 24), (ud.orange = new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true }))); rim.rotation.x = Math.PI / 2; hoop.add(rim);
+    const net = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.24, 0.5, 12, 1, true), (ud.net = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, wireframe: true }))); net.position.y = -0.27; hoop.add(net);
+    ud.ball = new THREE.Mesh(GEO.ball, new THREE.MeshStandardMaterial({ map: bballTex(), roughness: 0.7, transparent: true })); ud.ball.scale.setScalar(2.6); grp.add(ud.ball);
+    ud.ring = new THREE.Mesh(GEO.ringFx, additive("#ff8a3a")); ud.ring.rotation.x = -Math.PI / 2; ud.ring.position.y = 0.26; grp.add(ud.ring);
+    return grp;
+  });
+  const ud = g.userData, t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.3)), pop = Math.min(1, t / 0.12);
+  g.position.set(worldX(z.X), 0, worldZ(z.Y));
+  const slam = Math.max(0, Math.min(1, (t - DUNK_AT) / 0.1));
+  ud.hoop.position.y = 2.7 - slam * 1.9; ud.hoop.scale.setScalar((0.3 + 0.7 * pop) * (1 + (slam > 0 && slam < 1 ? 0.2 : 0)));
+  for (const m of [ud.white, ud.red, ud.orange, ud.net]) m.opacity = fade;
+  const bp = Math.max(0, Math.min(1, (t - 0.12) / (DUNK_AT - 0.08))); // 공: 위에서 골대를 지나 바닥으로
+  ud.ball.position.set(0, 4.2 - bp * 3.9 + (bp >= 1 ? Math.abs(Math.sin((t - DUNK_AT) * 12)) * 0.6 * fade : 0), 0); ud.ball.rotation.x += dt * 14; ud.ball.material.opacity = fade; ud.ball.visible = t > 0.1;
+  ud.ring.scale.setScalar(1.5 - 0.9 * Math.min(1, t / DUNK_AT)); ud.ring.material.opacity = t < DUNK_AT ? 0.9 : 0;
+}
+// 김현우: 머리 위에 써지는 공식, 바닥에서 도는 삼각자, 대입 순간의 파란 빛기둥
+function drawFormula(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    const mk = (txt, a, b) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: symTex(txt, a, b), transparent: true, depthWrite: false })); grp.add(sp); return sp; };
+    ud.f1 = mk("y = f(x)", "90,170,255", "40,90,220"); ud.f2 = mk("y = 2·f(x) !", "255,200,80", "230,120,30");
+    ud.tri = [0, 1].map((i) => { const m = new THREE.Mesh(zgeo().tri, additive(i ? "#ffffff" : "#7fc4ff")); m.rotation.x = -Math.PI / 2; m.position.y = 0.27; grp.add(m); return m; });
+    ud.beam = new THREE.Mesh(zgeo().tube, additive("#7fc4ff")); ud.beam.position.y = 1.5; grp.add(ud.beam);
+    return grp;
+  });
+  const ud = g.userData, t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.25)), pop = Math.min(1, t / 0.15);
+  g.position.set(worldX(z.X), 0, worldZ(z.Y));
+  const dbl = t >= FORMULA_AT ? !!z.dbl : z.tgt.alive && z.tgt.hp < z.tgt.maxHp * 0.5;
+  for (const [sp, on] of [[ud.f1, !dbl], [ud.f2, dbl]]) { sp.visible = on; sp.position.y = 3.0 + Math.sin(t * 6) * 0.06; const s = 1.15 * (0.4 + 0.6 * pop) * (dbl ? 1.2 : 1); sp.scale.set(s * 4, s, 1); sp.material.opacity = fade; }
+  ud.tri.forEach((m, i) => { m.rotation.z += dt * (i ? -7 : 5); m.scale.setScalar((1.5 - i * 0.45) * (1.3 - 0.4 * Math.min(1, t / FORMULA_AT))); m.material.opacity = 0.9 * fade; });
+  const k = t - FORMULA_AT, q = k >= 0 ? Math.max(0, 1 - k / 0.35) : 0;
+  ud.beam.scale.set(0.12 + 0.5 * q, 3, 0.12 + 0.5 * q); ud.beam.material.opacity = q * 0.9; ud.beam.material.color.set(dbl ? "#ffd36b" : "#7fc4ff");
+}
+// 이보경: 슬라이딩 자국 (속도선 세 줄)
+function drawTackle(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group();
+    grp.userData.bars = [-0.22, 0, 0.22].map((o, i) => { const m = new THREE.Mesh(zgeo().bar, additive(i === 1 ? "#ffffff" : "#7fe0a0")); m.userData.o = o; grp.add(m); return m; });
+    return grp;
+  });
+  const x0 = worldX(z.ax), y0 = worldZ(z.ay), x1 = worldX(z.X), y1 = worldZ(z.Y), dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+  const grow = Math.min(1, z.t / 0.12), q = Math.max(0, 1 - z.t / z.dur);
+  g.position.set(x0, 0.27, y0); g.rotation.y = -Math.atan2(dy, dx);
+  g.userData.bars.forEach((m) => { const l = len * grow; m.scale.set(l, 1, 0.07 + 0.08 * q); m.position.set(l / 2, 0, m.userData.o); m.material.opacity = q; });
+}
+// 윤동욱: 바닥에서 도는 태극 문양과 오가는 두 기운
+function yinTex() {
+  return textTex("yinyang", 256, 256, (g, w, h) => {
+    const c = w / 2, R = w * 0.44; g.clearRect(0, 0, w, h);
+    g.fillStyle = "#fff6e0"; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#2a2060"; g.beginPath(); g.arc(c, c, R, Math.PI / 2, -Math.PI / 2); g.fill();
+    g.beginPath(); g.arc(c, c - R / 2, R / 2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#fff6e0"; g.beginPath(); g.arc(c, c + R / 2, R / 2, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(c, c - R / 2, R / 7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#2a2060"; g.beginPath(); g.arc(c, c + R / 2, R / 7, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "#ffd36b"; g.lineWidth = 8; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.stroke();
+  });
+}
+function drawYinYang(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.disc = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: yinTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide })); ud.disc.rotation.x = -Math.PI / 2; grp.add(ud.disc);
+    ud.ring = new THREE.Mesh(GEO.ringFx, additive("#ffe7a0")); ud.ring.rotation.x = -Math.PI / 2; grp.add(ud.ring);
+    ud.yang = new THREE.Mesh(GEO.ball, additive("#fff6e0")); ud.yang.scale.setScalar(2.2); grp.add(ud.yang);
+    ud.yin = new THREE.Mesh(GEO.ball, additive("#8a7aff")); ud.yin.scale.setScalar(2.2); grp.add(ud.yin);
+    return grp;
+  });
+  const ud = g.userData, t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.3)), grow = Math.min(1, t / 0.15);
+  const tx = worldX(z.X), ty = worldZ(z.Y), ux = worldX(z.owner.X), uy = worldZ(z.owner.Y);
+  g.position.set(0, 0, 0);
+  ud.disc.position.set(tx, 0.28, ty); ud.disc.rotation.z -= dt * 9; ud.disc.scale.setScalar(Math.max(0.01, grow) * (0.85 + 0.15 * fade)); ud.disc.material.opacity = 0.95 * fade;
+  ud.ring.position.set(tx, 0.27, ty); ud.ring.scale.setScalar(1.1 + Math.sin(t * 10) * 0.06); ud.ring.material.opacity = 0.8 * fade;
+  const fly = (m, a, x0, y0, x1, y1) => { m.visible = a > 0 && a < 1; if (m.visible) m.position.set(x0 + (x1 - x0) * a, 1 + Math.sin(a * Math.PI) * 1.4, y0 + (y1 - y0) * a); };
+  fly(ud.yang, t / 0.25, ux, uy, tx, ty);            // 양의 기운: 나 → 대상
+  fly(ud.yin, (t - 0.3) / 0.45, tx, ty, ux, uy);     // 음의 기운: 대상 → 나 (회복)
+}
 // ----- 3코스트 스킬 3D 연출 -----
 const glowTex = (sym, key, inner, outer, color = "#ffffff") => textTex(key + sym, 128, 128, (g, w, h) => {
   g.clearRect(0, 0, w, h);
@@ -1355,11 +1440,11 @@ function drawSlam(z, dt) {
   ud.dome.scale.set(1 + grow * 12, Math.max(0.01, (1 - Math.min(1, k / 0.3)) * 8), 1 + grow * 12); ud.dome.material.opacity = Math.max(0, 0.5 - k * 1.8);
 }
 // 박준서: 빛나는 수학 공식이 비스듬히 떨어져요 (가로로 긴 판에 공식을 써요)
-function symTex(sym) {
-  return textTex("sym" + sym, 512, 128, (g, w, h) => {
+function symTex(sym, rgb1 = "200,107,255", rgb2 = "120,60,220") {
+  return textTex("sym" + rgb1 + sym, 512, 128, (g, w, h) => {
     g.clearRect(0, 0, w, h);
     g.save(); g.translate(w / 2, h / 2); g.scale(w / h, 1);
-    const gr = g.createRadialGradient(0, 0, 0, 0, 0, h / 2); gr.addColorStop(0, "rgba(200,107,255,.95)"); gr.addColorStop(0.6, "rgba(120,60,220,.6)"); gr.addColorStop(1, "rgba(120,60,220,0)");
+    const gr = g.createRadialGradient(0, 0, 0, 0, 0, h / 2); gr.addColorStop(0, `rgba(${rgb1},.95)`); gr.addColorStop(0.6, `rgba(${rgb2},.6)`); gr.addColorStop(1, `rgba(${rgb2},0)`);
     g.fillStyle = gr; g.fillRect(-h / 2, -h / 2, h, h); g.restore();
     g.textAlign = "center"; g.textBaseline = "middle"; g.font = "bold italic 64px serif";
     const k = Math.min(1, (w * 0.8) / g.measureText(sym).width); // 긴 공식은 줄여서 맞춰요
@@ -1386,7 +1471,7 @@ function drawMathRain(z, dt) {
     ud.ring.position.y = 0.26; ud.ring.scale.setScalar((1.5 - p) * big); ud.ring.material.opacity = p;
   });
 }
-const ZDRAW = { smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer };
+const ZDRAW = { smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
