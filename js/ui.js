@@ -259,8 +259,8 @@ function renderUI() {
   // 플레이어 목록
   const AVC = ["#c08a2a", "#3a6ea8", "#a83a4a", "#3a8a5a", "#7a4aa8", "#a8703a", "#2a8a8a", "#6a6a7a"];
   const list = S.players.slice().sort((a, b) => (b.alive - a.alive) || (b.hp - a.hp) || (a.place - b.place));
-  $("players").innerHTML = list.map((p) => `<button class="pl${p.human ? " me" : ""}${p.alive ? "" : " dead"}${S.scout === p.i ? " scout" : ""}${S.opp === p ? " opp" : ""}" data-i="${p.i}" title="${p.name}">
-    <span class="av" style="--avc:${AVC[p.i]}">${p.human ? "나" : p.name}</span><span class="hpn">${p.alive ? Math.max(0, p.hp) : p.place + "등"}</span></button>`).join("");
+  $("players").innerHTML = list.map((p) => `<button class="pl${p.human ? " me" : ""}${p.remote ? " net" : ""}${p.alive ? "" : " dead"}${S.scout === p.i ? " scout" : ""}${S.opp === p ? " opp" : ""}" data-i="${p.i}" title="${esc(p.name)}">
+    ${p.remote ? `<span class="nm">${esc(p.name)}</span>` : ""}<span class="av" style="--avc:${AVC[p.i]}">${p.human ? "나" : p.remote ? esc(p.name.slice(0, 2)) : p.name}</span><span class="hpn">${p.alive ? Math.max(0, p.hp) : p.place + "등"}</span></button>`).join("");
   $("players").querySelectorAll(".pl").forEach((el) => tapButton(el, () => {
     const i = +el.dataset.i;
     if (S.phase !== "plan" || i === 0 || !S.players[i].alive) return toast(i === 0 ? "내 반이에요" : "계획 단계에서만 정찰할 수 있어요");
@@ -314,7 +314,8 @@ function renderUI() {
   else if (S.phase === "plan") {
     const act = keys.filter((k) => traitLvl(k, cnt[k]) > 0).map((k) => TRAITS[k].d);
     guide = act.length ? "적용 중: " + act.join(" · ") : S.type === "pve" ? "몬스터 라운드! 이기면 골드 구슬이 떨어져요. 친구를 탭해서 고르고 놓을 칸을 탭하세요." : "다른 반 이름을 누르면 그 반 배치를 정찰할 수 있어요. 시간이 끝나면 자동으로 전투가 시작돼요.";
-  } else guide = "전투 중… 친구를 탭하면 실시간 상태를 볼 수 있어요. 대기석 정리와 상점 구매는 지금도 할 수 있어요.";
+  } else if (S.phase === "wait") guide = "준비 완료! 다른 반이 준비를 마치면 전투가 시작돼요.";
+  else guide = "전투 중… 친구를 탭하면 실시간 상태를 볼 수 있어요. 대기석 정리와 상점 구매는 지금도 할 수 있어요.";
   $("info").innerHTML = S.stage === 1 || S.phase === "carousel" ? `<div class="txt guide">${guide}</div>` : "";
 }
 function humanBuy(i) {
@@ -345,6 +346,8 @@ document.addEventListener("keydown", (e) => {
 $("speed").onclick = () => { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 3 : 1; renderUI(); };
 $("mute").onclick = () => { muted = !muted; try { localStorage.setItem("uri-mute", muted ? "1" : "0"); } catch (e) {} renderUI(); };
 $("start").onclick = () => {
+  if (NET.joined) netLeave();
+  NET.on = false; NET.done = true;
   if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
   $("ov").hidden = true; newGame(); resize();
 };
@@ -354,6 +357,13 @@ $("rotok").onclick = () => { $("rotate").classList.add("dismissed"); resize(); }
 if (HAS3D) { init3D(); makePortraits(); }
 else $("info").innerHTML = `<div class="txt">3D 그래픽을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>`;
 loadCustomCards();
+// 친구와 같이 하기
+$("online").onclick = () => { if (NET.ready) { netShowPanel(true); if (!$("netname").value) $("netname").focus(); } };
+$("netjoin").onclick = netJoin;
+$("netstart").onclick = netStartAsHost;
+$("netback").onclick = netLeave;
+for (const id of ["netname", "netcode"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") netJoin(); });
+netInit();
 function openCardMenu() {
   $("menu").hidden = true;
   $("cardgrid").innerHTML = DEFS.map((d, i) => `<button data-d="${i}" style="--cc:var(${COST_COLOR[d.c]})"><img src="${PORTRAIT[i] || ""}" alt="">${d.n}${hasCustomCard(i) ? "<small>바꾼 사진</small>" : ""}</button>`).join("");
