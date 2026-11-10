@@ -20,14 +20,32 @@ const SK = {
     run(B, u, P, t, al, fo) { fo.slice().sort((a, b) => hexDist(a, u) - hexDist(b, u)).slice(0, 3).forEach((o) => B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 14, col: C("--accent"), sz: 0.14, trail: 1, hit: () => { dealDamage(B, u, o, u.ad + 80 * P, "skill"); addFx(B, o.X, o.Y, 0.9, "#ffe66b", 0.35); } })); } },
   "전하율": { s: "약점 공략", d: (P) => `대상에게 ${R0(140 * P)} 피해, 4초 동안 받는 피해 +25%`,
     run(B, u, P, t) { if (!t) return; dealDamage(B, u, t, 140 * P, "skill"); t.vuln = 0.25; t.vulnT = 4; addHuge(B, t, "약점!", "#ffffff", "#c86bff", 2.2); addFx(B, t.X, t.Y, 0.7, C("--c4")); addFx(B, t.X, t.Y, 1.3, "#ff5a4a", 0.6); } },
-  "이준희": { s: "덩크슛", d: (P) => `대상에게 공격력×1.8 + ${R0(140 * P)} 피해 + 1초 기절, 주변 적 ${R0(60 * P)}`,
-    run(B, u, P, t, al, fo) { if (!t) return; dealDamage(B, u, t, u.ad * 1.8 + 140 * P, "skill"); t.stunT = 1; near(fo, t, 1).forEach((o) => o !== t && dealDamage(B, u, o, 60 * P, "skill")); addFx(B, t.X, t.Y, 1.4, C("--accent")); addFx(B, t.X, t.Y, 2.0, "#ff8a3a", 0.6); addHuge(B, t, "덩크!", "#fff1b0", "#ff8a3a", 2.8); if (B.visual) { S.shake = 0.25; sfx("boom"); } } },
-  "김현우": { s: "공식 대입", d: (P) => `대상에게 ${R0(200 * P)} 피해, 대상 체력이 절반 아래면 2배`,
-    run(B, u, P, t) { if (!t) return; dealDamage(B, u, t, 200 * P * (t.hp < t.maxHp * 0.5 ? 2 : 1), "skill"); addFx(B, t.X, t.Y, 0.9, C("--c4")); addFx(B, t.X, t.Y, 1.5, "#7fc4ff", 0.6); addHuge(B, t, "∴ 정답!", "#ffffff", "#7fc4ff", 2.2); } },
-  "이보경": { s: "태클 수비", d: (P) => `대상에게 ${R0(90 * P)} 피해 + 1.5초 기절, 자신에게 보호막 ${R0(200 * P)}`,
-    run(B, u, P, t) { if (t) { dealDamage(B, u, t, 90 * P, "skill"); t.stunT = 1.5; addFx(B, t.X, t.Y, 1.2, "#ffffff", 0.4); addHuge(B, t, "태클!", "#ffffff", "#4fa8ff", 2.2); if (B.visual) S.shake = Math.max(S.shake || 0, 0.15); } u.shield += 200 * P; addFx(B, u.X, u.Y, 0.8, C("--c3")); } },
-  "윤동욱": { s: "음양의 조화", d: (P) => `양(陽)의 기운으로 대상에게 공격력×2 + ${R0(120 * P)} 피해, 음(陰)의 기운으로 준 피해의 40% 회복. 기본 공격 때 동양철학 한마디`,
-    run(B, u, P, t) { if (!t) return; const d = dealDamage(B, u, t, u.ad * 2 + 120 * P, "skill"); heal(B, u, d * 0.4); addFx(B, t.X, t.Y, 0.9, "#fff6e0", 0.45); addFx(B, u.X, u.Y, 0.9, "#6a5acd", 0.45); addFx(B, t.X, t.Y, 1.5, "#ffe7a0", 0.6); addFx(B, u.X, u.Y, 1.5, "#6a5acd", 0.6); addHuge(B, t, "陽", "#ffffff", "#ffd36b", 2.6); addHuge(B, u, "陰", "#e0dcff", "#6a5acd", 2.6); } },
+  "이준희": { s: "덩크슛", d: (P) => `대상 머리 위에 골대가 나타나고, 뛰어올라 내리꽂아요. 공격력×1.8 + ${R0(140 * P)} 피해 + 1초 기절, 주변 적 ${R0(60 * P)}`,
+    run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "dunk", step: stepDunk, team: u.team, owner: u, P, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 0.9 }); } },
+  "김현우": { s: "공식 대입", d: (P) => `대상 머리 위에 공식을 쓰고 값을 대입해 ${R0(200 * P)} 피해, 대상 체력이 절반 아래면 2배`,
+    run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "formula", step: stepFormula, team: u.team, owner: u, P, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 0.85 }); } },
+  "이보경": { s: "태클 수비", d: (P) => `슬라이딩 태클! 대상에게 ${R0(90 * P)} 피해 + 1.5초 기절, 자신에게 보호막 ${R0(200 * P)}`,
+    run(B, u, P, t) {
+      if (t) {
+        dealDamage(B, u, t, 90 * P, "skill"); t.stunT = 1.5;
+        addFx(B, t.X, t.Y, 1.2, "#ffffff", 0.4); addFx(B, t.X, t.Y, 1.8, "#7fe0a0", 0.6); addHuge(B, t, "태클!", "#ffffff", "#4fa8ff", 2.6);
+        if (B.visual) {
+          u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; // 몸을 날려요
+          B.zones.push({ kind: "tackle", step: stepTimer, team: u.team, owner: u, ax: u.X, ay: u.Y, X: t.X, Y: t.Y, t: 0, dur: 0.55 });
+          for (let i = 1; i <= 3; i++) B.fx.push({ kind: "puff", X: u.X + (t.X - u.X) * i / 3, Y: u.Y + (t.Y - u.Y) * i / 3, t: 0.35 + i * 0.08, t0: 0.35 + i * 0.08 });
+          S.shake = Math.max(S.shake || 0, 0.18); sfx("kick");
+        }
+      }
+      u.shield += 200 * P; addFx(B, u.X, u.Y, 0.8, C("--c3"));
+    } },
+  "윤동욱": { s: "음양의 조화", d: (P) => `태극 문양을 펼쳐요. 양(陽)의 기운으로 대상에게 공격력×2 + ${R0(120 * P)} 피해, 음(陰)의 기운으로 준 피해의 40% 회복. 기본 공격 때 동양철학 한마디`,
+    run(B, u, P, t) {
+      if (!t) return;
+      const d = dealDamage(B, u, t, u.ad * 2 + 120 * P, "skill"); heal(B, u, d * 0.4);
+      addFx(B, t.X, t.Y, 0.9, "#fff6e0", 0.45); addFx(B, u.X, u.Y, 0.9, "#6a5acd", 0.45); addFx(B, t.X, t.Y, 1.5, "#ffe7a0", 0.6); addFx(B, u.X, u.Y, 1.5, "#6a5acd", 0.6);
+      addHuge(B, t, "陽", "#ffffff", "#ffd36b", 2.6); addHuge(B, u, "陰", "#e0dcff", "#6a5acd", 2.6);
+      if (B.visual) { B.zones.push({ kind: "yinyang", step: stepTimer, team: u.team, owner: u, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 1.1 }); S.shake = Math.max(S.shake || 0, 0.12); sfx("charge"); }
+    } },
   "김민기": { s: "노트 필기 공유", d: (P) => `거대한 연필로 대상 자리에 세 번 줄을 그어 주변 적에게 ${R0(50 * P)}씩 3번 피해. 주변 아군에게는 필기 종이비행기를 날려 ${R0(90 * P)} 회복`,
     run(B, u, P, t, al) {
       if (t) B.zones.push({ kind: "scribble", step: stepScribble, team: u.team, owner: u, P, r: t.r, c: t.c, X: t.X, Y: t.Y, t: 0, dur: 0.8 });
@@ -98,6 +116,51 @@ function summon(B, u, P, max) {
       addFx(B, nc + (nr & 1) * 0.5, nr, 0.7, "#7ff0e0", 0.5);
     }
   }
+}
+
+// ---------- 2코스트 스킬 연출 ----------
+// 시간만 흐르는 장판 (자리는 고정)
+function stepTimer(B, z, dt) { z.t += dt; if (z.t >= z.dur) z.done = 1; }
+// 이준희 "덩크슛": 골대가 나타나고(0.3초) 내리꽂기
+const DUNK_AT = 0.3;
+function stepDunk(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  const u = z.owner;
+  if (t0 < DUNK_AT) {
+    if (!z.tgt.alive) z.tgt = nearest(B, u) || z.tgt;
+    z.X = z.tgt.X; z.Y = z.tgt.Y;
+    if (z.t >= DUNK_AT) {
+      const t = z.tgt;
+      if (t.alive) {
+        dealDamage(B, u, t, u.ad * 1.8 + 140 * z.P, "skill"); if (t.alive) t.stunT = Math.max(t.stunT || 0, 1);
+        near(B.f.filter((o) => o.alive && o.team !== z.team), t, 1).forEach((o) => o !== t && dealDamage(B, u, o, 60 * z.P, "skill"));
+      }
+      addFx(B, z.X, z.Y, 1.4, C("--accent")); addFx(B, z.X, z.Y, 2.2, "#ff8a3a", 0.6); addFx(B, z.X, z.Y, 0.9, "#ffffff", 0.35);
+      addHuge(B, z, "덩크!", "#fff1b0", "#ff8a3a", 3);
+      if (B.visual) { S.shake = 0.3; sfx("boom"); }
+    }
+  }
+  if (z.t >= z.dur) z.done = 1;
+}
+// 김현우 "공식 대입": 공식이 써지고(0.35초) 값이 대입돼요
+const FORMULA_AT = 0.35;
+function stepFormula(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  const u = z.owner;
+  if (t0 < FORMULA_AT) {
+    if (!z.tgt.alive) z.tgt = nearest(B, u) || z.tgt;
+    z.X = z.tgt.X; z.Y = z.tgt.Y;
+    if (z.t >= FORMULA_AT) {
+      const t = z.tgt, dbl = t.alive && t.hp < t.maxHp * 0.5;
+      z.dbl = dbl;
+      if (t.alive) dealDamage(B, u, t, 200 * z.P * (dbl ? 2 : 1), "skill");
+      addFx(B, z.X, z.Y, 0.9, C("--c4")); addFx(B, z.X, z.Y, 1.5, "#7fc4ff", 0.6);
+      if (dbl) addFx(B, z.X, z.Y, 2.3, "#ffe66b", 0.7);
+      addHuge(B, z, dbl ? "×2 정답!!" : "∴ 정답!", "#ffffff", dbl ? "#ffd36b" : "#7fc4ff", dbl ? 3 : 2.4);
+      if (B.visual) { S.shake = Math.max(S.shake || 0, dbl ? 0.25 : 0.12); sfx(dbl ? "boom" : "crit"); }
+    }
+  }
+  if (z.t >= z.dur) z.done = 1;
 }
 
 // ---------- 3코스트 스킬 연출 ----------
