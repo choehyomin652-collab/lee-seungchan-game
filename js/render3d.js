@@ -1043,18 +1043,28 @@ function placeUnit(it, dt) {
     ud.legs[0].rotation.x = sw; ud.legs[1].rotation.x = -sw;
     let la = -sw * 0.8, ra = sw * 0.8, lz = ud.restZ[0], rz = ud.restZ[1], lean = ud.move * 0.14, twist = 0;
     const f = it.f;
-    if (f && f.lunge > 0) { const k = Math.sin((f.lunge / 0.18) * Math.PI); ra = -1.9 * k; lean += 0.32 * k; twist = -0.45 * k; }
-    else if (f && f.atkT > 0) { const k = Math.sin((f.atkT / 0.22) * Math.PI); ra = -1.3 * k; lean += 0.18 * k; twist = -0.3 * k; }
+    let kick = 0, spin = null, headX = 0;
+    if (f && f.atkT > 0) { // 무기마다 다른 공격 동작 (weapons.js 의 ATK_ANIM)
+      const p = Math.min(1, 1 - f.atkT / ATK_T), k = Math.sin(p * Math.PI);
+      const wp = !f.robot && f.d >= 0 && WEAPONS[DEFS[f.d].n];
+      const A = ((wp && ATK_ANIM[wp.anim]) || ATK_ANIM[f.rg > 1 ? "cast" : "swing"])(p, k);
+      if (A.la != null) la = A.la; if (A.ra != null) ra = A.ra;
+      if (A.lz != null) lz += A.lz; if (A.rz != null) rz += A.rz;
+      lean += A.lean || 0; twist = A.twist || 0; kick = A.kick || 0; headX = A.head || 0;
+      if (A.spin != null) spin = A.spin;
+      g.position.y += A.hop || 0;
+    }
+    ud.legs[1].rotation.x += kick;
     if (it.jump > 0) { lz = -0.4 - it.jump * 3; rz = 0.4 + it.jump * 3; lean = -0.15; }
     if (win) { la = ra = -2.7 + Math.sin(clock3d * 14 + it.x) * 0.25; lz = -0.45; rz = 0.45; lean = -0.1; }
     if (it.held) { la = -0.3; ra = -0.3; lz = -0.6; rz = 0.6; }
     ud.arms[0].rotation.set(la, 0, lz); ud.arms[1].rotation.set(ra, 0, rz);
     ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.018;
     ud.torso.rotation.x += (lean - ud.torso.rotation.x) * Math.min(1, dt * 18);
-    ud.torso.rotation.y += (twist - ud.torso.rotation.y) * Math.min(1, dt * 18);
+    if (spin != null) ud.torso.rotation.y = spin; else { if (ud.torso.rotation.y > Math.PI) ud.torso.rotation.y -= Math.PI * 2; ud.torso.rotation.y += (twist - ud.torso.rotation.y) * Math.min(1, dt * 18); }
     ud.head.rotation.y = Math.sin(clock3d * 0.7 + it.z * 2) * 0.18 * (1 - ud.move);
     ud.head.rotation.z = Math.sin(clock3d * 1.1 + it.x * 3) * 0.05 + (win ? Math.sin(clock3d * 7) * 0.12 : 0);
-    ud.head.rotation.x = hitK * -0.3 + (it.dead ? -0.4 : 0);
+    ud.head.rotation.x = hitK * -0.3 + (it.dead ? -0.4 : 0) + headX;
     if (ud.scarf) ud.scarf.rotation.x = 0.25 + ud.move * 0.9 + Math.sin(clock3d * 3 + it.x) * 0.12;
     if (ud.eyes) { // 눈 깜빡임 (기절하거나 쓰러지면 감아요)
       if ((ud.blinkT = (ud.blinkT ?? 1 + Math.random() * 3) - dt) < 0) ud.blinkT = 2 + Math.random() * 3.5;
@@ -1085,7 +1095,7 @@ function unitStatus(g, ud, f, dt) {
   const on = f.alive;
   if (on && f.shield > 0) {
     if (!ud.bub) { ud.bub = new THREE.Mesh(SGEO.bub, additive("#8fd0ff")); ud.bub.position.y = 0.95; g.add(ud.bub); }
-    ud.bub.visible = true; ud.bub.material.opacity = 0.13 + Math.sin(clock3d * 4) * 0.04; ud.bub.scale.setScalar(1 + Math.sin(clock3d * 3) * 0.03);
+    ud.bub.visible = true; ud.bub.material.opacity = 0.055 + Math.sin(clock3d * 4) * 0.02; ud.bub.scale.setScalar(0.8 + Math.sin(clock3d * 3) * 0.02);
   } else if (ud.bub) ud.bub.visible = false;
   if (on && f.stunT > 0) {
     if (!ud.stun) { ud.stun = new THREE.Group(); ud.stun.position.y = 2.0; const m = additive("#ffe66b"); for (let i = 0; i < 3; i++) { const s = new THREE.Mesh(SGEO.star, m); const a = (i / 3) * Math.PI * 2; s.position.set(Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3); ud.stun.add(s); } g.add(ud.stun); }

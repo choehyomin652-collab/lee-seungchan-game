@@ -127,7 +127,7 @@ function onHit(B, u, t) {
 function attack(B, u, t) {
   const sh = u.robot ? (Math.random() < 0.5 ? SHOUT["조하윤"] : SHOUT["윤동욱"]) : u.d >= 0 && SHOUT[DEFS[u.d].n];
   if (B.visual && sh && Math.random() < sh[2]) addFloat(B, { X: u.X + (Math.random() - 0.5) * 0.8, Y: u.Y - 0.3 }, rnd(sh[0]), sh[1], false);
-  u.atkT = 0.22;
+  u.atkT = ATK_T;
   if (u.rg > 1) {
     const wp = u.d >= 0 && WEAPONS[DEFS[u.d].n], pr = wp && wp.pr, who = u.d >= 0 && DEFS[u.d].n;
     B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: who === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : pr && pr.col ? pr.col : u.team ? TOK["--danger"] : TOK["--chalk"], shape: pr && pr.shape, trail: pr && pr.shape === "plane" ? 1 : 0, sz: 0.1, hit: () => onHit(B, u, t) });
