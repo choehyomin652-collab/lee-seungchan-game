@@ -1228,14 +1228,16 @@ function drawSmite(z, dt) {
 }
 // ----- 4코스트 스킬 3D 연출 -----
 let ZGEO = null;
-const zgeo = () => ZGEO || (ZGEO = { bar: new THREE.BoxGeometry(1, 0.03, 1) });
+const zgeo = () => ZGEO || (ZGEO = { bar: new THREE.BoxGeometry(1, 0.03, 1), cube: new THREE.BoxGeometry(1, 1, 1), tri: new THREE.RingGeometry(0.9, 1, 3, 1), tube: new THREE.CylinderGeometry(1, 1, 1, 12, 1, true), cone: new THREE.CylinderGeometry(0.25, 1.6, 8, 20, 1, true) });
 // 박희찬: 발밑에 모이는 고리 + 대상까지 이어지는 조준선
 function drawFreekick(z, dt) {
   const k = Math.min(1, z.t / z.dur), x = worldX(z.X), y = worldZ(z.Y), tx = worldX(z.tgt.X), ty = worldZ(z.tgt.Y);
   const g = useMesh(z, () => {
     const grp = new THREE.Group(), ud = grp.userData;
-    ud.rings = ["#ffb43a", "#ffffff"].map((c) => { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2; grp.add(m); return m; });
-    ud.line = new THREE.Mesh(zgeo().bar, additive("#ffd36b")); grp.add(ud.line);
+    ud.rings = [z.kind === "snipe" ? "#ff5a4a" : "#ffb43a", "#ffffff"].map((c) => { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2; grp.add(m); return m; });
+    ud.line = new THREE.Mesh(zgeo().bar, additive(z.kind === "snipe" ? "#ff3a2a" : "#ffd36b")); grp.add(ud.line);
+    ud.cross = new THREE.Group(); grp.add(ud.cross);
+    if (z.kind === "snipe") for (let i = 0; i < 2; i++) { const b = new THREE.Mesh(zgeo().bar, additive("#ff5a4a")); b.scale.set(1.5, 1, 0.06); b.rotation.y = i * Math.PI / 2; ud.cross.add(b); }
     ud.mark = new THREE.Mesh(GEO.ringFx, additive("#ff5a2a")); ud.mark.rotation.x = -Math.PI / 2; grp.add(ud.mark);
     return grp;
   });
@@ -1245,6 +1247,92 @@ function drawFreekick(z, dt) {
   ud.line.position.set(x + dx / 2, 0, y + dy / 2); ud.line.rotation.y = -Math.atan2(dy, dx);
   ud.line.scale.set(len * k, 1, 0.05 + 0.1 * (1 - k)); ud.line.material.opacity = 0.35 + 0.5 * k;
   ud.mark.position.set(tx, 0, ty); ud.mark.scale.setScalar(1.3 - k * 0.7); ud.mark.material.opacity = k;
+  ud.cross.position.set(tx, 0, ty); ud.cross.rotation.y += dt * 4; ud.cross.scale.setScalar(1.6 - k * 0.8); ud.cross.children.forEach((b) => (b.material.opacity = k));
+}
+// ----- 3코스트 스킬 3D 연출 -----
+const glowTex = (sym, key, inner, outer, color = "#ffffff") => textTex(key + sym, 128, 128, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, inner); gr.addColorStop(1, outer);
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.fillStyle = color; g.textAlign = "center"; g.textBaseline = "middle"; g.font = "bold 80px serif"; g.fillText(sym, w / 2, h / 2 + 4);
+});
+// 김민기: 거대한 연필이 줄을 세 번 그어요
+function drawScribble(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.lines = [-0.55, 0.55, 0].map((a, i) => { const piv = new THREE.Group(); piv.rotation.y = a; piv.position.z = (i - 1) * 0.5; grp.add(piv); const m = new THREE.Mesh(zgeo().bar, additive(i % 2 ? "#ffffff" : "#ffe66b")); piv.add(m); return m; });
+    const pen = (ud.pen = new THREE.Group()); grp.add(pen);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.2, 6), new THREE.MeshStandardMaterial({ color: lin(0xf5c518), roughness: 0.5 })); body.position.y = 1.5; pen.add(body);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.4, 6), new THREE.MeshStandardMaterial({ color: lin(0x5a3e2a), roughness: 0.7 })); tip.rotation.x = Math.PI; tip.position.y = 0.2; pen.add(tip);
+    const er = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.25, 8), new THREE.MeshStandardMaterial({ color: lin(0xff8aa8), roughness: 0.6 })); er.position.y = 2.72; pen.add(er);
+    pen.rotation.z = -0.45;
+    return grp;
+  });
+  const ud = g.userData, LEN = 3.4, fade = Math.max(0, Math.min(1, (z.dur - z.t) / 0.2));
+  g.position.set(worldX(z.X), 0.27, worldZ(z.Y));
+  let cur = -1, cp = 0;
+  ud.lines.forEach((m, i) => {
+    const p = Math.max(0, Math.min(1, (z.t - (SCRIB_AT[i] - 0.15)) / 0.15)), len = LEN * p;
+    m.scale.set(Math.max(0.001, len), 1, 0.12); m.position.x = -LEN / 2 + len / 2; m.material.opacity = fade * (p > 0 ? 1 : 0);
+    if (p > 0 && p < 1) { cur = i; cp = p; }
+  });
+  ud.pen.visible = cur >= 0;
+  if (cur >= 0) { const piv = ud.lines[cur].parent, x = -LEN / 2 + LEN * cp; ud.pen.position.set(Math.cos(piv.rotation.y) * x, 0, piv.position.z - Math.sin(piv.rotation.y) * x); }
+}
+// 임시온: 앞에 골대가 쿵 내려와요
+function drawGoal(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    const white = (ud.mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true }));
+    const bar = (w, h, x, y) => { const m = new THREE.Mesh(zgeo().cube, white); m.scale.set(w, h, 0.1); m.position.set(x, y, 0); grp.add(m); };
+    bar(0.14, 2.5, -1.75, 1.25); bar(0.14, 2.5, 1.75, 1.25); bar(3.64, 0.14, 0, 2.5);
+    const net = textTex("goalnet", 256, 128, (c, w, h) => { c.clearRect(0, 0, w, h); c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = 2; for (let x = 0; x <= w; x += 16) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); } for (let y = 0; y <= h; y += 16) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); } });
+    ud.net = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.45), new THREE.MeshBasicMaterial({ map: net, transparent: true, side: THREE.DoubleSide, depthWrite: false })); ud.net.position.y = 1.25; grp.add(ud.net);
+    ud.wall = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.45), additive("#4fa8ff")); ud.wall.position.set(0, 1.25, 0.02); grp.add(ud.wall);
+    ud.ring = new THREE.Mesh(GEO.ringFx, additive("#7fc4ff")); ud.ring.rotation.x = -Math.PI / 2; grp.add(ud.ring);
+    return grp;
+  });
+  const ud = g.userData, t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.3));
+  const x = worldX(z.X), y = worldZ(z.Y), fy = worldZ(z.Y + (z.team ? 0.6 : -0.6)) - y; // 적 쪽으로 한 발 앞
+  const fall = Math.min(1, t / 0.16), drop = (1 - fall) * (1 - fall) * 5 + (fall >= 1 ? Math.abs(Math.sin((t - 0.16) * 14)) * 0.25 * Math.max(0, 1 - (t - 0.16) / 0.35) : 0);
+  g.position.set(x, 0.2 + drop, y + fy);
+  ud.mat.opacity = fade; ud.net.material.opacity = 0.75 * fade; ud.wall.material.opacity = (0.3 + Math.sin(t * 16) * 0.08) * fade;
+  ud.ring.position.set(0, 0.06 - drop, -fy); ud.ring.scale.setScalar(1.4 + Math.sin(t * 8) * 0.12); ud.ring.material.opacity = 0.8 * fade;
+}
+// 김예균: 마법진과 소환 빛기둥
+function drawSummon(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.circle = new THREE.Group(); grp.add(ud.circle);
+    const flat = (geo, col, s) => { const m = new THREE.Mesh(geo, additive(col)); m.rotation.x = -Math.PI / 2; m.scale.setScalar(s); ud.circle.add(m); return m; };
+    flat(GEO.ringFx, "#7ff0e0", 1.9); flat(GEO.ringFx, "#ffffff", 1.5);
+    const tri = zgeo().tri; ud.tri = [flat(tri, "#2fd0c0", 1.75), flat(tri, "#7ff0e0", 1.75)]; ud.tri[1].rotation.z = Math.PI;
+    ud.beams = z.spots.map(() => { const b = new THREE.Mesh(zgeo().tube, additive("#7ff0e0")); grp.add(b); return b; });
+    return grp;
+  });
+  const ud = g.userData, t = z.t, x = worldX(z.X), y = worldZ(z.Y), fade = Math.max(0, Math.min(1, (z.dur - t) / 0.35)), grow = Math.min(1, t / 0.2);
+  g.position.set(x, 0, y);
+  ud.circle.position.y = 0.26; ud.circle.scale.setScalar(Math.max(0.01, grow)); ud.circle.rotation.y += dt * 2.2;
+  ud.circle.children.forEach((m, i) => (m.material.opacity = fade * (i === 1 ? 0.6 : 0.9)));
+  ud.tri[1].rotation.z -= dt * 4.4;
+  ud.beams.forEach((b, i) => { const s = z.spots[i], q = Math.max(0, 1 - t / 0.8); b.position.set(worldX(s.X) - x, 4, worldZ(s.Y) - y); b.scale.set(0.08 + 0.2 * q, 8, 0.08 + 0.2 * q); b.material.opacity = 0.4 * q; });
+}
+// 박현호: 무대 조명과 아군 머리 위로 올라가는 음표
+function drawCheer(z, dt) {
+  const t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.4)), x = worldX(z.X), y = worldZ(z.Y);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.spot = new THREE.Mesh(zgeo().cone, additive("#ffe9a0")); ud.spot.position.y = 4; grp.add(ud.spot);
+    ud.notes = z.allies.map((o, i) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(i % 2 ? "♪" : "♫", "note", "rgba(255,214,90,.9)", "rgba(255,160,60,0)", "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
+    return grp;
+  });
+  const ud = g.userData; g.position.set(0, 0, 0);
+  ud.spot.position.set(x, 4, y); ud.spot.material.opacity = (0.2 + Math.sin(t * 12) * 0.05) * fade; ud.spot.rotation.y += dt;
+  ud.notes.forEach((sp, i) => {
+    const o = z.allies[i], a = t * 5 + i * 1.7;
+    sp.visible = o.alive; sp.position.set(worldX(o.X) + Math.cos(a) * 0.45, 1.6 + ((t * 1.4 + i * 0.37) % 1.6), worldZ(o.Y) + Math.sin(a) * 0.45);
+    sp.scale.setScalar(0.85 + Math.sin(t * 9 + i) * 0.12); sp.material.opacity = fade;
+  });
 }
 // 진성욱: 내리찍은 자리에 갈라진 땅과 퍼지는 충격파
 function drawSlam(z, dt) {
@@ -1294,7 +1382,7 @@ function drawMathRain(z, dt) {
     ud.ring.position.y = 0.26; ud.ring.scale.setScalar((1.5 - p) * big); ud.ring.material.opacity = p;
   });
 }
-const ZDRAW = { smite: drawSmite, freekick: drawFreekick, slam: drawSlam, mathrain: drawMathRain };
+const ZDRAW = { smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
