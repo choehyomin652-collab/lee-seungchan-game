@@ -131,6 +131,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .mini { top: calc(env(safe-area-inset-top, 0px) + var(--u) * .8); left: max(calc(var(--u) * 1.2), env(safe-area-inset-left, 0px)); }
 .gearbtn { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); border-radius: 50%; display: grid; place-items: center; padding: 0; font-size: calc(var(--u) * 2.4); }
 .menu { position: absolute; top: calc(100% + var(--u) * .6); left: 0; display: flex; flex-direction: column; gap: calc(var(--u) * .5); padding: calc(var(--u) * .7); border-radius: var(--u); background: rgba(12, 16, 18, .92); border: 1px solid rgba(214, 178, 106, .4); }
+.menu .menubtn { display: block; cursor: pointer; color: #f3f1ea; font-family: var(--display); font-size: calc(var(--u) * 1.6); padding: calc(var(--u) * .7) calc(var(--u) * 1.4); border-radius: calc(var(--u) * .8); border: 1px solid rgba(214, 178, 106, .55); background: linear-gradient(180deg, rgba(46, 56, 62, .92), rgba(18, 24, 28, .94)); white-space: nowrap; }
 .menu button { border-radius: calc(var(--u) * .8); font-size: calc(var(--u) * 1.6); padding: calc(var(--u) * .7) calc(var(--u) * 1.4); white-space: nowrap; text-align: left; box-shadow: none; }
 .traits { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 6.4) !important; }
 .info {
@@ -189,7 +190,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 <body>
 <div id="game">
   <canvas id="gl"></canvas><canvas id="cv"></canvas>
-  <div class="hud mini"><button class="gearbtn" id="gear" aria-label="설정" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button><div class="menu" id="menu" hidden><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button><button id="qual">화질 높음</button></div></div>
+  <div class="hud mini"><button class="gearbtn" id="gear" aria-label="설정" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button><div class="menu" id="menu" hidden><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button><button id="qual">화질 높음</button><label class="menubtn" for="bgfile">배경 사진 넣기</label><input type="file" id="bgfile" accept="image/*" hidden><button id="bgclear">배경 사진 빼기</button></div></div>
   <div class="hud topbar">
     <div class="pill"><span id="stage">1-1</span><span class="track" id="track"></span><span class="rtype" id="rtype">급식 줄</span></div>
     <div class="timer"><i id="timerfill"></i></div>
@@ -1182,7 +1183,49 @@ function noiseTex(size, base, specks, repeat) {
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); return t;
 }
+let OUT = null, PLATFORM = null, SKY = null, BACKDROP = null;
+// 배경 사진: 이 기기의 브라우저에만 저장돼요 (게임 파일에는 들어가지 않음)
+function loadBackdrop() {
+  let url = null; try { url = localStorage.getItem("uri-backdrop"); } catch (e) {}
+  if (!url) return applyBackdrop(null);
+  const img = new Image(); img.onload = () => applyBackdrop(img); img.onerror = () => applyBackdrop(null); img.src = url;
+}
+function applyBackdrop(img) {
+  BACKDROP = img;
+  const on = !!img;
+  if (OUT) OUT.visible = !on;
+  if (PLATFORM) PLATFORM.visible = on;
+  if (pollen) pollen.visible = !on;
+  scene.fog = on ? null : new THREE.Fog(lin(0xe2bf9c), 40, 95);
+  if (!on) { scene.background = SKY; return; }
+  // 화면 비율에 맞게 가운데를 잘라서 꽉 채워요
+  const cw = 1600, ch = Math.round(cw * (H || 800) / (W || 1200));
+  const t = canvasTex(cw, ch, (g, w, h) => {
+    const k = Math.max(w / img.width, h / img.height), dw = img.width * k, dh = img.height * k;
+    g.fillStyle = "#000"; g.fillRect(0, 0, w, h); g.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  });
+  if (scene.background && scene.background !== SKY && scene.background.dispose) scene.background.dispose();
+  scene.background = t;
+}
+function pickBackdrop(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const url = c.toDataURL("image/jpeg", 0.85);
+      try { localStorage.setItem("uri-backdrop", url); } catch (e) { toast("사진이 너무 커서 저장은 못 했어요. 이번 판에만 보여요"); }
+      const im2 = new Image(); im2.onload = () => { applyBackdrop(im2); toast("배경 사진을 넣었어요"); }; im2.src = url;
+    };
+    img.src = r.result;
+  };
+  r.readAsDataURL(file);
+}
 function buildWorld() {
+  OUT = new THREE.Group(); scene.add(OUT);
   // 하늘
   scene.background = canvasTex(64, 512, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h);
@@ -1193,12 +1236,12 @@ function buildWorld() {
   // 떠 있는 섬
   const grass = noiseTex(512, "#4f7a30", [["rgba(40,80,25,.35)", 500, 2, 7], ["rgba(150,180,80,.25)", 400, 1, 5], ["rgba(120,95,55,.18)", 40, 10, 30]], 10);
   const top = new THREE.Mesh(new THREE.CircleGeometry(24, 48), new THREE.MeshStandardMaterial({ map: grass, roughness: 0.95 }));
-  top.rotation.x = -Math.PI / 2; top.position.y = 0.0; top.receiveShadow = true; scene.add(top);
+  top.rotation.x = -Math.PI / 2; top.position.y = 0.0; top.receiveShadow = true; OUT.add(top);
   const rockMat = new THREE.MeshStandardMaterial({ color: lin(0x8a7a68), roughness: 0.95, flatShading: true });
   const cliff = new THREE.Mesh(new THREE.CylinderGeometry(24, 15, 10, 28, 3), rockMat);
   const cp = cliff.geometry.attributes.position;
   for (let i = 0; i < cp.count; i++) { const y = cp.getY(i); if (y < 4.9) { cp.setX(i, cp.getX(i) * (0.92 + Math.random() * 0.16)); cp.setZ(i, cp.getZ(i) * (0.92 + Math.random() * 0.16)); } }
-  cliff.geometry.computeVertexNormals(); cliff.position.y = -5.02; scene.add(cliff);
+  cliff.geometry.computeVertexNormals(); cliff.position.y = -5.02; OUT.add(cliff);
   // 경기장 바닥(흙길이 섞인 풀밭)
   const arena = canvasTex(1024, 1024, (g, w, h) => {
     g.fillStyle = "#5a8236"; g.fillRect(0, 0, w, h);
@@ -1211,7 +1254,7 @@ function buildWorld() {
   // 돌 테두리
   const stoneMat = new THREE.MeshStandardMaterial({ color: lin(0xb8ab92), roughness: 0.9, flatShading: true });
   const stoneGeo = new THREE.DodecahedronGeometry(0.6, 0);
-  const stone = (x, z, s, y = 0.15) => { const m = new THREE.Mesh(stoneGeo, stoneMat); m.position.set(x, y, z); m.scale.set(s * (0.8 + Math.random() * 0.5), s * (0.5 + Math.random() * 0.4), s * (0.8 + Math.random() * 0.5)); m.rotation.set(Math.random(), Math.random() * 3, Math.random()); m.castShadow = true; m.receiveShadow = true; scene.add(m); };
+  const stone = (x, z, s, y = 0.15, parent = scene) => { const m = new THREE.Mesh(stoneGeo, stoneMat); m.position.set(x, y, z); m.scale.set(s * (0.8 + Math.random() * 0.5), s * (0.5 + Math.random() * 0.4), s * (0.8 + Math.random() * 0.5)); m.rotation.set(Math.random(), Math.random() * 3, Math.random()); m.castShadow = true; m.receiveShadow = true; parent.add(m); };
   for (let z = -7.6; z <= 9.6; z += 0.95) { stone(-8.1 - Math.random() * 0.3, z, 0.9); stone(8.1 + Math.random() * 0.3, z, 0.9); }
   for (let x = -7.8; x <= 7.8; x += 0.95) stone(x, -7.9 - Math.random() * 0.3, 0.95);
   for (let x = -7.8; x <= 7.8; x += 1.1) stone(x, 9.4 + Math.random() * 0.2, 0.7, 0.1);
@@ -1221,21 +1264,21 @@ function buildWorld() {
   const leafC = new THREE.MeshStandardMaterial({ color: lin(0xb5763a), roughness: 0.9, flatShading: true });
   const bark = new THREE.MeshStandardMaterial({ color: lin(0x5a3e2a), roughness: 0.9 });
   const pine = (x, z, s) => {
-    const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s); scene.add(g);
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s); OUT.add(g);
     const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 1.2, 7), bark); tr.position.y = 0.6; tr.castShadow = true; g.add(tr);
     for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(1.3 - i * 0.3, 1.6, 8), leafA); c.position.y = 1.4 + i * 0.85; c.castShadow = true; g.add(c); }
   };
   const round = (x, z, s, mat) => {
-    const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s); scene.add(g);
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s); OUT.add(g);
     const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 1.4, 7), bark); tr.position.y = 0.7; tr.castShadow = true; g.add(tr);
     for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9 - i * 0.12, 1), mat); b.position.set((i - 1) * 0.5, 1.9 + (i % 2) * 0.4, (i % 2) * 0.3); b.castShadow = true; g.add(b); }
   };
   const spots = [[-12, -9], [-14, -3], [-12.5, 3], [-15, 8], [-11, 12], [12, -9], [14.5, -2], [12, 4], [15, 9], [11, 12.5], [-6, -12], [-1, -13.5], [5, -12.5], [9, -14], [-10, -14], [-18, 0], [18, 2], [-17, -10], [17, -8]];
   spots.forEach(([x, z], i) => { const s = 0.9 + Math.random() * 0.7; if (i % 3 === 0) pine(x, z, s * 1.2); else round(x, z, s * 1.1, i % 5 === 1 ? leafC : leafB); });
-  for (let i = 0; i < 22; i++) { const a = Math.random() * Math.PI * 2, r = 17 + Math.random() * 6; stone(Math.cos(a) * r, Math.sin(a) * r, 0.6 + Math.random() * 1.2, 0.1); }
+  for (let i = 0; i < 22; i++) { const a = Math.random() * Math.PI * 2, r = 17 + Math.random() * 6; stone(Math.cos(a) * r, Math.sin(a) * r, 0.6 + Math.random() * 1.2, 0.1, OUT); }
   // 멀리 떠 있는 작은 섬들
   for (const [x, y, z, s] of [[-34, -2, -30, 1.6], [30, 3, -36, 2.2], [-40, 6, 8, 1.3], [38, -4, 2, 1.5]]) {
-    const isl = new THREE.Group(); isl.position.set(x, y, z); isl.scale.setScalar(s); scene.add(isl);
+    const isl = new THREE.Group(); isl.position.set(x, y, z); isl.scale.setScalar(s); OUT.add(isl);
     const t = new THREE.Mesh(new THREE.CylinderGeometry(3, 0.5, 4, 9), rockMat); t.position.y = -2; isl.add(t);
     const gtop = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.3, 9), leafB); isl.add(gtop);
     const tr = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 1), leafA); tr.position.y = 1.4; isl.add(tr);
@@ -1399,7 +1442,7 @@ function buildDecor() {
     col.setHSL(0.24 + Math.random() * 0.06, 0.45 + Math.random() * 0.2, 0.22 + Math.random() * 0.14).convertSRGBToLinear();
     grass.setColorAt(n, col); n++;
   }
-  grass.receiveShadow = true; scene.add(grass);
+  grass.receiveShadow = true; OUT.add(grass);
   // 꽃
   const fl = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 6, 5), new THREE.MeshStandardMaterial({ roughness: 0.6 }), 500);
   const FC = [0xffffff, 0xffe066, 0xff9ac8, 0xb59aff];
@@ -1407,14 +1450,14 @@ function buildDecor() {
     let x, z; do { const a = Math.random() * Math.PI * 2, r = 9 + Math.random() * 14; x = Math.cos(a) * r; z = Math.sin(a) * r; } while (Math.abs(x) < 8.8 && z > -8.8 && z < 10.4);
     m4.makeTranslation(x, 0.22 + Math.random() * 0.15, z); fl.setMatrixAt(i, m4); fl.setColorAt(i, col.setHex(rnd(FC)).convertSRGBToLinear());
   }
-  scene.add(fl);
+  OUT.add(fl);
   // 구름
   const cloudTex = softTex("rgba(255,255,255,.95)", "rgba(255,255,255,0)");
   for (let i = 0; i < 26; i++) {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, color: lin(i % 3 ? 0xfff1e6 : 0xf3d6e6), transparent: true, opacity: 0.75, depthWrite: false }));
     const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 26;
     sp.position.set(Math.cos(a) * r, -10 + Math.random() * 14, Math.sin(a) * r - 6);
-    const w = 14 + Math.random() * 18; sp.scale.set(w, w * 0.45, 1); scene.add(sp);
+    const w = 14 + Math.random() * 18; sp.scale.set(w, w * 0.45, 1); OUT.add(sp);
   }
   // 떠다니는 꽃가루
   const P = HQ ? 260 : 120, pos = new Float32Array(P * 3);
@@ -1454,6 +1497,10 @@ function init3D() {
   scene.add(sun);
   const fill = new THREE.DirectionalLight(0xcfe0ff, 0.35); fill.position.set(10, 10, 16); scene.add(fill);
   buildWorld(); buildArena(); buildDecor(); setupPost();
+  PLATFORM = new THREE.Mesh(new THREE.BoxGeometry(18.4, 3, 20.2), new THREE.MeshStandardMaterial({ color: lin(0x8a7a68), roughness: 0.95, flatShading: true }));
+  PLATFORM.position.set(0, -1.52, 0.9); PLATFORM.receiveShadow = true; PLATFORM.visible = false; scene.add(PLATFORM);
+  SKY = scene.background;
+  loadBackdrop();
   // 캐릭터 부품
   const torsoPts = [[0, 0], [0.25, 0], [0.27, 0.12], [0.27, 0.3], [0.29, 0.42], [0.25, 0.5], [0.12, 0.56], [0, 0.565]].map(([x, y]) => new THREE.Vector2(x, y));
   Object.assign(GEO, {
@@ -1711,6 +1758,7 @@ function resize() {
     renderer.setSize(W, H, false); gl.style.width = W + "px"; gl.style.height = H + "px";
     if (composer) { composer.setPixelRatio(pr); composer.setSize(W, H); }
     camera.aspect = W / H; camera.updateProjectionMatrix(); fitCamera();
+    if (BACKDROP) applyBackdrop(BACKDROP);
   }
 }
 const IT = { x0: 12, y0: 300, s: 40, cols: 3 };
@@ -2278,6 +2326,8 @@ $("reroll").onclick = () => { const P = human(); if (!shopOpen()) return; if (!r
 $("buyxp").onclick = () => { const P = human(); if (!shopOpen()) return; if (!buyXp(P)) return toast("골드가 부족해요"); sfx("place"); renderUI(); };
 $("lock").onclick = () => { const P = human(); P.locked = !P.locked; sfx("place"); toast(P.locked ? "상점 잠금: 다음 라운드에도 이 상점이 유지돼요" : "상점 잠금 해제"); renderUI(); };
 $("ready").onclick = () => startCombat();
+$("bgfile").onchange = (e) => { pickBackdrop(e.target.files && e.target.files[0]); e.target.value = ""; $("menu").hidden = true; };
+$("bgclear").onclick = () => { try { localStorage.removeItem("uri-backdrop"); } catch (e) {} applyBackdrop(null); toast("원래 배경으로 돌아왔어요"); $("menu").hidden = true; };
 $("gear").onclick = (e) => { e.stopPropagation(); const m = $("menu"); m.hidden = !m.hidden; $("gear").setAttribute("aria-expanded", String(!m.hidden)); };
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest || !e.target.closest(".mini")) { $("menu").hidden = true; $("gear").setAttribute("aria-expanded", "false"); } });
 $("qual").onclick = () => { HQ = !HQ; try { localStorage.setItem("uri-hq", HQ ? "1" : "0"); } catch (e) {} resize(); renderUI(); toast(HQ ? "화질 높음: 빛 번짐·고해상도" : "화질 보통: 더 부드럽게 움직여요"); };
