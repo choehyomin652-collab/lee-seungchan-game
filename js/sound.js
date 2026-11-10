@@ -27,6 +27,7 @@ function sfx(name) {
     case "start": tone(392, 0.1, "square", 0.03); tone(587, 0.15, "square", 0.03, null, 0.1); break;
     case "win": [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.05, null, i * 0.1)); break;
     case "lose": [392, 330, 262].forEach((f, i) => tone(f, 0.25, "triangle", 0.05, null, i * 0.14)); break;
+    case "kick": tone(220, 0.08, "square", 0.06, 90); tone(900, 0.18, "sawtooth", 0.02, 300, 0.03); break;
     case "charge": tone(80, 0.7, "sawtooth", 0.04, 640); tone(1200, 0.5, "square", 0.012, 3000, 0.15); break;
     case "thunder": { // 지지직 + 우르릉 (잡음)
       const len = 0.6, buf = AC.createBuffer(1, AC.sampleRate * len, AC.sampleRate), d = buf.getChannelData(0);

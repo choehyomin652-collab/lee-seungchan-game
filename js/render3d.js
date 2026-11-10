@@ -1142,6 +1142,75 @@ function drawSmite(z, dt) {
     ud2.ring.scale.setScalar((s.big ? 1 : 0.5) + k * (s.big ? 8 : 5)); ud2.ring.material.opacity = q;
   }
 }
+// ----- 4코스트 스킬 3D 연출 -----
+let ZGEO = null;
+const zgeo = () => ZGEO || (ZGEO = { bar: new THREE.BoxGeometry(1, 0.03, 1) });
+// 박희찬: 발밑에 모이는 고리 + 대상까지 이어지는 조준선
+function drawFreekick(z, dt) {
+  const k = Math.min(1, z.t / z.dur), x = worldX(z.X), y = worldZ(z.Y), tx = worldX(z.tgt.X), ty = worldZ(z.tgt.Y);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.rings = ["#ffb43a", "#ffffff"].map((c) => { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2; grp.add(m); return m; });
+    ud.line = new THREE.Mesh(zgeo().bar, additive("#ffd36b")); grp.add(ud.line);
+    ud.mark = new THREE.Mesh(GEO.ringFx, additive("#ff5a2a")); ud.mark.rotation.x = -Math.PI / 2; grp.add(ud.mark);
+    return grp;
+  });
+  const ud = g.userData; g.position.set(0, 0.26, 0);
+  ud.rings.forEach((r, i) => { r.position.set(x, 0, y); r.scale.setScalar(1.6 - k * (1.1 - i * 0.3)); r.material.opacity = 0.4 + k * 0.6; r.rotation.z += dt * (i ? -9 : 7); });
+  const dx = tx - x, dy = ty - y, len = Math.hypot(dx, dy);
+  ud.line.position.set(x + dx / 2, 0, y + dy / 2); ud.line.rotation.y = -Math.atan2(dy, dx);
+  ud.line.scale.set(len * k, 1, 0.05 + 0.1 * (1 - k)); ud.line.material.opacity = 0.35 + 0.5 * k;
+  ud.mark.position.set(tx, 0, ty); ud.mark.scale.setScalar(1.3 - k * 0.7); ud.mark.material.opacity = k;
+}
+// 진성욱: 내리찍은 자리에 갈라진 땅과 퍼지는 충격파
+function drawSlam(z, dt) {
+  const k = z.t - SLAM_AT; if (k < 0) return;
+  const life = z.dur - SLAM_AT, q = Math.max(0, 1 - k / life);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData; ud.cracks = []; ud.rings = [];
+    for (let i = 0; i < 9; i++) {
+      const piv = new THREE.Group(); piv.rotation.y = (i / 9) * Math.PI * 2 + Math.random() * 0.4; grp.add(piv);
+      const c = new THREE.Mesh(zgeo().bar, additive(i % 2 ? "#ff5a2a" : "#ffd36b")); c.userData.len = 1.6 + Math.random() * 1.4; piv.add(c); ud.cracks.push(c);
+    }
+    for (const c of ["#ffffff", "#ff8a3a", "#ff3a2a"]) { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2; grp.add(m); ud.rings.push(m); }
+    ud.dome = new THREE.Mesh(GEO.ball, additive("#ffb43a")); grp.add(ud.dome);
+    return grp;
+  });
+  const ud = g.userData, grow = Math.min(1, k / 0.12);
+  g.position.set(worldX(z.X), 0.25, worldZ(z.Y));
+  ud.cracks.forEach((c) => { const len = c.userData.len * grow; c.scale.set(len, 1, 0.09 * (0.4 + q)); c.position.x = len / 2 + 0.3; c.material.opacity = q; });
+  ud.rings.forEach((r, i) => { r.scale.setScalar(0.4 + k * (5.5 - i * 1.3)); r.material.opacity = q * (i ? 0.7 : 1); });
+  ud.dome.scale.set(1 + grow * 12, Math.max(0.01, (1 - Math.min(1, k / 0.3)) * 8), 1 + grow * 12); ud.dome.material.opacity = Math.max(0, 0.5 - k * 1.8);
+}
+// 박준서: 빛나는 수학 기호가 비스듬히 떨어져요
+function symTex(sym) {
+  return textTex("sym" + sym, 128, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(200,107,255,.95)"); gr.addColorStop(0.55, "rgba(120,60,220,.55)"); gr.addColorStop(1, "rgba(120,60,220,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#ffffff"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = "bold 78px serif"; g.fillText(sym, w / 2, h / 2 + 4);
+  });
+}
+function drawMathRain(z, dt) {
+  const FALL = 0.4;
+  z.drops.forEach((d, i) => {
+    const k = z.t - d.at; if (k < -FALL || k >= 0) return;
+    const p = 1 + k / FALL, x = worldX(d.X), y = worldZ(d.Y), big = i === z.drops.length - 1 ? 1.5 : 1;
+    const g = useMesh(d, () => {
+      const grp = new THREE.Group(), ud = grp.userData;
+      ud.sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: symTex(d.sym), transparent: true, depthWrite: false })); grp.add(ud.sp);
+      ud.tail = new THREE.Mesh(zgeo().bar, additive("#c86bff")); grp.add(ud.tail);
+      ud.ring = new THREE.Mesh(GEO.ringFx, additive("#e39cff")); ud.ring.rotation.x = -Math.PI / 2; grp.add(ud.ring);
+      return grp;
+    });
+    const ud = g.userData, hgt = 1 + (1 - p) * 10, off = (1 - p) * 3;
+    g.position.set(x, 0, y);
+    ud.sp.position.set(off, hgt, -off * 0.4); ud.sp.scale.setScalar(2.7 * big * (0.8 + Math.sin(clock3d * 30 + i) * 0.08));
+    ud.tail.position.set(off * 1.12, hgt + 1.1, -off * 0.45); ud.tail.rotation.z = Math.PI / 2 - 0.29; ud.tail.scale.set(2.6, 4, 0.22 * big); ud.tail.material.opacity = 0.7;
+    ud.ring.position.y = 0.26; ud.ring.scale.setScalar((1.5 - p) * big); ud.ring.material.opacity = p;
+  });
+}
+const ZDRAW = { smite: drawSmite, freekick: drawFreekick, slam: drawSlam, mathrain: drawMathRain };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -1169,10 +1238,17 @@ function render3D(dt) {
       m.position.set(worldX(p.X), 1.05, worldZ(p.Y));
       m.lookAt(worldX(p.t.X), 1.05, worldZ(p.t.Y));
       if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
+      if (p.fire) { // 무회전 불공: 좌우로 흔들리며 불꽃 꼬리를 남겨요
+        m.scale.setScalar(1.7); m.position.x += Math.sin(clock3d * 45) * 0.12; m.position.y += Math.sin(clock3d * 31) * 0.1;
+        if ((p.fxT = (p.fxT || 0) - dt) <= 0) {
+          p.fxT = 0.035; p.fxN = (p.fxN || 0) + 1;
+          B.fx.push({ X: p.X, Y: p.Y, r: 0.5, col: p.fxN % 2 ? "#ffb43a" : "#ff5a2a", t: 0.3, t0: 0.3 }, { kind: "spark", X: p.X, Y: p.Y, col: "#ffe9a0", t: 0.3, t0: 0.3 });
+        }
+      }
     }
     B.fx = drawFx(B.fx, dt);
     for (const z of B.zones) {
-      if (z.kind === "smite") { drawSmite(z, dt); continue; }
+      if (ZDRAW[z.kind]) { ZDRAW[z.kind](z, dt); continue; }
       const g = useMesh(z, () => {
         const grp = new THREE.Group();
         const core = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x000000 })); core.scale.setScalar(4.5); grp.add(core);
@@ -1286,8 +1362,17 @@ function drawOverlay(dt, R) {
   const B = S.battle;
   if (B && (S.phase === "combat" || S.phase === "result")) {
     for (const f of B.floats) {
-      f.t -= dt; f.h += dt * 1.3;
+      f.t -= dt; f.h += dt * (f.huge ? 0.5 : 1.3);
       const [x, y] = proj(worldX(f.X), f.h, worldZ(f.Y));
+      if (f.huge) { // 스킬 연출용 큰 글자: 쾅 하고 커졌다가 사라져요
+        const q = Math.min(1, (f.t0 - f.t) / 0.12), sc = 1 + (1 - q) * 1.4, px = u0 * f.huge;
+        ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); ctx.rotate(-0.08); ctx.globalAlpha = Math.max(0, Math.min(1, f.t * 3)) * q;
+        ctx.font = font(px); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowColor = f.col2; ctx.shadowBlur = 24; ctx.lineWidth = Math.max(3, px * 0.1); ctx.strokeStyle = "rgba(20,10,0,.85)"; ctx.strokeText(f.text, 0, 0);
+        const gr = ctx.createLinearGradient(0, -px / 2, 0, px / 2); gr.addColorStop(0, f.col); gr.addColorStop(1, f.col2);
+        ctx.fillStyle = gr; ctx.fillText(f.text, 0, 0); ctx.restore();
+        continue;
+      }
       ctx.globalAlpha = Math.max(0, Math.min(1, f.t * 2));
       ctx.fillStyle = f.col; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.font = font(u0 * (f.big ? 1.25 : 1)); ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3;

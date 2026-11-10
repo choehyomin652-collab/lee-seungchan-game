@@ -72,6 +72,8 @@ function nextStep(B, u, t) {
   return null;
 }
 function addFloat(B, t, text, col, big) { if (B.visual) B.floats.push({ X: t.X, Y: t.Y, h: 2.1, text, col, t: 0.9, big }); }
+// 화면에 크게 뜨는 글자 (스킬 연출용)
+function addHuge(B, t, text, c1, c2, size = 3.2) { if (B.visual) B.floats.push({ X: t.X, Y: t.Y, h: 2.6, text, col: c1, col2: c2, t: 0.9, t0: 0.9, huge: size }); }
 function addFx(B, X, Y, r, col, dur = 0.5) { if (B.visual) B.fx.push({ X, Y, r, col, t: dur, t0: dur }); }
 function dealDamage(B, src, t, amt, kind) {
   if (!t.alive) return 0;
