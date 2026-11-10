@@ -1,0 +1,187 @@
+// ============================================================
+//  battle.js — 전투 계산 (능력치 · 이동 · 공격 · 스킬 · 피해)
+// ============================================================
+"use strict";
+// =============== 전투 엔진 ===============
+function makeFighter(spec, team, r, c, cnt, buff) {
+  const f = { team, r, c, X: c + (r & 1) * 0.5, Y: r, alive: true, shield: 0, mana: 0, crit: 0, amp: 1, mgain: 1,
+    asStack: 0, atkCd: 0.25 + Math.random() * 0.3, moveCd: 0, sec: 0, tgt: null, flash: 0, lunge: 0, lx: 0, ly: 0, deadT: 0, items: [], star: 1 };
+  if (spec.mon) {
+    const m = spec.mon;
+    Object.assign(f, { mon: m, d: -1, maxHp: m.hp, ad: m.ad, as0: m.as, rg: m.rg, ar: m.ar, mm: Infinity });
+    f.hp = f.maxHp; return f;
+  }
+  const def = DEFS[spec.d], cl = CLASS[def.k], cf = 1 + (def.c - 1) * 0.22, sm = STARM[spec.star];
+  Object.assign(f, { d: spec.d, star: spec.star, items: spec.items.slice(), maxHp: cl.hp * cf * sm, ad: cl.ad * cf * sm,
+    as0: cl.as, rg: cl.rg, ar: cl.ar, mm: cl.mm, power: cf * sm });
+  const L = (t) => traitLvl(t, cnt[t] || 0), has = (t) => (def.t.includes(t) ? L(t) : 0);
+  f.maxHp *= [1, 1.2, 1.45, 1.8][has("운동광")];
+  if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.8][has("지는 거 못 참음")]; f.crit = 0.2; }
+  f.amp = [1, 1.3, 1.7, 2.1][has("공부는 잘함")];
+  f.as0 *= [1, 1.25, 1.5][has("축구부")];
+  if (has("수학왕")) f.mgain = 1.6;
+  if (has("프로게이머")) f.as0 *= 1.3;
+  if (has("전교 1등")) f.amp += 0.4;
+  if (L("반장") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
+  f.shield += [0, 150, 350][L("다 퍼줌")];
+  const st = {};
+  for (const id of f.items) for (const [k, v] of Object.entries(ITEMS[id].st)) st[k] = (st[k] || 0) + v;
+  f.ad *= 1 + (st.adPct || 0); f.as0 *= 1 + (st.asPct || 0);
+  f.maxHp = (f.maxHp + (st.hp || 0)) * (1 + (st.hpPct || 0));
+  f.ar = Math.min(0.75, f.ar + (st.ar || 0)); f.amp += st.amp || 0; f.mana += st.mana || 0;
+  f.crit += st.crit || 0; f.mgain *= 1 + (st.mgainPct || 0);
+  for (const k of ["stackAs", "lifesteal", "splash", "skillCrit", "manaOnHit", "lowHpAs", "thorns", "manaTick", "lowShield", "regen", "teamShield", "castShield", "castHeal", "refund"]) f[k] = st[k] || 0;
+  if (buff) { f.as0 *= 1 + buff.as; f.ar = Math.min(0.75, f.ar + buff.ar); f.ad *= 1 + buff.ad; f.maxHp *= 1 + buff.hp; }
+  f.hp = f.maxHp; f.mana = Math.min(f.mana, f.mm - 1);
+  return f;
+}
+function teamCounts(side, P) {
+  const c = traitCounts(side.filter((x) => !x.spec.mon).map((x) => x.spec.d));
+  if (P && side.length) for (const [t, n] of Object.entries(P.emb)) c[t] = (c[t] || 0) + n;
+  return c;
+}
+function makeBattle(sideA, sideB, visual, PA, PB) {
+  const cA = teamCounts(sideA, PA), cB = teamCounts(sideB, PB);
+  const f = [];
+  sideA.forEach((x) => f.push(makeFighter(x.spec, 0, 4 + x.lr, x.c, cA, PA && PA.buff)));
+  sideB.forEach((x) => f.push(makeFighter(x.spec, 1, 3 - x.lr, COLS - 1 - x.c, cB, PB && PB.buff)));
+  for (const team of [0, 1]) combineRobot(f, team, visual);
+  for (const u of f) if (u.teamShield) for (const o of f) if (o !== u && o.team === u.team && hexDist(u, o) <= 1) o.shield += u.teamShield;
+  return { f, projs: [], fx: [], floats: [], t: 0, done: false, win: null, visual };
+}
+function runBattle(B) { let n = 0; while (!B.done && n++ < 4000) stepBattle(B, 1 / 20); }
+const speedOf = (u) => Math.min(4, u.as0 * (1 + u.asStack + (u.asBuffT > 0 ? u.asBuff : 0) + (u.lowHpAs && u.hp < u.maxHp * 0.5 ? u.lowHpAs : 0)));
+function nearest(B, u) {
+  let best = null, bd = 1e9;
+  for (const o of B.f) if (o.alive && o.team !== u.team) { const d = hexDist(u, o) + Math.random() * 0.1; if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+function nextStep(B, u, t) {
+  const occ = new Set(B.f.filter((o) => o.alive && o !== u).map((o) => o.r * COLS + o.c));
+  const start = u.r * COLS + u.c, first = new Map([[start, -1]]), q = [[u.r, u.c]];
+  while (q.length) {
+    const [r, c] = q.shift(), key0 = r * COLS + c;
+    if (key0 !== start && hexDistRC(r, c, t.r, t.c) <= u.rg) { const f = first.get(key0); return [Math.floor(f / COLS), f % COLS]; }
+    for (const [nr, nc] of neighbors(r, c)) {
+      const key = nr * COLS + nc;
+      if (first.has(key) || occ.has(key)) continue;
+      const fk = first.get(key0); first.set(key, fk === -1 ? key : fk);
+      q.push([nr, nc]);
+    }
+  }
+  return null;
+}
+function addFloat(B, t, text, col, big) { if (B.visual) B.floats.push({ X: t.X, Y: t.Y, h: 2.1, text, col, t: 0.9, big }); }
+function addFx(B, X, Y, r, col, dur = 0.5) { if (B.visual) B.fx.push({ X, Y, r, col, t: dur, t0: dur }); }
+function dealDamage(B, src, t, amt, kind) {
+  if (!t.alive) return 0;
+  let crit = false;
+  if (kind === "skill") amt *= src.amp;
+  if ((kind === "atk" || (kind === "skill" && src.skillCrit)) && Math.random() < src.crit) { amt *= 1.5; crit = true; }
+  amt = Math.max(1, Math.round(amt * (1 - t.ar) * (t.vulnT > 0 ? 1 + t.vuln : 1)));
+  const abs = Math.min(t.shield, amt); t.shield -= abs; t.hp -= amt - abs; t.flash = 0.12;
+  if (src && !src.mon) src.dmg = (src.dmg || 0) + amt;
+  if (t.mm !== Infinity && kind !== "thorn") t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
+  if (t.lowShield && !t.lsUsed && t.hp > 0 && t.hp < t.maxHp * 0.4) { t.lsUsed = 1; t.shield += t.lowShield; addFx(B, t.X, t.Y, 0.7, TOK["--c3"]); }
+  if (B.visual && kind !== "thorn" && kind !== "splash") B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : "#ffe9c0", t: 0.3, t0: 0.3 });
+  addFloat(B, t, String(amt), crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : TOK["--chalk"], crit || kind === "skill");
+  if (t.hp <= 0) { t.alive = false; t.hp = 0; t.deadT = 0.45; }
+  return amt;
+}
+function heal(B, t, amt) {
+  if (!t.alive) return;
+  amt = Math.round(Math.min(amt, t.maxHp - t.hp)); if (amt <= 0) return;
+  t.hp += amt;
+  if (amt >= 8) addFloat(B, t, "+" + amt, TOK["--c2"], false);
+}
+function gainMana(B, u, n) {
+  if (u.mm === Infinity || !u.alive) return;
+  u.mana += n * u.mgain;
+  if (u.mana >= u.mm) { u.mana = u.refund || 0; cast(B, u); }
+}
+function onHit(B, u, t) {
+  if (!t.alive) return;
+  const dealt = dealDamage(B, u, t, u.ad, "atk");
+  if (u.lifesteal) heal(B, u, dealt * u.lifesteal);
+  if (u.stackAs) u.asStack = Math.min(2, u.asStack + u.stackAs);
+  if (u.splash) for (const o of B.f) if (o.alive && o.team !== u.team && o !== t && hexDist(o, t) === 1) dealDamage(B, u, o, u.ad * u.splash, "splash");
+  if (u.rg <= 1 && t.thorns && u.alive) dealDamage(B, t, u, dealt * t.thorns, "thorn");
+  if (B.visual) sfx("hit");
+}
+function attack(B, u, t) {
+  const sh = u.robot ? (Math.random() < 0.5 ? SHOUT["조하윤"] : SHOUT["윤동욱"]) : u.d >= 0 && SHOUT[DEFS[u.d].n];
+  if (B.visual && sh && Math.random() < sh[2]) addFloat(B, { X: u.X + (Math.random() - 0.5) * 0.8, Y: u.Y - 0.3 }, rnd(sh[0]), sh[1], false);
+  u.atkT = 0.22;
+  if (u.rg > 1) {
+    const wp = u.d >= 0 && WEAPONS[DEFS[u.d].n], pr = wp && wp.pr, who = u.d >= 0 && DEFS[u.d].n;
+    B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: who === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : pr && pr.col ? pr.col : u.team ? TOK["--danger"] : TOK["--chalk"], shape: pr && pr.shape, trail: pr && pr.shape === "plane" ? 1 : 0, sz: 0.1, hit: () => onHit(B, u, t) });
+  }
+  else { u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; onHit(B, u, t); }
+  gainMana(B, u, 10 + u.manaOnHit);
+}
+function cast(B, u) {
+  const def = DEFS[u.d], P = u.power;
+  if (!u.tgt || !u.tgt.alive) u.tgt = nearest(B, u);
+  const t = u.tgt;
+  const allies = B.f.filter((o) => o.alive && o.team === u.team), foes = B.f.filter((o) => o.alive && o.team !== u.team);
+  u.castT = 0.35;
+  const SKU = u.robot ? ROBOT_SK : SK[def.n];
+  addFloat(B, { X: u.X, Y: u.Y }, SKU ? SKU.s : CLASS[def.k].sk, TOK["--accent"], true);
+  if (B.visual) sfx("cast");
+  if (SKU) SKU.run(B, u, P, t, allies, foes);
+  else switch (def.k) {
+    case "수호자": u.shield += 260 * P; addFx(B, u.X, u.Y, 0.8, TOK["--c3"]); break;
+    case "돌격대": if (t) { dealDamage(B, u, t, u.ad * 2 + 130 * P, "skill"); addFx(B, t.X, t.Y, 0.6, TOK["--danger"], 0.35); } break;
+    case "저격수":
+      if (t) B.projs.push({ X: u.X, Y: u.Y, t, sp: 16, col: TOK["--accent"], sz: 0.2, trail: 1, hit: () => dealDamage(B, u, t, u.ad * 1.6 + 160 * P, "skill") });
+      break;
+    case "천재":
+      if (t) { foes.filter((o) => hexDist(o, t) <= 1).forEach((o) => dealDamage(B, u, o, 170 * P, "skill")); addFx(B, t.X, t.Y, 1.6, TOK["--c4"]); }
+      break;
+    case "응원단": {
+      const low = allies.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (low) { heal(B, low, 230 * P); addFx(B, low.X, low.Y, 0.8, TOK["--c2"]); }
+      break;
+    }
+    case "반장":
+      foes.forEach((o) => dealDamage(B, u, o, 150 * P, "skill"));
+      allies.forEach((o) => heal(B, o, 110 * P));
+      addFx(B, u.X, u.Y, 6, TOK["--c5"], 0.8);
+      if (B.visual) { S.shake = 0.35; sfx("boom"); }
+      break;
+  }
+  if (u.castShield) u.shield += u.castShield;
+  if (u.castHeal) allies.filter((o) => hexDist(o, u) <= 2).forEach((o) => heal(B, o, u.castHeal));
+}
+function stepBattle(B, dt) {
+  const cr = B.f.find((u) => u.combo && u.combo.t < u.combo.dur);
+  if (cr) { stepCombo(B, cr, dt); return; }
+  B.t += dt;
+  for (const u of B.f) {
+    const k = Math.min(1, dt * 9);
+    u.X += (u.c + (u.r & 1) * 0.5 - u.X) * k; u.Y += (u.r - u.Y) * k;
+    if (!u.alive) continue;
+    u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, u.lunge - dt); u.castT = Math.max(0, (u.castT || 0) - dt); u.atkT = Math.max(0, (u.atkT || 0) - dt);
+    u.asBuffT = Math.max(0, (u.asBuffT || 0) - dt); u.vulnT = Math.max(0, (u.vulnT || 0) - dt);
+    if (u.stunT > 0) { u.stunT -= dt; continue; }
+    u.sec += dt;
+    if (u.sec >= 1) { u.sec -= 1; if (u.manaTick) gainMana(B, u, u.manaTick); if (u.regen) heal(B, u, u.maxHp * u.regen); }
+    if (!u.tgt || !u.tgt.alive || hexDist(u, u.tgt) > u.rg) u.tgt = nearest(B, u);
+    const t = u.tgt; if (!t) continue;
+    if (hexDist(u, t) <= u.rg) {
+      u.atkCd -= dt;
+      if (u.atkCd <= 0) { u.atkCd = 1 / speedOf(u); attack(B, u, t); }
+    } else {
+      u.moveCd -= dt;
+      if (u.moveCd <= 0) { u.moveCd = 0.42; const s = nextStep(B, u, t); if (s) { u.r = s[0]; u.c = s[1]; } }
+    }
+  }
+  for (const p of B.projs) {
+    if (!p.t.alive) { p.done = 1; continue; }
+    const dx = p.t.X - p.X, dy = p.t.Y - p.Y, d = Math.hypot(dx, dy), s = p.sp * dt;
+    if (d <= s) { p.done = 1; p.hit(); } else { p.X += (dx / d) * s; p.Y += (dy / d) * s; }
+  }
+  B.projs = B.projs.filter((p) => !p.done);
+  const a0 = B.f.some((u) => u.alive && u.team === 0), a1 = B.f.some((u) => u.alive && u.team === 1);
+  if (!a0 || !a1 || B.t >= 30) { B.done = true; B.win = a0 && !a1 ? 0 : a1 && !a0 ? 1 : -1; }
+}

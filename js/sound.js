@@ -1,0 +1,32 @@
+// ============================================================
+//  sound.js — 효과음
+// ============================================================
+"use strict";
+// =============== 소리 ===============
+let AC = null, muted = false, lastHit = 0;
+try { muted = localStorage.getItem("uri-mute") === "1"; } catch (e) {}
+function sfx(name) {
+  if (muted || !AC) return;
+  const now = AC.currentTime;
+  const tone = (f, d, type = "square", v = 0.04, f2 = null, delay = 0) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, now + delay);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, now + delay + d);
+    g.gain.setValueAtTime(v, now + delay); g.gain.exponentialRampToValueAtTime(0.0001, now + delay + d);
+    o.connect(g).connect(AC.destination); o.start(now + delay); o.stop(now + delay + d + 0.02);
+  };
+  switch (name) {
+    case "buy": tone(660, 0.07, "square", 0.03); tone(990, 0.08, "square", 0.03, null, 0.05); break;
+    case "sell": tone(440, 0.12, "triangle", 0.05, 220); break;
+    case "place": tone(520, 0.05, "triangle", 0.04); break;
+    case "level": [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, "square", 0.03, null, i * 0.08)); break;
+    case "merge": [784, 988, 1319].forEach((f, i) => tone(f, 0.15, "triangle", 0.06, null, i * 0.07)); break;
+    case "hit": if (performance.now() - lastHit < 70) return; lastHit = performance.now(); tone(180, 0.05, "square", 0.012, 90); break;
+    case "cast": tone(300, 0.25, "sawtooth", 0.025, 900); break;
+    case "boom": tone(120, 0.45, "sawtooth", 0.06, 40); break;
+    case "start": tone(392, 0.1, "square", 0.03); tone(587, 0.15, "square", 0.03, null, 0.1); break;
+    case "win": [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.05, null, i * 0.1)); break;
+    case "lose": [392, 330, 262].forEach((f, i) => tone(f, 0.25, "triangle", 0.05, null, i * 0.14)); break;
+    case "item": tone(880, 0.06, "sine", 0.05); tone(1320, 0.1, "sine", 0.05, null, 0.05); break;
+  }
+}
