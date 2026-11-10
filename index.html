@@ -237,37 +237,37 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 // =============== 데이터 ===============
 const DEFS = [
   // 1코스트
-  { n: "이승찬", c: 1, k: "응원단", t: ["착한 친구"] },
-  { n: "이현",   c: 1, k: "돌격대", t: ["체육부", "승부욕"] },
-  { n: "최효민", c: 1, k: "저격수", t: ["체육부", "모범생", "승부욕"] },
-  { n: "전하율", c: 1, k: "저격수", t: ["승부욕"] },
+  { n: "이승찬", c: 1, k: "응원단", t: ["다 퍼줌"] },
+  { n: "이현",   c: 1, k: "돌격대", t: ["운동광", "지는 거 못 참음"] },
+  { n: "최효민", c: 1, k: "저격수", t: ["운동광", "공부는 잘함", "지는 거 못 참음"] },
+  { n: "전하율", c: 1, k: "저격수", t: ["지는 거 못 참음"] },
   // 2코스트
-  { n: "이준희", c: 2, k: "돌격대", t: ["체육부"], s: "덩크슛" },
-  { n: "김현우", c: 2, k: "천재",   t: ["모범생", "승부욕"] },
+  { n: "이준희", c: 2, k: "돌격대", t: ["운동광"], s: "덩크슛" },
+  { n: "김현우", c: 2, k: "천재",   t: ["공부는 잘함", "지는 거 못 참음"] },
   { n: "이보경", c: 2, k: "수호자", t: ["축구부"], s: "태클 수비" },
-  { n: "윤동욱", c: 2, k: "돌격대", t: ["체육부", "승부욕"] },
+  { n: "윤동욱", c: 2, k: "돌격대", t: ["운동광", "지는 거 못 참음"] },
   // 3코스트
-  { n: "김민기", c: 3, k: "천재",   t: ["모범생", "착한 친구"] },
-  { n: "임시온", c: 3, k: "수호자", t: ["축구부", "착한 친구"], s: "골문 사수" },
-  { n: "김예균", c: 3, k: "수호자", t: ["체육부"] },
-  { n: "박현호", c: 3, k: "응원단", t: ["모범생", "착한 친구"] },
+  { n: "김민기", c: 3, k: "천재",   t: ["공부는 잘함", "다 퍼줌"] },
+  { n: "임시온", c: 3, k: "수호자", t: ["축구부", "다 퍼줌"], s: "골문 사수" },
+  { n: "김예균", c: 3, k: "수호자", t: ["운동광"] },
+  { n: "박현호", c: 3, k: "응원단", t: ["공부는 잘함", "다 퍼줌"] },
   // 4코스트
-  { n: "박희찬", c: 4, k: "저격수", t: ["축구부", "모범생"], s: "무회전 프리킥" },
-  { n: "진성욱", c: 4, k: "돌격대", t: ["체육부", "승부욕"] },
+  { n: "박희찬", c: 4, k: "저격수", t: ["축구부", "공부는 잘함"], s: "무회전 프리킥" },
+  { n: "진성욱", c: 4, k: "돌격대", t: ["운동광", "지는 거 못 참음"] },
   { n: "박준서", c: 4, k: "천재",   t: ["수학왕"], s: "수학 문제 폭격" },
   // 5코스트
   { n: "정주환", c: 5, k: "반장",   t: ["반장"] },
 ];
 const TRAITS = {
-  "체육부":   { t: [2, 4, 6], d: "체육부 체력 +20% / +45% / +80%" },
-  "승부욕":   { t: [2, 4, 6], d: "승부욕 공격력 +20% / +45% / +80%, 치명타 20%" },
-  "모범생":   { t: [2, 4],    d: "모범생 스킬 피해 +30% / +70%" },
-  "착한 친구": { t: [2, 4],   d: "아군 전체 보호막 150 / 350" },
+  "운동광":   { t: [2, 4, 6], d: "운동광 체력 +20% / +45% / +80%" },
+  "지는 거 못 참음":   { t: [2, 4, 6], d: "지는 거 못 참음 공격력 +20% / +45% / +80%, 치명타 20%" },
+  "공부는 잘함":   { t: [2, 4],    d: "공부는 잘함 스킬 피해 +30% / +70%" },
+  "다 퍼줌": { t: [2, 4],   d: "아군 전체 보호막 150 / 350" },
   "축구부":   { t: [2, 3],    d: "축구부 공격 속도 +25% / +50%" },
   "수학왕":   { t: [1],       d: "박준서 마나 회복 +60%" },
   "반장":     { t: [1],       d: "아군 전체 공격력·체력 +12%" },
 };
-const MAIN_TRAITS = ["체육부", "승부욕", "모범생", "착한 친구", "축구부"];
+const MAIN_TRAITS = ["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"];
 // rg = 육각 칸 사거리
 const CLASS = {
   "수호자": { hp: 780, ad: 48, as: 0.6,  rg: 1, ar: 0.25, mm: 60, sk: "철벽 수비" },
@@ -381,7 +381,7 @@ const AUGS = [
   { id: "nurse", n: "보건실 이용권", d: "내 체력 +20", f: (P) => (P.hp += 20) },
   { id: "pres", n: "반장 선거", d: "정주환 ★1을 대기석으로", f: (P) => { const d = DEFS.findIndex((x) => x.n === "정주환"), i = P.bench.indexOf(null); if (i >= 0) { P.bench[i] = mkUnit(d); if (S.pool[d] > 0) S.pool[d]--; } else P.gold += 5; } },
   { id: "honor", n: "우등생", d: "무작위 2코스트 친구 ★2", f: (P) => { const i = P.bench.indexOf(null); const d = rnd(DEFS.map((_, j) => j).filter((j) => DEFS[j].c === 2)); if (i >= 0) P.bench[i] = mkUnit(d, 2); else P.gold += 6; } },
-  ...["체육부", "승부욕", "모범생", "착한 친구", "축구부"].map((t) => ({ id: "emb-" + t, n: `${t} 배지`, d: `${t} 시너지 숫자 +1`, f: (P) => (P.emb[t] = (P.emb[t] || 0) + 1) })),
+  ...["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"].map((t) => ({ id: "emb-" + t, n: `${t} 배지`, d: `${t} 시너지 숫자 +1`, f: (P) => (P.emb[t] = (P.emb[t] || 0) + 1) })),
 ];
 const AUG_ROUNDS = { "2-1": "실버", "3-2": "골드", "4-2": "프리즘" };
 const COST_COLOR = ["", "--c1", "--c2", "--c3", "--c4", "--c5"];
@@ -879,13 +879,13 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   Object.assign(f, { d: spec.d, star: spec.star, items: spec.items.slice(), maxHp: cl.hp * cf * sm, ad: cl.ad * cf * sm,
     as0: cl.as, rg: cl.rg, ar: cl.ar, mm: cl.mm, power: cf * sm });
   const L = (t) => traitLvl(t, cnt[t] || 0), has = (t) => (def.t.includes(t) ? L(t) : 0);
-  f.maxHp *= [1, 1.2, 1.45, 1.8][has("체육부")];
-  if (has("승부욕")) { f.ad *= [1, 1.2, 1.45, 1.8][has("승부욕")]; f.crit = 0.2; }
-  f.amp = [1, 1.3, 1.7][has("모범생")];
+  f.maxHp *= [1, 1.2, 1.45, 1.8][has("운동광")];
+  if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.8][has("지는 거 못 참음")]; f.crit = 0.2; }
+  f.amp = [1, 1.3, 1.7][has("공부는 잘함")];
   f.as0 *= [1, 1.25, 1.5][has("축구부")];
   if (has("수학왕")) f.mgain = 1.6;
   if (L("반장") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
-  f.shield += [0, 150, 350][L("착한 친구")];
+  f.shield += [0, 150, 350][L("다 퍼줌")];
   const st = {};
   for (const id of f.items) for (const [k, v] of Object.entries(ITEMS[id].st)) st[k] = (st[k] || 0) + v;
   f.ad *= 1 + (st.adPct || 0); f.as0 *= 1 + (st.asPct || 0);
@@ -1461,8 +1461,8 @@ function buildStudent(def, enemy) {
   const mk = (hex, rough = 0.75, extra) => { const m = M(hex, rough, extra); ud.mats.push(m); return m; };
   const put = (geo, mat, x = 0, y = 0, z = 0, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
   const h = nameHash(def.n);
-  const sporty = def.t.includes("체육부"), nerd = def.t.includes("모범생"), soccer = def.t.includes("축구부");
-  const kind = def.t.includes("착한 친구"), fierce = def.t.includes("승부욕");
+  const sporty = def.t.includes("운동광"), nerd = def.t.includes("공부는 잘함"), soccer = def.t.includes("축구부");
+  const kind = def.t.includes("다 퍼줌"), fierce = def.t.includes("지는 거 못 참음");
   const skin = SKINS[h % SKINS.length], hairCol = HAIRC[(h >> 3) % HAIRC.length];
   const jacket = sporty ? TRACK[(h >> 5) % TRACK.length] : 0x27324a;
   const mSkin = mk(skin, 0.55), mJacket = mk(jacket, sporty ? 0.6 : 0.85), mPants = mk(sporty ? jacket : 0x2b303b, 0.85);
