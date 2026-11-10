@@ -71,7 +71,11 @@ function nextStep(B, u, t) {
   }
   return null;
 }
-function addFloat(B, t, text, col, big) { if (B.visual) B.floats.push({ X: t.X, Y: t.Y, h: 2.1, text, col, t: 0.9, big }); }
+function addFloat(B, t, text, col, big) {
+  if (!B.visual) return;
+  B.fn = ((B.fn || 0) + 1) % 7; // 숫자가 겹치지 않게 조금씩 옆으로
+  B.floats.push({ X: t.X + (B.fn - 3) * 0.08, Y: t.Y, h: 2.1, text, col, t: 0.9, big });
+}
 // 화면에 크게 뜨는 글자 (스킬 연출용)
 function addHuge(B, t, text, c1, c2, size = 3.2) { if (B.visual) B.floats.push({ X: t.X, Y: t.Y, h: 2.6, text, col: c1, col2: c2, t: 0.9, t0: 0.9, huge: size }); }
 function addFx(B, X, Y, r, col, dur = 0.5) { if (B.visual) B.fx.push({ X, Y, r, col, t: dur, t0: dur }); }
@@ -86,8 +90,18 @@ function dealDamage(B, src, t, amt, kind) {
   if (t.mm !== Infinity && kind !== "thorn") t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
   if (t.lowShield && !t.lsUsed && t.hp > 0 && t.hp < t.maxHp * 0.4) { t.lsUsed = 1; t.shield += t.lowShield; addFx(B, t.X, t.Y, 0.7, TOK["--c3"]); }
   if (B.visual && kind !== "thorn" && kind !== "splash") B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : "#ffe9c0", t: 0.3, t0: 0.3 });
-  addFloat(B, t, String(amt), crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : TOK["--chalk"], crit || kind === "skill");
-  if (t.hp <= 0) { t.alive = false; t.hp = 0; t.deadT = 0.45; }
+  addFloat(B, t, crit ? amt + "!" : String(amt), crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : TOK["--chalk"], crit ? 2 : kind === "skill");
+  if (crit && B.visual) { addFx(B, t.X, t.Y, 0.9, TOK["--accent"], 0.3); S.shake = Math.max(S.shake || 0, 0.08); sfx("crit"); }
+  if (t.hp <= 0) {
+    t.alive = false; t.hp = 0; t.deadT = 0.6;
+    if (B.visual) { // 쓰러질 때: 펑 하는 연기와 별
+      const boss = t.mon && t.mon.boss;
+      B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: "#ffffff", t: 0.5, t0: 0.5 }, { kind: "spark", X: t.X, Y: t.Y, col: "#ffe66b", t: 0.65, t0: 0.65 }, { kind: "puff", X: t.X, Y: t.Y, t: 0.55, t0: 0.55 });
+      addFx(B, t.X, t.Y, boss ? 2.6 : 1.2, "#ffffff", 0.45);
+      if (boss) { addFx(B, t.X, t.Y, 3.6, "#ffd36b", 0.7); S.shake = 0.5; addHuge(B, t, "격파!", "#ffffff", "#ffd36b", 3.6); }
+      sfx(boss ? "boom" : "ko");
+    }
+  }
   return amt;
 }
 function heal(B, t, amt) {
@@ -118,7 +132,11 @@ function attack(B, u, t) {
     const wp = u.d >= 0 && WEAPONS[DEFS[u.d].n], pr = wp && wp.pr, who = u.d >= 0 && DEFS[u.d].n;
     B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: who === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : pr && pr.col ? pr.col : u.team ? TOK["--danger"] : TOK["--chalk"], shape: pr && pr.shape, trail: pr && pr.shape === "plane" ? 1 : 0, sz: 0.1, hit: () => onHit(B, u, t) });
   }
-  else { u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; onHit(B, u, t); }
+  else {
+    u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y;
+    if (B.visual) B.fx.push({ kind: "slash", X: t.X, Y: t.Y, ax: u.X, ay: u.Y, col: u.team ? "#ffb0a0" : "#fff6d0", t: 0.2, t0: 0.2, flip: (B.sn = (B.sn || 0) + 1) % 2 });
+    onHit(B, u, t);
+  }
   gainMana(B, u, 10 + u.manaOnHit);
 }
 function cast(B, u) {

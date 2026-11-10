@@ -761,6 +761,7 @@ function buildStudent(def, enemy) {
   const mSkin = mk(skin, 0.55), mJacket = mk(jacket, sporty ? 0.6 : 0.85), mPants = mk(sporty ? jacket : 0x2b303b, 0.85);
   const mShirt = mk(0xf4f2ec, 0.7), mHair = mk(hairCol, 0.5), mShoe = mk(sporty ? 0xf4f4f4 : 0x2b2420, 0.45);
   const mDark = mk(0x1c1410, 0.25), mWhite = mk(0xffffff, 0.3, { emissive: lin(0x333333) });
+  const mBlush = mk(0xff8f8f, 0.9);
   // 팀 표시 고리
   const rm = new THREE.MeshBasicMaterial({ color: lin(enemy ? 0xff5a4a : 0x5ae0a0), transparent: true, opacity: 0.9 });
   ud.mats.push(rm);
@@ -782,14 +783,20 @@ function buildStudent(def, enemy) {
   } else put(GEO.zip, mWhite, 0, 0.27, 0.198, torso);
   if (kind) put(GEO.pin, mk(0xff7aa8, 0.4), 0.13, 0.4, 0.17, torso);
   put(GEO.neck, mSkin, 0, 0.6, 0, torso);
+  // 코스트 색 목도리: 멀리서도 몇 코스트인지 보여요
+  const mScarf = mk(COST_HEX[def.c] || 0xc9d1cc, 0.8);
+  const sc0 = put(GEO.scarf || (GEO.scarf = new THREE.TorusGeometry(0.105, 0.04, 8, 18)), mScarf, 0, 0.585, 0.005, torso); sc0.rotation.x = Math.PI / 2; sc0.scale.set(1, 0.85, 1);
+  const tail = put(GEO.scarfTail || (GEO.scarfTail = new THREE.BoxGeometry(0.075, 0.2, 0.03)), mScarf, -0.09, 0.47, -0.13, torso); tail.rotation.set(0.25, 0, 0.2); ud.scarf = tail;
   // 머리
   const head = new THREE.Group(); head.position.y = 0.78; head.scale.setScalar(0.86); torso.add(head); ud.head = head;
   put(GEO.head, mSkin, 0, 0, 0, head).scale.set(1, 1.08, 1.02);
   for (const s of [-1, 1]) {
     put(GEO.ear, mSkin, s * 0.2, -0.01, 0, head).scale.set(0.6, 1, 1);
-    put(GEO.sclera, mWhite, s * 0.07, 0.012, 0.17, head).scale.set(0.9, 0.8, 0.45);
-    put(GEO.iris, mDark, s * 0.07, 0.01, 0.188, head).scale.setScalar(0.8);
-    put(GEO.shine, mWhite, s * 0.07 + 0.007, 0.018, 0.2, head);
+    const e1 = put(GEO.sclera, mWhite, s * 0.07, 0.012, 0.17, head); e1.scale.set(1.0, 0.95, 0.45);
+    const e2 = put(GEO.iris, mDark, s * 0.07, 0.008, 0.19, head); e2.scale.setScalar(0.95);
+    const e3 = put(GEO.shine, mWhite, s * 0.07 + 0.009, 0.022, 0.206, head); e3.scale.setScalar(1.3);
+    for (const e of [e1, e2, e3]) { e.userData.sy = e.scale.y; (ud.eyes || (ud.eyes = [])).push(e); }
+    put(GEO.ear, mBlush, s * 0.125, -0.055, 0.155, head).scale.set(0.75, 0.45, 0.25); // 볼터치
     put(GEO.brow, mDark, s * 0.07, 0.04, 0.188, head).scale.set(0.95, 0.6, 1);
     const b = put(GEO.brow, mHair, s * 0.074, 0.085, 0.178, head);
     b.rotation.z = fierce ? s * 0.28 : kind ? -s * 0.12 : 0;
@@ -988,7 +995,7 @@ function collect(dt) {
       if (u.lunge > 0) { const k = Math.sin((u.lunge / 0.18) * Math.PI) * 0.3; x += u.lx * SQ3 * k; z += u.ly * 1.5 * k; }
       let face = isFoe(u) ? 0 : Math.PI;
       if (u.alive && u.tgt) face = Math.atan2(worldX(u.tgt.X) - worldX(u.X), worldZ(u.tgt.Y) - worldZ(u.Y));
-      push(u, u, x, z, { hit: u.alive ? { g: "board", r: u.r, c: u.c } : null, enemy: isFoe(u), f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, u.deadT / 0.45), face,
+      push(u, u, x, z, { hit: u.alive ? { g: "board", r: u.r, c: u.c } : null, enemy: isFoe(u), f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, Math.min(1, u.deadT / 0.6)), face,
         jump: u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive });
     }
   } else {
@@ -1021,21 +1028,39 @@ function placeUnit(it, dt) {
   ud.walk += dt * 10;
   const sw = Math.sin(ud.walk) * 0.65 * ud.move;
   const bounce = Math.abs(Math.sin(ud.walk)) * 0.05 * ud.move;
-  g.position.set(it.x, (it.lift || 0) + (it.jump || 0) + bounce - (it.dead ? (1 - it.alpha) * 0.4 : 0), it.z);
+  const ff = it.f, hitK = ff && ff.alive && ff.flash > 0 ? ff.flash / 0.12 : 0;
+  // 이긴 쪽은 전투가 끝나면 만세를 불러요
+  const win = !!(ff && ff.alive && S.phase === "result" && S.battle && S.battle.win === ff.team);
+  const cheer = win ? Math.abs(Math.sin(clock3d * 7 + it.x * 1.3)) * 0.38 : 0;
+  // 맞으면 살짝 찌그러졌다가 돌아와요
+  g.scale.set(sc * (1 + hitK * 0.1), sc * (1 - hitK * 0.12), sc * (1 + hitK * 0.1));
+  g.position.set(it.x, (it.lift || 0) + (it.jump || 0) + bounce + cheer - (it.dead ? (1 - it.alpha) * 0.4 : 0), it.z);
   const cur = g.rotation.y, d = ((((it.face ?? 0) - cur) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
   g.rotation.y = cur + d * Math.min(1, dt * 10);
-  g.rotation.x = it.dead ? -(1 - it.alpha) * 1.4 : it.held ? 0.25 : 0;
+  g.rotation.x = it.dead ? -(1 - it.alpha) * 1.4 : it.held ? 0.25 : -hitK * 0.2;
+  g.rotation.z = it.dead ? (1 - it.alpha) * 0.9 : 0;
   if (ud.legs) {
     ud.legs[0].rotation.x = sw; ud.legs[1].rotation.x = -sw;
-    let la = -sw * 0.8, ra = sw * 0.8, lz = ud.restZ[0], rz = ud.restZ[1];
+    let la = -sw * 0.8, ra = sw * 0.8, lz = ud.restZ[0], rz = ud.restZ[1], lean = ud.move * 0.14, twist = 0;
     const f = it.f;
-    if (f && f.lunge > 0) ra = -1.9 * Math.sin((f.lunge / 0.18) * Math.PI);
-    else if (f && f.atkT > 0) ra = -1.3 * Math.sin((f.atkT / 0.22) * Math.PI);
-    if (it.jump > 0) { lz = -0.4 - it.jump * 3; rz = 0.4 + it.jump * 3; }
+    if (f && f.lunge > 0) { const k = Math.sin((f.lunge / 0.18) * Math.PI); ra = -1.9 * k; lean += 0.32 * k; twist = -0.45 * k; }
+    else if (f && f.atkT > 0) { const k = Math.sin((f.atkT / 0.22) * Math.PI); ra = -1.3 * k; lean += 0.18 * k; twist = -0.3 * k; }
+    if (it.jump > 0) { lz = -0.4 - it.jump * 3; rz = 0.4 + it.jump * 3; lean = -0.15; }
+    if (win) { la = ra = -2.7 + Math.sin(clock3d * 14 + it.x) * 0.25; lz = -0.45; rz = 0.45; lean = -0.1; }
     if (it.held) { la = -0.3; ra = -0.3; lz = -0.6; rz = 0.6; }
     ud.arms[0].rotation.set(la, 0, lz); ud.arms[1].rotation.set(ra, 0, rz);
-    ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.012;
+    ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.018;
+    ud.torso.rotation.x += (lean - ud.torso.rotation.x) * Math.min(1, dt * 18);
+    ud.torso.rotation.y += (twist - ud.torso.rotation.y) * Math.min(1, dt * 18);
     ud.head.rotation.y = Math.sin(clock3d * 0.7 + it.z * 2) * 0.18 * (1 - ud.move);
+    ud.head.rotation.z = Math.sin(clock3d * 1.1 + it.x * 3) * 0.05 + (win ? Math.sin(clock3d * 7) * 0.12 : 0);
+    ud.head.rotation.x = hitK * -0.3 + (it.dead ? -0.4 : 0);
+    if (ud.scarf) ud.scarf.rotation.x = 0.25 + ud.move * 0.9 + Math.sin(clock3d * 3 + it.x) * 0.12;
+    if (ud.eyes) { // 눈 깜빡임 (기절하거나 쓰러지면 감아요)
+      if ((ud.blinkT = (ud.blinkT ?? 1 + Math.random() * 3) - dt) < 0) ud.blinkT = 2 + Math.random() * 3.5;
+      const shut = ud.blinkT < 0.11 || it.dead || (f && f.stunT > 0), wide = hitK > 0 ? 1.25 : 1;
+      for (const e of ud.eyes) e.scale.y = e.userData.sy * (shut ? 0.12 : wide);
+    }
     if (ud.ball) ud.ball.rotation.x += dt * 6 * ud.move;
   } else {
     if (ud.lLeg) { ud.lLeg.rotation.x = sw; ud.rLeg.rotation.x = -sw; }
@@ -1048,7 +1073,41 @@ function placeUnit(it, dt) {
     if (m.emissive && m.userData.e0 === undefined) m.userData.e0 = m.emissive.getHex();
     if (m.emissive) m.emissive.setHex(it.flash ? 0x3a3a3a : m.userData.e0);
   }
+  if (it.f) unitStatus(g, ud, it.f, dt);
+  if (!it.sp.mon && it.sp.star >= 2) starFlair(g, ud, it.sp.star, dt);
   it.g = g;
+}
+// 보호막 방울 · 기절 별 · 공격 속도 버프 고리
+let SGEO = null;
+const sgeo = () => SGEO || (SGEO = { star: new THREE.OctahedronGeometry(0.09, 0), bub: new THREE.SphereGeometry(0.9, 20, 14) });
+function unitStatus(g, ud, f, dt) {
+  sgeo();
+  const on = f.alive;
+  if (on && f.shield > 0) {
+    if (!ud.bub) { ud.bub = new THREE.Mesh(SGEO.bub, additive("#8fd0ff")); ud.bub.position.y = 0.95; g.add(ud.bub); }
+    ud.bub.visible = true; ud.bub.material.opacity = 0.13 + Math.sin(clock3d * 4) * 0.04; ud.bub.scale.setScalar(1 + Math.sin(clock3d * 3) * 0.03);
+  } else if (ud.bub) ud.bub.visible = false;
+  if (on && f.stunT > 0) {
+    if (!ud.stun) { ud.stun = new THREE.Group(); ud.stun.position.y = 2.0; const m = additive("#ffe66b"); for (let i = 0; i < 3; i++) { const s = new THREE.Mesh(SGEO.star, m); const a = (i / 3) * Math.PI * 2; s.position.set(Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3); ud.stun.add(s); } g.add(ud.stun); }
+    ud.stun.visible = true; ud.stun.rotation.y += dt * 7; ud.stun.children.forEach((s) => (s.rotation.y -= dt * 9));
+  } else if (ud.stun) ud.stun.visible = false;
+  if (on && f.asBuffT > 0) {
+    if (!ud.buff) { ud.buff = new THREE.Mesh(GEO.ringFx, additive("#ffb43a")); ud.buff.rotation.x = -Math.PI / 2; ud.buff.position.y = 0.23; g.add(ud.buff); }
+    ud.buff.visible = true; ud.buff.scale.setScalar(0.72 + Math.sin(clock3d * 9) * 0.06); ud.buff.rotation.z += dt * 5; ud.buff.material.opacity = 0.75;
+  } else if (ud.buff) ud.buff.visible = false;
+}
+// ★2는 은빛, ★3은 금빛 고리와 반짝이가 따라다녀요
+function starFlair(g, ud, star, dt) {
+  sgeo();
+  if (!ud.flair) {
+    const grp = (ud.flair = new THREE.Group()), col = star >= 3 ? "#ffd75a" : "#dfeaf2";
+    const ring = new THREE.Mesh(GEO.ringFx, additive(col)); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.225; ring.scale.setScalar(0.7); ring.material.opacity = star >= 3 ? 0.6 : 0.28; grp.add(ring);
+    const m = additive(col), n = star >= 3 ? 5 : 2;
+    for (let i = 0; i < n; i++) { const s = new THREE.Mesh(SGEO.star, m); s.scale.setScalar(star >= 3 ? 0.7 : 0.5); grp.add(s); }
+    g.add(grp);
+  }
+  const ch = ud.flair.children, n = ch.length - 1;
+  for (let i = 1; i <= n; i++) { const a = clock3d * 1.6 + (i / n) * Math.PI * 2; ch[i].position.set(Math.cos(a) * 0.62, 0.7 + Math.sin(clock3d * 2.3 + i * 2) * 0.45, Math.sin(a) * 0.62); ch[i].rotation.y += dt * 5; }
 }
 const additive = (col) => new THREE.MeshBasicMaterial({ color: new THREE.Color(col), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
 let WFX = [];
@@ -1056,7 +1115,22 @@ function drawFx(list, dt) {
   for (const g of list) {
     g.t -= dt;
     const k = 1 - g.t / g.t0, x = g.w ? g.X : worldX(g.X), z = g.w ? g.Y : worldZ(g.Y);
-    if (g.kind === "spark") {
+    if (g.kind === "slash") { // 근접 공격: 초승달 모양 베기
+      const m = useMesh(g, () => new THREE.Mesh(GEO.slash || (GEO.slash = new THREE.RingGeometry(0.42, 0.72, 20, 1, -1.1, 2.2)), additive(g.col)));
+      const ang = Math.atan2(z - worldZ(g.ay), x - worldX(g.ax));
+      m.position.set(x - Math.cos(ang) * 0.25, 1.0, z - Math.sin(ang) * 0.25);
+      m.rotation.set(0, 0, 0); m.rotateY(-ang); m.rotateX((g.flip ? 1 : -1) * (0.5 + k * 0.5) - Math.PI / 2); m.rotateZ((g.flip ? -1 : 1) * (k * 1.6 - 0.8));
+      m.scale.setScalar(0.9 + k * 0.9); m.material.opacity = Math.max(0, 1 - k * k);
+    } else if (g.kind === "puff") { // 쓰러질 때 연기
+      const grp = useMesh(g, () => {
+        const gg = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: 0xf2f2f2, transparent: true, depthWrite: false });
+        for (let i = 0; i < 6; i++) { const s = new THREE.Mesh(GEO.pom, mat); s.userData.a = (i / 6) * Math.PI * 2 + Math.random(); s.userData.s = 1.2 + Math.random() * 1.2; gg.add(s); }
+        return gg;
+      });
+      grp.position.set(x, 0.5, z);
+      grp.children.forEach((s) => { const a = s.userData.a; s.position.set(Math.cos(a) * k * 0.9, k * 0.9, Math.sin(a) * k * 0.9); s.scale.setScalar(s.userData.s * (0.6 + k)); });
+      grp.children[0].material.opacity = Math.max(0, 0.75 * (1 - k));
+    } else if (g.kind === "spark") {
       const grp = useMesh(g, () => {
         const gg = new THREE.Group(), mat = additive(g.col);
         gg.userData.dirs = [];
@@ -1238,6 +1312,7 @@ function render3D(dt) {
       m.position.set(worldX(p.X), 1.05, worldZ(p.Y));
       m.lookAt(worldX(p.t.X), 1.05, worldZ(p.t.Y));
       if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
+      if (p.trail && !p.fire && (p.fxT = (p.fxT || 0) - dt) <= 0) { p.fxT = 0.05; B.fx.push({ X: p.X, Y: p.Y, r: 0.28, col: p.col || "#ffe66b", t: 0.22, t0: 0.22 }); }
       if (p.fire) { // 무회전 불공: 좌우로 흔들리며 불꽃 꼬리를 남겨요
         m.scale.setScalar(1.7); m.position.x += Math.sin(clock3d * 45) * 0.12; m.position.y += Math.sin(clock3d * 31) * 0.1;
         if ((p.fxT = (p.fxT || 0) - dt) <= 0) {
@@ -1375,7 +1450,8 @@ function drawOverlay(dt, R) {
       }
       ctx.globalAlpha = Math.max(0, Math.min(1, f.t * 2));
       ctx.fillStyle = f.col; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.font = font(u0 * (f.big ? 1.25 : 1)); ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3;
+      const pop = 1 + Math.max(0, 1 - (0.9 - f.t) / 0.12) * 0.8; // 처음에 톡 튀어나와요
+      ctx.font = font(u0 * (f.big === 2 ? 1.7 : f.big ? 1.25 : 1) * pop); ctx.strokeStyle = "rgba(0,0,0,.75)"; ctx.lineWidth = f.big === 2 ? 5 : 3;
       ctx.strokeText(f.text, x, y); ctx.fillText(f.text, x, y);
       ctx.globalAlpha = 1;
     }

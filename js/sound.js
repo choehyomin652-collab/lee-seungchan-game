@@ -27,6 +27,8 @@ function sfx(name) {
     case "start": tone(392, 0.1, "square", 0.03); tone(587, 0.15, "square", 0.03, null, 0.1); break;
     case "win": [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.05, null, i * 0.1)); break;
     case "lose": [392, 330, 262].forEach((f, i) => tone(f, 0.25, "triangle", 0.05, null, i * 0.14)); break;
+    case "crit": tone(900, 0.06, "square", 0.035, 1500); tone(240, 0.12, "sawtooth", 0.04, 90, 0.02); break;
+    case "ko": tone(520, 0.1, "triangle", 0.05, 180); tone(140, 0.25, "sine", 0.06, 50, 0.05); break;
     case "kick": tone(220, 0.08, "square", 0.06, 90); tone(900, 0.18, "sawtooth", 0.02, 300, 0.03); break;
     case "charge": tone(80, 0.7, "sawtooth", 0.04, 640); tone(1200, 0.5, "square", 0.012, 3000, 0.15); break;
     case "thunder": { // 지지직 + 우르릉 (잡음)
