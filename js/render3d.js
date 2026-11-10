@@ -1354,13 +1354,17 @@ function drawSlam(z, dt) {
   ud.rings.forEach((r, i) => { r.scale.setScalar(0.4 + k * (5.5 - i * 1.3)); r.material.opacity = q * (i ? 0.7 : 1); });
   ud.dome.scale.set(1 + grow * 12, Math.max(0.01, (1 - Math.min(1, k / 0.3)) * 8), 1 + grow * 12); ud.dome.material.opacity = Math.max(0, 0.5 - k * 1.8);
 }
-// 박준서: 빛나는 수학 기호가 비스듬히 떨어져요
+// 박준서: 빛나는 수학 공식이 비스듬히 떨어져요 (가로로 긴 판에 공식을 써요)
 function symTex(sym) {
-  return textTex("sym" + sym, 128, 128, (g, w, h) => {
+  return textTex("sym" + sym, 512, 128, (g, w, h) => {
     g.clearRect(0, 0, w, h);
-    const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, "rgba(200,107,255,.95)"); gr.addColorStop(0.55, "rgba(120,60,220,.55)"); gr.addColorStop(1, "rgba(120,60,220,0)");
-    g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    g.fillStyle = "#ffffff"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = "bold 78px serif"; g.fillText(sym, w / 2, h / 2 + 4);
+    g.save(); g.translate(w / 2, h / 2); g.scale(w / h, 1);
+    const gr = g.createRadialGradient(0, 0, 0, 0, 0, h / 2); gr.addColorStop(0, "rgba(200,107,255,.95)"); gr.addColorStop(0.6, "rgba(120,60,220,.6)"); gr.addColorStop(1, "rgba(120,60,220,0)");
+    g.fillStyle = gr; g.fillRect(-h / 2, -h / 2, h, h); g.restore();
+    g.textAlign = "center"; g.textBaseline = "middle"; g.font = "bold italic 64px serif";
+    const k = Math.min(1, (w * 0.8) / g.measureText(sym).width); // 긴 공식은 줄여서 맞춰요
+    g.translate(w / 2, h / 2 + 3); g.scale(k, k);
+    g.lineWidth = 6; g.strokeStyle = "rgba(40,10,80,.9)"; g.strokeText(sym, 0, 0); g.fillStyle = "#ffffff"; g.fillText(sym, 0, 0);
   });
 }
 function drawMathRain(z, dt) {
@@ -1377,7 +1381,7 @@ function drawMathRain(z, dt) {
     });
     const ud = g.userData, hgt = 1 + (1 - p) * 10, off = (1 - p) * 3;
     g.position.set(x, 0, y);
-    ud.sp.position.set(off, hgt, -off * 0.4); ud.sp.scale.setScalar(2.7 * big * (0.8 + Math.sin(clock3d * 30 + i) * 0.08));
+    ud.sp.position.set(off, hgt, -off * 0.4); const ss = 1.25 * big * (0.9 + Math.sin(clock3d * 30 + i) * 0.06); ud.sp.scale.set(ss * 4, ss, 1);
     ud.tail.position.set(off * 1.12, hgt + 1.1, -off * 0.45); ud.tail.rotation.z = Math.PI / 2 - 0.29; ud.tail.scale.set(2.6, 4, 0.22 * big); ud.tail.material.opacity = 0.7;
     ud.ring.position.y = 0.26; ud.ring.scale.setScalar((1.5 - p) * big); ud.ring.material.opacity = p;
   });

@@ -59,7 +59,7 @@ const SK = {
     run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "freekick", step: stepFreekick, team: u.team, owner: u, P, tgt: t, X: u.X, Y: u.Y, t: 0, dur: 0.45 }); } },
   "진성욱": { s: "풀코트 프레스", d: (P) => `높이 뛰어올라 땅을 내리찍어요. 붙어 있는 적 모두 공격력×1.6 + ${R0(110 * P)} 피해 + 0.4초 기절 + 한 칸 밀쳐내기, 최대 체력 12% 회복`,
     run(B, u, P) { B.zones.push({ kind: "slam", step: stepSlam, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, dur: 0.95 }); } },
-  "박준서": { s: "수학 문제 폭격", d: (P) => `하늘에서 수학 기호 5개(∑ π √ ∫ ∞)가 운석처럼 차례로 떨어져 무작위 적에게 각각 ${R0(130 * P)} 피해`,
+  "박준서": { s: "수학 문제 폭격", d: (P) => `하늘에서 수학 공식 5개(피타고라스 정리, 일차함수, 원의 넓이, 삼각함수, 근의 공식)가 운석처럼 차례로 떨어져 무작위 적에게 각각 ${R0(130 * P)} 피해`,
     run(B, u, P, t, al, fo) {
       const live = fo.filter((o) => o.alive); if (!live.length) return;
       const drops = MATH_SYMS.map((sym, i) => ({ o: rnd(live), at: 0.4 + i * 0.15, sym, X: 0, Y: 0 }));
@@ -183,8 +183,9 @@ function stepSlam(B, z, dt) {
   }
   if (z.t >= z.dur) z.done = 1;
 }
-// 박준서 "수학 문제 폭격": 수학 기호가 하나씩 떨어져요
-const MATH_SYMS = ["∑", "π", "√", "∫", "∞"];
+// 박준서 "수학 문제 폭격": 수학 공식이 하나씩 떨어져요
+// 떨어지는 공식 (마지막 것이 가장 커요). 여기 글자만 바꾸면 다른 공식이 떨어져요
+const MATH_SYMS = ["a²+b²=c²", "y=ax+b", "S=πr²", "sin²θ+cos²θ=1", "x=(-b±√(b²-4ac))/2a"];
 function stepMathRain(B, z, dt) {
   z.t += dt;
   for (const d of z.drops) {
