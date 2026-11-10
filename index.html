@@ -2210,7 +2210,7 @@ const itemTag = (id) => `<span class="it" style="background:${ITEMS[id].comp ? I
 function showUnit(u, foe) {
   const def = DEFS[u.d], cl = CLASS[def.k], cf = 1 + (def.c - 1) * 0.22, sm = STARM[u.star];
   const its = u.items.length ? "<br>" + u.items.map((id) => `${itemTag(id)} ${ITEMS[id].d}`).join("<br>") : "";
-  $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${def.n}</b> ${"★".repeat(u.star)} · ${def.c}코스트 · ${def.k} · ${def.t.join(", ")}${foe ? " · <span style='color:var(--danger)'>상대</span>" : ""}<br>
+  $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${def.n}</b> ${"★".repeat(u.star)} · ${def.c}코스트 · ${def.t.join(", ")}${foe ? " · <span style='color:var(--danger)'>상대</span>" : ""}<br>
     체력 ${Math.round(cl.hp * cf * sm)} · 공격 ${Math.round(cl.ad * cf * sm)} · 사거리 ${cl.rg}칸<br>스킬 <b>${SK[def.n] ? SK[def.n].s : cl.sk}</b>: ${skillText(def, u.star)}${its}</div>`;
   const P = human();
   const sellable = !foe && S.sel && S.sel.w !== "i" && (S.sel.w === "n" ? shopOpen() : S.phase === "plan");
@@ -2334,7 +2334,7 @@ function renderUI() {
     if (di == null) return `<div class="card empty"></div>`;
     const d = DEFS[di], oc = ownCount[di];
     return `<div class="card${oc ? (oc >= 2 ? " own two" : " own") : ""}${P.gold < d.c ? " poor" : ""}" data-i="${i}" style="--cc:var(${COST_COLOR[d.c]});${PORTRAIT[di] ? `background-image:url(${PORTRAIT[di]})` : ""}" role="button" tabindex="0">
-      <span class="tr">${[...d.t, d.k].map((t) => `<span>${t}</span>`).join("")}</span><div class="bar"><span>${d.n}</span><span class="cost">● ${d.c}</span></div></div>`;
+      <span class="tr">${d.t.map((t) => `<span>${t}</span>`).join("")}</span><div class="bar"><span>${d.n}</span><span class="cost">● ${d.c}</span></div></div>`;
   }).join("");
   $("shop").querySelectorAll(".card[data-i]").forEach((el) => {
     const go = () => humanBuy(+el.dataset.i);
