@@ -143,6 +143,8 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .info b { font-family: var(--display); font-weight: 400; font-size: 1.25em; }
 .info .it { display: inline-block; padding: 0 .4em; border-radius: .3em; color: #10201a; font-family: var(--display); font-size: .9em; }
 .info .guide { color: var(--chalk-dim); }
+.cardrow { display: flex; gap: var(--u); flex-wrap: wrap; }
+.info .cardpick { color: var(--gold); border-color: rgba(214, 178, 106, .8); }
 .info .sell { align-self: flex-start; color: var(--danger); background: none; border: calc(var(--u) * .25) solid var(--danger); border-radius: var(--u); padding: calc(var(--u) * .5) calc(var(--u) * 1.4); font-size: 1em; }
 .toast {
   position: fixed; left: 50%; top: 42%; transform: translateX(-50%);
@@ -190,7 +192,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 <body>
 <div id="game">
   <canvas id="gl"></canvas><canvas id="cv"></canvas>
-  <div class="hud mini"><button class="gearbtn" id="gear" aria-label="설정" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button><div class="menu" id="menu" hidden><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button><button id="qual">화질 높음</button><label class="menubtn" for="bgfile">배경 사진 넣기</label><input type="file" id="bgfile" accept="image/*" hidden><button id="bgclear">배경 사진 빼기</button></div></div>
+  <div class="hud mini"><button class="gearbtn" id="gear" aria-label="설정" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button><div class="menu" id="menu" hidden><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button><button id="qual">화질 높음</button><label class="menubtn" for="bgfile">배경 사진 넣기</label><input type="file" id="bgfile" accept="image/*" hidden><input type="file" id="cardfile" accept="image/*" hidden><button id="bgclear">배경 사진 빼기</button></div></div>
   <div class="hud topbar">
     <div class="pill"><span id="stage">1-1</span><span class="track" id="track"></span><span class="rtype" id="rtype">급식 줄</span></div>
     <div class="timer"><i id="timerfill"></i></div>
@@ -2211,6 +2213,47 @@ function showUnit(u, foe) {
     b.onclick = () => { sell(P, S.sel); S.sel = null; sfx("sell"); renderUI(); };
     $("info").appendChild(b);
   }
+  if (!foe) {
+    // 카드 사진 바꾸기: 내 기기 브라우저에만 저장돼요
+    const row = document.createElement("div"); row.className = "cardrow";
+    const pick = document.createElement("button"); pick.className = "sell cardpick"; pick.textContent = "카드 사진 바꾸기";
+    pick.onclick = () => { CARD_TARGET = u.d; $("cardfile").click(); };
+    row.appendChild(pick);
+    if (hasCustomCard(u.d)) {
+      const back = document.createElement("button"); back.className = "sell cardpick"; back.textContent = "원래 사진으로";
+      back.onclick = () => { try { localStorage.removeItem("uri-card-" + DEFS[u.d].n); } catch (e) {} PORTRAIT[u.d] = BASE_PORTRAIT[u.d]; toast("원래 카드 사진으로 돌아왔어요"); renderUI(); };
+      row.appendChild(back);
+    }
+    $("info").appendChild(row);
+  }
+}
+let CARD_TARGET = null;
+const BASE_PORTRAIT = {};
+function hasCustomCard(d) { try { return !!localStorage.getItem("uri-card-" + DEFS[d].n); } catch (e) { return false; } }
+function loadCustomCards() {
+  DEFS.forEach((def, d) => {
+    BASE_PORTRAIT[d] = PORTRAIT[d];
+    let url = null; try { url = localStorage.getItem("uri-card-" + def.n); } catch (e) {}
+    if (url) PORTRAIT[d] = url;
+  });
+}
+function pickCardPhoto(file) {
+  const d = CARD_TARGET; if (file == null || d == null) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      // 카드 비율(4:5)에 맞게 가운데를 잘라요
+      const c = document.createElement("canvas"); c.width = 360; c.height = 450; const g = c.getContext("2d");
+      const k = Math.max(c.width / img.width, c.height / img.height), w = img.width * k, h = img.height * k;
+      g.drawImage(img, (c.width - w) / 2, (c.height - h) / 2, w, h);
+      const url = c.toDataURL("image/jpeg", 0.85);
+      try { localStorage.setItem("uri-card-" + DEFS[d].n, url); } catch (e) { toast("저장 공간이 부족해서 이번 판에만 바뀌어요"); }
+      PORTRAIT[d] = url; toast(`${DEFS[d].n} 카드 사진을 바꿨어요`); renderUI();
+    };
+    img.src = r.result;
+  };
+  r.readAsDataURL(file);
 }
 function showItem(id) {
   const it = ITEMS[id];
@@ -2350,6 +2393,8 @@ window.addEventListener("resize", () => { resize(); });
 $("rotok").onclick = () => { $("rotate").classList.add("dismissed"); resize(); };
 if (HAS3D) { init3D(); makePortraits(); }
 else $("info").innerHTML = `<div class="txt">3D 그래픽을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>`;
+loadCustomCards();
+$("cardfile").onchange = (e) => { pickCardPhoto(e.target.files && e.target.files[0]); e.target.value = ""; };
 if (document.fonts) document.fonts.ready.then(() => { readTokens(); resize(); if (HAS3D) { if (chalk) repaint(chalk); Object.values(PAPER).forEach(repaint); } });
 newGame();
 resize();
