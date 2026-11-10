@@ -17,7 +17,7 @@ const gridX = (r, c) => c + (r & 1) * 0.5;
 let renderer, scene, camera, raycaster, pickPlane, carousel, camBase = null, chalk = null;
 const tiles = [], pads = [], GEO = {}, PAPER = {}, TEXC = {};
 const lin = (hex) => new THREE.Color(hex).convertSRGBToLinear();
-const SKINS = [0xf1c9a5, 0xe8b98f, 0xf3d1b3, 0xdcae88];
+const SKINS = [0xe9c3a3, 0xdcb08c, 0xeecdb2, 0xd2a37e];
 const HAIRC = [0x1c1612, 0x2a1d15, 0x3a291c, 0x141414, 0x4a3324];
 const TRACK = [0x2f5fa8, 0x2f8a5a, 0x8a2f3a, 0x3d3d8a];
 const COST_HEX = [0, 0xc9d1cc, 0x7fe0b0, 0x7fc4ff, 0xe39cff, 0xffcc4d];
@@ -408,7 +408,7 @@ function makePortraits() {
     const rim = new THREE.DirectionalLight(0x9fd0ff, 1.2); rim.position.set(2, 2, -3); sc.add(rim);
     sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.3));
     const cam = new THREE.PerspectiveCamera(26, 240 / 300, 0.1, 20);
-    cam.position.set(0.45, 1.75, 2.3); cam.lookAt(0, 1.38, 0);
+    cam.position.set(0.38, 1.72, 2.0); cam.lookAt(0, 1.52, 0);
     const BG = { 1: ["#4a5560", "#20262b"], 2: ["#2f7a52", "#122a1e"], 3: ["#2f5f9a", "#121f33"], 4: ["#6a3a9a", "#1f1230"], 5: ["#b07a1e", "#2e1d06"] };
     DEFS.forEach((def, i) => {
       const [a, b] = BG[def.c];
@@ -757,86 +757,139 @@ function buildStudent(def, enemy) {
   const sporty = def.t.includes("운동광"), nerd = def.t.includes("공부는 잘함"), soccer = def.t.includes("축구부");
   const kind = def.t.includes("다 퍼줌"), fierce = def.t.includes("지는 거 못 참음");
   const skin = SKINS[h % SKINS.length], hairCol = HAIRC[(h >> 3) % HAIRC.length];
-  const jacket = sporty ? TRACK[(h >> 5) % TRACK.length] : 0x27324a;
-  const mSkin = mk(skin, 0.55), mJacket = mk(jacket, sporty ? 0.6 : 0.85), mPants = mk(sporty ? jacket : 0x2b303b, 0.85);
-  const mShirt = mk(0xf4f2ec, 0.7), mHair = mk(hairCol, 0.5), mShoe = mk(sporty ? 0xf4f4f4 : 0x2b2420, 0.45);
-  const mDark = mk(0x1c1410, 0.25), mWhite = mk(0xffffff, 0.3, { emissive: lin(0x333333) });
-  const mBlush = mk(0xff8f8f, 0.9);
+  // ----- 사람 비율(약 7등신) 캐릭터 -----
+  // 발바닥 y=0.2, 엉덩이 관절 y=1.0, 어깨 y≈1.52, 머리 꼭대기 y≈1.86
+  const jacket = sporty ? TRACK[(h >> 5) % TRACK.length] : 0x1f2a44;
+  const fab = (hex, r = 0.92) => mk(hex, r);
+  const mSkin = mk(skin, 0.62, { emissive: lin(0x2a0e06), emissiveIntensity: 0.35 });
+  const mJacket = fab(jacket, sporty ? 0.7 : 0.9), mPants = fab(sporty ? jacket : 0x343a44);
+  const mShirt = fab(0xf2f0ea, 0.8), mHair = mk(hairCol, 0.55), mShoe = mk(sporty ? 0xf2f2f2 : 0x1d1814, sporty ? 0.6 : 0.35);
+  const mSole = mk(sporty ? (COST_HEX[def.c] || 0xcccccc) : 0x0e0c0a, 0.8), mSock = fab(sporty ? 0xf4f4f4 : 0x22252b);
+  const mDark = mk(0x1c1410, 0.3), mWhite = mk(0xffffff, 0.3, { emissive: lin(0x222222) });
+  const mLip = mk(0xb5675e, 0.55), mBrow = mk(hairCol, 0.8), mIris = mk([0x3a2414, 0x2a1a10, 0x4a3020][h % 3], 0.2);
+  const mStripe = fab(0xf4f4f4, 0.7), mCost = fab(COST_HEX[def.c] || 0xc9d1cc, 0.6);
   // 팀 표시 고리
   const rm = new THREE.MeshBasicMaterial({ color: lin(enemy ? 0xff5a4a : 0x5ae0a0), transparent: true, opacity: 0.9 });
   ud.mats.push(rm);
   const ring = new THREE.Mesh(GEO.teamRing, rm); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.21; g.add(ring);
-  // 다리
-  ud.legs = [];
+  const HG = GEO.human || (GEO.human = {
+    thigh: new THREE.CylinderGeometry(0.074, 0.06, 0.36, 12), shin: new THREE.CylinderGeometry(0.057, 0.048, 0.36, 12),
+    knee: new THREE.SphereGeometry(0.058, 10, 8), sock: new THREE.CylinderGeometry(0.042, 0.042, 0.06, 10),
+    shoe: new THREE.SphereGeometry(0.06, 14, 10), sole: new THREE.BoxGeometry(0.11, 0.025, 0.27),
+    pelvis: new THREE.CylinderGeometry(0.15, 0.14, 0.17, 16), belt: new THREE.CylinderGeometry(0.152, 0.152, 0.035, 16), buckle: new THREE.BoxGeometry(0.05, 0.035, 0.012),
+    chest: new THREE.LatheGeometry([[0, 0], [0.142, 0], [0.148, 0.08], [0.158, 0.2], [0.178, 0.31], [0.19, 0.38], [0.172, 0.43], [0.1, 0.46], [0, 0.465]].map(([x, y]) => new THREE.Vector2(x, y)), 20),
+    lapel: new THREE.BoxGeometry(0.05, 0.2, 0.012), button: new THREE.SphereGeometry(0.011, 8, 6), collar: new THREE.TorusGeometry(0.058, 0.016, 6, 16),
+    neck: new THREE.CylinderGeometry(0.045, 0.05, 0.11, 12), delt: new THREE.SphereGeometry(0.068, 12, 10),
+    upper: new THREE.CylinderGeometry(0.056, 0.049, 0.3, 12), fore: new THREE.CylinderGeometry(0.049, 0.042, 0.26, 12), cuff: new THREE.CylinderGeometry(0.044, 0.044, 0.03, 12),
+    palm: new THREE.SphereGeometry(0.042, 12, 10), thumb: new THREE.CylinderGeometry(0.012, 0.011, 0.05, 6),
+    skull: (() => { // 아래로 갈수록 좁아지는 얼굴 (턱·광대)
+      const g2 = new THREE.SphereGeometry(0.2, 36, 28), p2 = g2.attributes.position;
+      for (let i = 0; i < p2.count; i++) {
+        const x = p2.getX(i), y = p2.getY(i), z = p2.getZ(i), lo = Math.max(0, -y / 0.2), front = Math.max(0, z / 0.2);
+        p2.setX(i, x * (1 - 0.3 * lo * lo) * (1 - 0.06 * front));
+        p2.setY(i, y * (y < 0 ? 1.12 : 1));
+        p2.setZ(i, z * (1 - 0.12 * lo) + 0.018 * lo * front);
+      }
+      g2.computeVertexNormals(); return g2;
+    })(),
+    noseTip: new THREE.SphereGeometry(0.024, 12, 10), nose: new THREE.ConeGeometry(0.022, 0.075, 10),
+    lip: new THREE.SphereGeometry(0.03, 14, 10), lash: new THREE.TorusGeometry(0.036, 0.006, 4, 12, Math.PI),
+    stripe: new THREE.BoxGeometry(0.012, 1, 0.012),
+  });
+  // 다리: 엉덩이 → 허벅지 → 무릎 → 정강이 → 양말 → 신발
+  ud.legs = []; ud.knees = [];
   for (const s of [-1, 1]) {
-    const hip = new THREE.Group(); hip.position.set(s * 0.1, 0.8, 0); g.add(hip);
-    put(GEO.leg, mPants, 0, -0.26, 0, hip);
-    put(GEO.shoe, mShoe, 0, -0.54, 0.04, hip).scale.set(1, 0.55, 1.5);
-    ud.legs.push(hip);
+    const hip = new THREE.Group(); hip.position.set(s * 0.078, 1.0, 0); g.add(hip);
+    put(HG.thigh, mPants, 0, -0.17, 0, hip);
+    const knee = new THREE.Group(); knee.position.y = -0.35; hip.add(knee);
+    put(HG.knee, mPants, 0, 0, 0.004, knee).scale.set(1, 0.8, 1);
+    put(HG.shin, mPants, 0, -0.18, 0, knee);
+    if (sporty) { const st = put(HG.stripe, mStripe, s * 0.06, -0.18, 0, knee); st.scale.y = 0.34; const st2 = put(HG.stripe, mStripe, s * 0.07, 0.18, 0, knee); st2.scale.y = 0.34; }
+    put(HG.sock, mSock, 0, -0.37, 0, knee);
+    put(HG.shoe, mShoe, 0, -0.415, 0.045, knee).scale.set(0.95, 0.62, 2.1);
+    put(HG.sole, mSole, 0, -0.448, 0.045, knee);
+    ud.legs.push(hip); ud.knees.push(knee);
   }
-  // 몸통
-  const torso = new THREE.Group(); torso.position.y = 0.78; g.add(torso); ud.torso = torso;
-  put(GEO.torso, mJacket, 0, 0, 0, torso).scale.z = 0.72;
+  // 몸통 (엉덩이 높이에서 시작)
+  const torso = new THREE.Group(); torso.position.y = 1.0; g.add(torso); ud.torso = torso;
+  put(HG.pelvis, mPants, 0, 0.03, 0, torso).scale.z = 0.72;
+  put(HG.belt, mk(0x1a1410, 0.4), 0, 0.12, 0, torso).scale.z = 0.73;
+  if (!sporty) put(HG.buckle, mk(0xb8b8b8, 0.3, { metalness: 0.8 }), 0, 0.12, 0.112, torso);
+  put(HG.chest, mJacket, 0, 0.12, 0, torso).scale.z = 0.64;
   if (!sporty) {
-    const v = put(GEO.shirtV, mShirt, 0, 0.42, 0.165, torso); v.rotation.x = Math.PI; v.scale.z = 0.3;
-    put(GEO.tie, mk(0xb8323a, 0.6), 0, 0.33, 0.2, torso);
-  } else put(GEO.zip, mWhite, 0, 0.27, 0.198, torso);
-  if (kind) put(GEO.pin, mk(0xff7aa8, 0.4), 0.13, 0.4, 0.17, torso);
-  put(GEO.neck, mSkin, 0, 0.6, 0, torso);
-  // 코스트 색 목도리: 멀리서도 몇 코스트인지 보여요
-  const mScarf = mk(COST_HEX[def.c] || 0xc9d1cc, 0.8);
-  const sc0 = put(GEO.scarf || (GEO.scarf = new THREE.TorusGeometry(0.105, 0.04, 8, 18)), mScarf, 0, 0.585, 0.005, torso); sc0.rotation.x = Math.PI / 2; sc0.scale.set(1, 0.85, 1);
-  const tail = put(GEO.scarfTail || (GEO.scarfTail = new THREE.BoxGeometry(0.075, 0.2, 0.03)), mScarf, -0.09, 0.47, -0.13, torso); tail.rotation.set(0.25, 0, 0.2); ud.scarf = tail;
-  // 머리
-  const head = new THREE.Group(); head.position.y = 0.78; head.scale.setScalar(0.86); torso.add(head); ud.head = head;
-  put(GEO.head, mSkin, 0, 0, 0, head).scale.set(1, 1.08, 1.02);
-  for (const s of [-1, 1]) {
-    put(GEO.ear, mSkin, s * 0.2, -0.01, 0, head).scale.set(0.6, 1, 1);
-    const e1 = put(GEO.sclera, mWhite, s * 0.07, 0.012, 0.17, head); e1.scale.set(1.0, 0.95, 0.45);
-    const e2 = put(GEO.iris, mDark, s * 0.07, 0.008, 0.19, head); e2.scale.setScalar(0.95);
-    const e3 = put(GEO.shine, mWhite, s * 0.07 + 0.009, 0.022, 0.206, head); e3.scale.setScalar(1.3);
-    for (const e of [e1, e2, e3]) { e.userData.sy = e.scale.y; (ud.eyes || (ud.eyes = [])).push(e); }
-    put(GEO.ear, mBlush, s * 0.125, -0.055, 0.155, head).scale.set(0.75, 0.45, 0.25); // 볼터치
-    put(GEO.brow, mDark, s * 0.07, 0.04, 0.188, head).scale.set(0.95, 0.6, 1);
-    const b = put(GEO.brow, mHair, s * 0.074, 0.085, 0.178, head);
-    b.rotation.z = fierce ? s * 0.28 : kind ? -s * 0.12 : 0;
+    // 교복: 셔츠 V, 넥타이(코스트 색), 재킷 깃, 단추
+    const v = put(GEO.shirtV, mShirt, 0, 0.47, 0.105, torso); v.rotation.x = Math.PI; v.scale.set(0.85, 1.05, 0.3);
+    const tie = put(GEO.tie, mCost, 0, 0.42, 0.122, torso); tie.scale.set(0.75, 0.95, 0.6); tie.rotation.x = -0.12;
+    for (const s of [-1, 1]) { const l = put(HG.lapel, mJacket, s * 0.05, 0.47, 0.112, torso); l.rotation.set(-0.12, 0, s * 0.42); }
+    for (const y of [0.24, 0.32]) put(HG.button, mk(0x0e1220, 0.4), 0.018, y, 0.118, torso);
+    put(HG.collar, mShirt, 0, 0.585, 0.004, torso).rotation.x = Math.PI / 2;
+  } else {
+    // 체육복: 지퍼, 깃, 어깨 줄무늬
+    const z = put(GEO.zip, mWhite, 0, 0.36, 0.123, torso); z.scale.set(0.6, 1.05, 0.6);
+    put(HG.collar, mJacket, 0, 0.585, 0.004, torso).rotation.x = Math.PI / 2;
   }
-  put(GEO.nose, mSkin, 0, -0.03, 0.198, head);
-  const mo = put(GEO.mouth, mk(0x9b4a44, 0.6), 0, -0.088, 0.182, head); mo.rotation.z = Math.PI; mo.scale.set(0.75, 0.6, 1);
+  if (kind) put(GEO.pin, mk(0xff7aa8, 0.4), 0.085, 0.45, 0.108, torso).scale.setScalar(0.7);
+  put(HG.neck, mSkin, 0, 0.615, 0, torso);
+  // 머리 (머리 모양 데이터는 반지름 0.2 기준이라 0.6배로 줄여 써요)
+  const head = new THREE.Group(); head.position.y = 0.735; head.scale.setScalar(0.6); torso.add(head); ud.head = head;
+  put(HG.skull, mSkin, 0, 0.0, -0.005, head).scale.set(0.9, 1.04, 0.98);
+  for (const s of [-1, 1]) {
+    put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
+    const e1 = put(GEO.sclera, mWhite, s * 0.066, 0.018, 0.158, head); e1.scale.set(0.85, 0.5, 0.38);
+    const e2 = put(GEO.iris, mIris, s * 0.066, 0.017, 0.17, head); e2.scale.set(0.72, 0.72, 0.5);
+    const e3 = put(GEO.shine, mWhite, s * 0.066 + 0.006, 0.022, 0.178, head); e3.scale.setScalar(0.45);
+    for (const e of [e1, e2, e3]) { e.userData.sy = e.scale.y; (ud.eyes || (ud.eyes = [])).push(e); }
+    const lash = put(HG.lash, mDark, s * 0.066, 0.018, 0.168, head); lash.scale.set(0.95, 0.6, 1); // 위 속눈썹 선
+    lash.userData.sy = lash.scale.y; ud.eyes.push(lash);
+    const b = put(GEO.brow, mBrow, s * 0.068, 0.068, 0.168, head); b.scale.set(1.15, 0.75, 1);
+    b.rotation.z = fierce ? s * 0.22 : kind ? -s * 0.1 : -s * 0.04;
+  }
+  const nz = put(HG.nose, mSkin, 0, -0.01, 0.183, head); nz.rotation.x = 0.35; nz.scale.set(1, 1, 0.75); // 콧등
+  put(HG.noseTip, mSkin, 0, -0.042, 0.19, head).scale.set(1.05, 0.8, 0.85);
+  put(HG.lip, mLip, 0, -0.094, 0.162, head).scale.set(1.3, 0.26, 0.45);
+  put(HG.lip, mLip, 0, -0.106, 0.158, head).scale.set(1.05, 0.32, 0.45);
   // 머리카락 (이름마다 다른 스타일)
   const style = (h >> 7) % 5;
-  const back = put(GEO.hairBack, mHair, 0, 0.035, -0.035, head); back.scale.set(1.03, 1.02, 1.03);
-  const cap = put(GEO.hairCap, mHair, 0, 0.02, 0, head); cap.scale.set(1.04, 1.12, 1.06); cap.rotation.x = -0.18;
-  if (style === 0) { const f = put(GEO.fringe, mHair, 0, 0.13, 0.13, head); f.scale.set(1.9, 0.55, 0.9); }
-  else if (style === 1) { for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; const sp = put(GEO.spike, mHair, Math.cos(a) * 0.11, 0.21, Math.sin(a) * 0.09 - 0.02, head); sp.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); } }
-  else if (style === 2) { const f = put(GEO.fringe, mHair, 0.06, 0.14, 0.12, head); f.scale.set(1.7, 0.5, 0.95); f.rotation.z = -0.35; }
-  else if (style === 3) { cap.scale.set(1.0, 1.02, 1.02); back.scale.set(0.99, 0.98, 0.99); }
-  else { cap.scale.set(1.12, 1.15, 1.12); const f = put(GEO.fringe, mHair, 0, 0.09, 0.15, head); f.scale.set(2.0, 0.6, 0.7); }
+  const back = put(GEO.hairBack, mHair, 0, 0.04, -0.04, head); back.scale.set(0.95, 1.0, 1.0);
+  const cap = put(GEO.hairCap, mHair, 0, 0.03, -0.005, head); cap.scale.set(0.96, 1.05, 1.02); cap.rotation.x = -0.2;
+  if (style === 0) { const f = put(GEO.fringe, mHair, 0, 0.14, 0.12, head); f.scale.set(1.75, 0.45, 0.85); }
+  else if (style === 1) { for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; const sp = put(GEO.spike, mHair, Math.cos(a) * 0.1, 0.19, Math.sin(a) * 0.08 - 0.01, head); sp.scale.set(1.1, 0.55, 1.1); sp.rotation.set(Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7); } }
+  else if (style === 2) { const f = put(GEO.fringe, mHair, 0.05, 0.145, 0.115, head); f.scale.set(1.6, 0.42, 0.9); f.rotation.z = -0.4; }
+  else if (style === 3) { cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96); }
+  else { cap.scale.set(1.03, 1.1, 1.06); const f = put(GEO.fringe, mHair, 0, 0.1, 0.14, head); f.scale.set(1.85, 0.55, 0.65); }
   if (def.t.includes("프로게이머")) {
     const hs = mk(0x26282c, 0.4, { metalness: 0.3 }), led = mk(0x7ff0ff, 0.3, { emissive: lin(0x3fd8ff) });
     put(new THREE.TorusGeometry(0.255, 0.022, 8, 24, Math.PI), hs, 0, 0.02, 0, head);
     for (const s2 of [-1, 1]) { const cup = put(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 16), hs, s2 * 0.24, 0, 0, head); cup.rotation.z = Math.PI / 2; put(GEO.pin, led, s2 * 0.275, 0, 0, head).scale.setScalar(0.6); }
   }
   if (def.t.includes("전교 1등")) {
-    put(new THREE.BoxGeometry(0.06, 0.14, 0.012), mk(0xc8323a, 0.6), 0, 0.42, 0.2, torso);
-    const md = put(new THREE.CylinderGeometry(0.055, 0.055, 0.02, 20), mk(0xffd24a, 0.25, { metalness: 0.85 }), 0, 0.33, 0.215, torso); md.rotation.x = Math.PI / 2;
+    put(new THREE.BoxGeometry(0.04, 0.1, 0.008), mk(0xc8323a, 0.6), -0.07, 0.45, 0.11, torso);
+    const md = put(new THREE.CylinderGeometry(0.036, 0.036, 0.012, 20), mk(0xffd24a, 0.25, { metalness: 0.85 }), -0.07, 0.385, 0.115, torso); md.rotation.x = Math.PI / 2;
   }
   if (nerd) {
     const mg = mk(0x222222, 0.3, { metalness: 0.6 });
-    for (const s of [-1, 1]) put(GEO.lens, mg, s * 0.072, 0.012, 0.205, head);
-    put(GEO.bridge, mg, 0, 0.02, 0.21, head);
+    for (const s of [-1, 1]) put(GEO.lens, mg, s * 0.068, 0.018, 0.19, head).scale.set(1, 0.8, 1);
+    put(GEO.bridge, mg, 0, 0.022, 0.195, head);
   }
-  // 팔
-  ud.arms = [];
+  // 팔: 어깨 → 위팔 → 팔꿈치(살짝 굽힘) → 아래팔 → 소매 끝 → 손
+  ud.arms = []; ud.elbows = []; const grip = [];
   for (const s of [-1, 1]) {
-    const sh = new THREE.Group(); sh.position.set(s * 0.31, 0.47, 0); torso.add(sh);
-    put(GEO.sleeve, mJacket, 0, -0.18, 0, sh);
-    if (sporty) put(GEO.stripe, mWhite, 0, -0.3, 0, sh);
-    put(GEO.hand, mSkin, 0, -0.39, 0, sh);
-    ud.arms.push(sh);
+    const sh = new THREE.Group(); sh.position.set(s * 0.2, 0.5, 0); torso.add(sh);
+    put(HG.delt, mJacket, 0, -0.01, 0, sh).scale.set(1, 0.95, 0.9);
+    put(HG.upper, mJacket, 0, -0.15, 0, sh);
+    if (sporty) { const st = put(HG.stripe, mStripe, s * 0.055, -0.15, 0, sh); st.scale.y = 0.28; }
+    const el = new THREE.Group(); el.position.y = -0.3; el.rotation.x = -0.22; sh.add(el);
+    put(HG.fore, mJacket, 0, -0.13, 0, el);
+    if (sporty) { const st = put(HG.stripe, mStripe, s * 0.047, -0.12, 0, el); st.scale.y = 0.22; }
+    put(HG.cuff, sporty ? mJacket : mShirt, 0, -0.265, 0, el);
+    put(HG.palm, mSkin, 0, -0.3, 0.004, el).scale.set(0.82, 1.15, 0.55);
+    const th = put(HG.thumb, mSkin, -s * 0.025, -0.29, 0.025, el); th.rotation.set(0.5, 0, s * 0.4);
+    // 무기는 예전 손 높이(-0.39)·예전 몸 크기 기준이라, 80%로 줄이고 그 높이가 새 손(-0.3)에 오도록 맞춘 자리
+    const gp = new THREE.Group(); gp.scale.setScalar(0.8); gp.position.y = -0.3 + 0.39 * 0.8; el.add(gp); grip.push(gp);
+    ud.arms.push(sh); ud.elbows.push(el);
   }
-  ud.restZ = [-0.12, 0.12];
-  const [L, R] = ud.arms;
+  ud.restZ = [-0.07, 0.07];
+  const [L, R] = grip;
   const WP = WEAPONS[def.n];
   if (WP) WP.build({ put, mk, L, R, torso, ud, g, def });
   if (!WP || def.k === "신") switch (def.k) {
@@ -866,7 +919,7 @@ function buildStudent(def, enemy) {
     case "신": { // 머리 위 금빛 후광 + 금 목걸이
       const gm = mk(0xffd86b, 0.25, { metalness: 0.6, emissive: lin(0xffb020), emissiveIntensity: 0.9 });
       const halo = put(new THREE.TorusGeometry(0.17, 0.022, 8, 32), gm, 0, 0.36, -0.03, ud.head); halo.rotation.x = Math.PI / 2 - 0.2;
-      put(GEO.pin, gm, 0, 0.42, 0.17, torso).scale.setScalar(1.4);
+      put(GEO.pin, gm, 0, 0.47, 0.11, torso).scale.setScalar(1.2);
       break;
     }
   }
@@ -1055,6 +1108,10 @@ function placeUnit(it, dt) {
       g.position.y += A.hop || 0;
     }
     ud.legs[1].rotation.x += kick;
+    if (ud.knees) { // 걸을 때 뒤로 가는 다리의 무릎을 굽혀요, 차는 다리는 펴요
+      ud.knees[0].rotation.x = Math.max(0, Math.sin(ud.walk + 1.2)) * 0.95 * ud.move;
+      ud.knees[1].rotation.x = Math.max(0, -Math.sin(ud.walk + 1.2)) * 0.95 * ud.move + Math.max(0, kick) * 0.6;
+    }
     if (it.jump > 0) { lz = -0.4 - it.jump * 3; rz = 0.4 + it.jump * 3; lean = -0.15; }
     if (win) { la = ra = -2.7 + Math.sin(clock3d * 14 + it.x) * 0.25; lz = -0.45; rz = 0.45; lean = -0.1; }
     if (it.held) { la = -0.3; ra = -0.3; lz = -0.6; rz = 0.6; }
