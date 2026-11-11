@@ -20,6 +20,7 @@
 | 레벨 확률 · 몬스터 · 기본 숫자 | `js/constants.js` |
 | 효과음 | `js/sound.js` |
 | 친구와 같이 하기(온라인 방 · 실시간 대전) | `js/online.js` |
+| 올린 사진(카드 · 배경)을 모두에게 보이게 | `js/photos.js` |
 
 처음이라면 **`js/friends.js`, `js/skills.js`, `js/weapons.js`** 세 개만 보면 돼요.
 세 파일 모두 맨 위에 쓰는 법이 적혀 있어요.
@@ -43,7 +44,9 @@
 - **자기 파일만** 고쳐요. 다른 사람 파일은 건드리지 않아요. 그러면 서로 덮어쓸 일이 없어요.
 - 올리기 전에 `index.html`을 열어서 한 판 해봐요. 빨간 "오류가 났어요" 글자가 뜨면 되돌려요.
 - 같은 파일을 두 명이 고치면 한 명이 나중에 합쳐야 해요. 겹치지 않게 미리 말해요.
-- 친구 얼굴 사진을 코드에 넣지 않아요. 사진은 게임의 설정(톱니바퀴) 메뉴에서 각자 기기에만 저장해요.
+- 친구 얼굴 사진을 코드에 넣지 않아요. 사진은 게임의 설정(톱니바퀴) 메뉴에서 올려요.
+  게임 페이지를 고칠 수 있는 사람이 올리면 링크를 여는 모두에게 보이고, 다른 사람이 올리면 자기 기기에만 저장돼요.
+  모두에게 보이는 사진은 본인이 괜찮다고 한 사진만 올려요.
 - 친구를 놀리는 말이나 기분 나쁠 수 있는 이름은 쓰지 않아요.
 
 ## Claude로 고치고 올리기
@@ -54,6 +57,6 @@
 
 ## 파일 순서 (바꾸지 마세요)
 
-`index.html`이 `js/friends.js → skills → augments → constants → game → battle → robot → weapons → sound → online → render3d → ui` 순서로 불러와요.
+`index.html`이 `js/friends.js → skills → augments → constants → game → battle → robot → weapons → sound → online → photos → render3d → ui` 순서로 불러와요.
 "친구와 같이 하기"는 claude.ai 아티팩트로 올린 페이지에서만 켜져요 (`index.html`을 그냥 열면 "혼자 하기"만 돼요).
 새 파일을 만들면 `index.html`에 `<script>` 줄을 같은 방식으로 추가해야 해요.
