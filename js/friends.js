@@ -117,6 +117,9 @@ const TUNE = {
   "진성욱": { hp: 0.90, ad: 0.90, sk: 0.90 },
 };
 const tuneOf = (def) => TUNE[def.n] || { hp: 1, ad: 1, sk: 1 };
+// 5코스트 ★3 = 전설. 만들기 아주 어려운 대신, 만들면 거의 무조건 이겨요 (체력·공격력·스킬에 곱하는 숫자)
+const LEGEND = { hp: 5, ad: 3, sk: 5 };
+const legendOf = (def, star) => (def.c === 5 && star >= 3 ? LEGEND : { hp: 1, ad: 1, sk: 1 });
 const MAIN_TRAITS = ["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"];
 // rg = 육각 칸 사거리
 const CLASS = {

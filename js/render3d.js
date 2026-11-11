@@ -1575,7 +1575,7 @@ function drawSmite(z, dt) {
   ud.sky.rotation.y += dt * 2.5; ud.sky.scale.setScalar(0.3 + 0.7 * ck);
   ud.sky.children.forEach((m) => (m.material.opacity = 0.35 * ck * end));
   for (const s of (z.strikes || []).concat(z.big ? [z.big] : [])) {
-    const k = t - s.at, life = s.mega ? 1.0 : s.big ? 0.55 : 0.3, pre = s.mega ? 0.7 : 0.18; if (k < -pre || k > life) continue;
+    const k = t - s.at, life = s.mega ? 1.0 : s.big ? 0.6 : 0.5, pre = s.mega ? 0.7 : 0.25; if (k < -pre || k > life) continue;
     const m = useMesh(s, () => {
       const grp = new THREE.Group();
       grp.userData.ring = new THREE.Mesh(GEO.ringFx, additive("#bfe8ff")); grp.userData.ring.rotation.x = -Math.PI / 2; grp.userData.ring.position.y = 0.26; grp.add(grp.userData.ring);
@@ -1591,7 +1591,7 @@ function drawSmite(z, dt) {
     if (!ud2.bT || (ud2.bT -= dt) <= 0) {
       ud2.bT = 0.05;
       if (ud2.bolt) { m.remove(ud2.bolt); ud2.bolt.userData.mats.forEach((mt) => mt.dispose()); }
-      ud2.bolt = s.mega ? makeBolt(22, 1.6, 0.7, ["#ffffff", "#9fdcff", "#ffe66b"], 9) : s.big ? makeBolt(14, 0.55, 0.16, ["#ffffff", "#9fdcff", "#ffe66b"], 4) : makeBolt(12, 0.35, 0.08, ["#ffffff", "#7fc8ff"], 2);
+      ud2.bolt = s.mega ? makeBolt(22, 1.6, 0.7, ["#ffffff", "#9fdcff", "#ffe66b"], 9) : s.big ? makeBolt(14, 0.55, 0.16, ["#ffffff", "#9fdcff", "#ffe66b"], 4) : makeBolt(14, 0.45, 0.17, ["#ffffff", "#7fc8ff", "#ffe66b"], 3);
       if (s.mega) for (let i = 0; i < 6; i++) { const sb = makeBolt(16, 0.9, 0.18, ["#ffffff", "#9fdcff"], 2), a = (i / 6) * Math.PI * 2 + Math.random(); sb.position.set(Math.cos(a) * 3.2, 0, Math.sin(a) * 3.2); sb.userData.mats.forEach((mt) => ud2.bolt.userData.mats.push(mt)); ud2.bolt.add(sb); }
       m.add(ud2.bolt);
     }
@@ -2081,13 +2081,13 @@ function drawOverlay(dt, R) {
     const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
     vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, `rgba(0,0,10,${0.5 * dark})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     let fl = 0;
-    for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) { const k = t - s.at, fd = s.mega ? 0.45 : 0.12; if (k >= 0 && k < fd) fl = Math.max(fl, (1 - k / fd) * (s.mega ? 1 : s.big ? 0.55 : 0.2)); }
+    for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) { const k = t - s.at, fd = s.mega ? 0.45 : 0.12; if (k >= 0 && k < fd) fl = Math.max(fl, (1 - k / fd) * (s.mega ? 1 : s.big ? 0.55 : 0.3)); }
     if (sz.big && sz.big.mega) { const k = t - sz.big.at; if (k > -0.7 && k < 0) { ctx.fillStyle = `rgba(4,6,24,${0.35 * (1 + k / 0.7)})`; ctx.fillRect(0, 0, W, H); } } // 큰 번개 직전엔 더 어둡게
     if (fl > 0) { ctx.fillStyle = `rgba(225,240,255,${fl})`; ctx.fillRect(0, 0, W, H); }
     // 화면 위에서 적에게 내리꽂는 지그재그 번개 (어두운 화면 위에 그려서 잘 보여요)
     for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) {
-      const k = t - s.at, life = s.mega ? 0.8 : s.big ? 0.4 : 0.2; if (k < 0 || k > life) continue;
-      const [gx, gy] = proj(worldX(s.X), 0.9, worldZ(s.Y)), q = 1 - k / life, wd = s.mega ? 6 : s.big ? 2.2 : 1;
+      const k = t - s.at, life = s.mega ? 0.8 : s.big ? 0.45 : 0.4; if (k < 0 || k > life) continue;
+      const [gx, gy] = proj(worldX(s.X), 0.9, worldZ(s.Y)), q = 1 - k / life, wd = s.mega ? 6 : s.big ? 2.6 : 1.9;
       const zig = (x0, y0, x1, y1, n, jag) => { const pts = [[x0, y0]]; for (let i = 1; i < n; i++) { const kk = i / n; pts.push([x0 + (x1 - x0) * kk + (Math.random() - 0.5) * jag, y0 + (y1 - y0) * kk]); } pts.push([x1, y1]); return pts; };
       const main = zig(gx + (Math.random() - 0.5) * u0 * 6, 0, gx, gy, 10, u0 * 2.6 * wd), paths = [main];
       for (let b = 0; b < (s.mega ? 10 : s.big ? 4 : 2); b++) { const p0 = main[2 + Math.floor(Math.random() * 6)]; paths.push(zig(p0[0], p0[1], p0[0] + (Math.random() - 0.5) * u0 * 8, p0[1] + u0 * (3 + Math.random() * 4), 4, u0 * 1.5)); }
