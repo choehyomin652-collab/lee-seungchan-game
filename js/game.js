@@ -172,7 +172,9 @@ function startRound(first) {
   if (!first) {
     for (const P of alivePlayers().filter(isLocal)) {
       const base = S.stage === 1 ? (S.k <= 3 ? 2 : 3) : 5;
-      const interest = Math.min(5, Math.floor(P.gold / 10));
+      // 아직 줍지 않은 골드 구슬도 내 골드로 쳐요 (컴퓨터 반은 보상을 바로 받으니까)
+      const orbGold = P.human ? (S.orbs || []).reduce((s, o) => s + o.gold, 0) : 0;
+      const interest = Math.min(5, Math.floor((P.gold + orbGold) / 10));
       const st = Math.abs(P.streak), sb = st >= 6 ? 3 : st >= 5 ? 2 : st >= 3 ? 1 : 0;
       const inc = base + interest + sb + P.gpr;
       P.gold += inc;
@@ -376,11 +378,19 @@ function gameOver(place) {
 function startCarousel() {
   S.phase = "carousel"; S.battle = null; S.sel = null; S.scout = null; S.opp = null; FLIP = false;
   const s = S.stage;
-  const costs = s === 1 ? [1] : s === 2 ? [1, 2] : s === 3 ? [2, 3] : s === 4 ? [3, 4] : [3, 4, 5];
+  const costs = s === 1 ? [1] : s === 2 ? [1, 2] : s === 3 ? [2, 3] : s === 4 ? [3, 4] : [3, 3, 4, 4, 5];
   const opts = [];
   for (let i = 0; i < 9; i++) {
-    const cost = rnd(costs);
-    opts.push({ d: rnd(DEFS.map((_, j) => j).filter((j) => DEFS[j].c === cost)), item: ITEMS_ON ? rnd(COMP).id : null, taken: false });
+    // 상점과 같은 풀에서 꺼내요 (남은 수가 많은 친구가 더 자주 나와요)
+    let d = null;
+    for (let tries = 0; tries < 10 && d == null; tries++) {
+      const cost = rnd(costs), cands = DEFS.map((_, j) => j).filter((j) => DEFS[j].c === cost && S.pool[j] > 0);
+      let r = Math.random() * cands.reduce((t, j) => t + S.pool[j], 0);
+      for (const j of cands) { r -= S.pool[j]; if (r < 0) { d = j; break; } }
+    }
+    if (d == null) { const left = DEFS.map((_, j) => j).filter((j) => S.pool[j] > 0); if (!left.length) break; d = rnd(left); } // 원하는 코스트가 다 떨어지면 남은 친구 아무나
+    S.pool[d]--;
+    opts.push({ d, item: ITEMS_ON ? rnd(COMP).id : null, taken: false });
   }
   const order = shuffle(alivePlayers().filter(isLocal)).sort((a, b) => a.hp - b.hp);
   S.car = { opts, order, turn: 0, t: 0, ang: 0, wait: 1.5, humanT: 12 };
@@ -389,7 +399,10 @@ function startCarousel() {
 }
 function stepCarousel(dt) {
   const C = S.car; C.ang += dt * 0.35; C.t += dt;
-  if (C.turn >= C.order.length) { if (C.t > 1) { S.car = null; nextRound(); } return; }
+  if (C.turn >= C.order.length) {
+    if (C.t > 1) { C.opts.forEach((o) => { if (!o.taken) S.pool[o.d]++; }); S.car = null; nextRound(); } // 남은 친구는 풀로
+    return;
+  }
   if (C.t < C.wait) return;
   const P = C.order[C.turn];
   if (P.human) {
@@ -405,10 +418,16 @@ function carouselPick(P, o) {
   if (!o || o.taken) return;
   o.taken = true;
   const u = mkUnit(o.d); u.items = o.item ? [o.item] : [];
-  const free = P.bench.indexOf(null);
-  if (free >= 0) P.bench[free] = u; else giveItem(P, o.item);
+  const free = P.bench.indexOf(null), copies = unitsOf(P).filter((x) => x.u.d === o.d && x.u.star === 1).length;
+  let got = true;
+  if (free >= 0) P.bench[free] = u;
+  else if (copies >= 2) { P.bench.push(u); merge(P, o.d, 1); P.bench.length = BENCH; } // 바로 합성돼서 자리가 생겨요
+  else { got = false; P.gold += DEFS[o.d].c; S.pool[o.d]++; giveItem(P, o.item); } // 자리가 없으면 골드로 바꿔요
   S.car.turn++; S.car.t = 0; S.car.wait = 0.5;
-  if (P.human) { sfx("buy"); toast(o.item ? `${DEFS[o.d].n} + ${ITEMS[o.item].n} 획득!` : `${DEFS[o.d].n} 획득!`); }
+  if (P.human) {
+    sfx("buy");
+    toast(!got ? `대기석이 가득 차서 ${DEFS[o.d].n} 대신 ${DEFS[o.d].c}골드를 받았어요` : o.item ? `${DEFS[o.d].n} + ${ITEMS[o.item].n} 획득!` : `${DEFS[o.d].n} 획득!`);
+  }
   renderUI();
 }
 
@@ -448,7 +467,19 @@ function aiPlan(P) {
   }
   if (P.bench.filter(Boolean).length > 7) aiMakeRoom(P);
   aiArrange(P);
+  aiTrim(P, s <= 2 ? 5 : 4);
   aiItems(P);
+}
+// 컴퓨터 반이 대기석에 친구를 쌓아 두면 풀이 바닥나서 다른 반(사람 포함) 상점에 친구가 안 떠요.
+// 대기석은 keep 칸까지만 두고, 합성 가능성이 낮은 친구부터 팔아요.
+function aiTrim(P, keep) {
+  for (let guard = 0; guard < BENCH; guard++) {
+    const bench = P.bench.map((u, i) => ({ u, i })).filter((x) => x.u);
+    if (bench.length <= keep) return;
+    const copies = (d) => unitsOf(P).filter((x) => x.u.d === d).length;
+    bench.sort((a, b) => (copies(a.u.d) >= 2) - (copies(b.u.d) >= 2) || (aiUnitScore(P, a.u.d) + a.u.star * 3) - (aiUnitScore(P, b.u.d) + b.u.star * 3));
+    sell(P, { w: "n", i: bench[0].i });
+  }
 }
 function aiArrange(P) {
   const all = unitsOf(P).map((x) => x.u);

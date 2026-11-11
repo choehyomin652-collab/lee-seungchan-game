@@ -14,8 +14,10 @@ const AUGS = [
   { id: "wall", n: "철벽 수비", d: "아군 전체 받는 피해 -10%", f: (P) => (P.buff.ar += 0.1) },
   { id: "meat", n: "급식 고기반찬", d: "아군 전체 공격력 +12%, 체력 +8%", f: (P) => { P.buff.ad += 0.12; P.buff.hp += 0.08; } },
   { id: "nurse", n: "보건실 이용권", d: "내 체력 +20", f: (P) => (P.hp += 20) },
-  { id: "pres", n: "신의 강림", d: "정주환 ★1을 대기석으로", f: (P) => { const d = DEFS.findIndex((x) => x.n === "정주환"), i = P.bench.indexOf(null); if (i >= 0) { P.bench[i] = mkUnit(d); if (S.pool[d] > 0) S.pool[d]--; } else P.gold += 5; } },
-  { id: "honor", n: "우등생", d: "무작위 2코스트 친구 ★2", f: (P) => { const i = P.bench.indexOf(null); const d = rnd(DEFS.map((_, j) => j).filter((j) => DEFS[j].c === 2)); if (i >= 0) P.bench[i] = mkUnit(d, 2); else P.gold += 6; } },
+  { id: "pres", n: "신의 강림", d: "정주환 ★1을 대기석으로", f: (P) => { const d = DEFS.findIndex((x) => x.n === "정주환"), i = P.bench.indexOf(null); if (i >= 0 && S.pool[d] > 0) { P.bench[i] = mkUnit(d); S.pool[d]--; } else P.gold += 5; } },
+  { id: "honor", n: "우등생", d: "무작위 2코스트 친구 ★2", f: (P) => { // ★2 = 친구 3명이라 풀에서 3명을 꺼내요
+    const i = P.bench.indexOf(null), cands = DEFS.map((_, j) => j).filter((j) => DEFS[j].c === 2 && S.pool[j] >= 3);
+    if (i >= 0 && cands.length) { const d = rnd(cands); S.pool[d] -= 3; P.bench[i] = mkUnit(d, 2); } else P.gold += 6; } },
   ...["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"].map((t) => ({ id: "emb-" + t, n: `${t} 배지`, d: `${t} 시너지 숫자 +1`, f: (P) => (P.emb[t] = (P.emb[t] || 0) + 1) })),
 ];
 const AUG_ROUNDS = { "2-1": "실버", "3-2": "골드", "4-2": "프리즘" };
