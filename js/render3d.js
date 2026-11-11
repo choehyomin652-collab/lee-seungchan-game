@@ -1681,12 +1681,12 @@ function drawOverlay(dt, R) {
   if (S.mergeFx) {
     const m = S.mergeFx; m.t -= dt;
     const e = m.t0 - m.t, q = Math.min(1, e / 0.14), gold = m.star >= 3;
-    const sc = 1 + (1 - q) * 1.6 + (q >= 1 ? Math.max(0, 0.12 - (e - 0.14)) : 0), cy = H3 * 0.3 - Math.max(0, e - 1.1) * u0 * 6, px = u0 * (gold ? 3.6 : 2.8);
+    const sc = 1 + (1 - q) * 1.6 + (q >= 1 ? Math.max(0, 0.12 - (e - 0.14)) : 0), cy = H3 * 0.3 - Math.max(0, e - 1.1) * u0 * 6, px = u0 * (gold ? 2.4 : 1.9);
     ctx.save(); ctx.translate(W / 2, cy); ctx.scale(sc, sc); ctx.rotate(-0.05);
     ctx.globalAlpha = q * Math.max(0, Math.min(1, m.t * 2.5));
     // 뒤에서 도는 빛살
     ctx.save(); ctx.rotate(e * 0.8); ctx.globalAlpha *= 0.35;
-    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.fillStyle = gold ? "#ffd75a" : "#cfe6ff"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(px * 3.2, -px * 0.25); ctx.lineTo(px * 3.2, px * 0.25); ctx.closePath(); ctx.fill(); }
+    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.fillStyle = gold ? "#ffd75a" : "#cfe6ff"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(px * 2.6, -px * 0.22); ctx.lineTo(px * 2.6, px * 0.22); ctx.closePath(); ctx.fill(); }
     ctx.restore();
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const stars = "★".repeat(m.star);
