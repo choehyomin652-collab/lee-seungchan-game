@@ -32,13 +32,13 @@ function canvasTex(w, h, paint) {
 function repaint(t) { const { c, paint } = t.userData; paint(c.getContext("2d"), c.width, c.height); t.needsUpdate = true; }
 const DF = () => TOK["--display"];
 function paintChalk(g, w, h) {
-  g.fillStyle = "#24453a"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#262a36"; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.035})`; g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, 40 + Math.random() * 160, 10 + Math.random() * 30, Math.random(), 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = "rgba(240,244,232,.92)"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = "rgba(170,236,255,.95)"; g.textAlign = "center"; g.textBaseline = "middle";
   g.font = `190px ${DF()}`; g.fillText("우리반 오토배틀", w / 2, h * 0.44);
   g.fillStyle = "rgba(245,215,110,.9)"; g.font = `70px ${DF()}`; g.fillText("오늘의 목표: 끝까지 살아남기!", w / 2, h * 0.78);
   g.textAlign = "right"; g.fillStyle = "rgba(240,244,232,.85)"; g.font = `58px ${DF()}`;
-  g.fillText("11월 9일 월요일", w - 70, 80); g.fillText("주번: 정주환", w - 70, 160);
+  { const d = new Date(); g.fillText(`${d.getMonth() + 1}월 ${d.getDate()}일 ${"일월화수목금토"[d.getDay()]}요일`, w - 70, 80); } g.fillText("주번: 정주환", w - 70, 160);
   g.textAlign = "left"; g.fillText("떠든 사람:", 70, 80);
 }
 function paperTex(name) {
@@ -112,7 +112,7 @@ function pickBackdrop(file) {
   r.readAsDataURL(file);
 }
 // ----- 숲속 절벽 경기장 -----
-const FOG_HEX = 0xc7a0b6;
+const FOG_HEX = 0x241f42;
 // 강: 경기장 왼쪽을 따라 굽이쳐 흘러요
 const RIVER_HW = 1.45;
 const riverX = (z) => -11.3 + Math.sin(z * 0.3 + 0.5);
@@ -134,27 +134,32 @@ function riverRibbon(hw, y, mat, off = 0) {
 function buildWorld() {
   OUT = new THREE.Group(); scene.add(OUT);
   const R = Math.random;
-  // 하늘: 해 질 녘 보랏빛
-  scene.background = canvasTex(64, 512, (g, w, h) => {
+  // 하늘: 별이 뜬 밤, 지평선 쪽은 보랏빛
+  scene.background = canvasTex(1024, 1024, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, "#35477f"); gr.addColorStop(0.38, "#77659f"); gr.addColorStop(0.72, "#c98aa4"); gr.addColorStop(1, "#f2bb8e");
+    gr.addColorStop(0, "#070b22"); gr.addColorStop(0.42, "#16183e"); gr.addColorStop(0.74, "#3a2c5e"); gr.addColorStop(1, "#6a4a78");
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 520; i++) { const y = Math.pow(R(), 1.6) * h * 0.8, a = 0.25 + R() * 0.7 * (1 - y / h); g.fillStyle = `rgba(${220 + R() * 35},${225 + R() * 30},255,${a})`; g.fillRect(R() * w, y, R() < 0.08 ? 2.4 : 1.3, R() < 0.08 ? 2.4 : 1.3); }
+    const mx = w * 0.8, my = h * 0.16, glow = g.createRadialGradient(mx, my, 0, mx, my, 150);
+    glow.addColorStop(0, "rgba(220,230,255,.55)"); glow.addColorStop(1, "rgba(220,230,255,0)"); g.fillStyle = glow; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#f2f4ff"; g.beginPath(); g.arc(mx, my, 34, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(170,180,215,.35)"; for (const [dx, dy, r] of [[-10, -6, 8], [9, 8, 6], [4, -14, 4]]) { g.beginPath(); g.arc(mx + dx, my + dy, r, 0, Math.PI * 2); g.fill(); }
   });
   scene.fog = new THREE.Fog(lin(FOG_HEX), 40, 95);
   // 떠 있는 섬: 짙은 숲 바닥
-  const grass = noiseTex(512, "#3f6e2f", [["rgba(28,62,34,.42)", 520, 3, 9], ["rgba(128,170,70,.22)", 380, 1, 5], ["rgba(70,52,96,.16)", 60, 12, 34], ["rgba(120,95,55,.16)", 40, 8, 24]], 10);
+  const grass = noiseTex(512, "#22402f", [["rgba(14,34,26,.5)", 520, 3, 9], ["rgba(70,120,80,.22)", 380, 1, 5], ["rgba(50,40,90,.22)", 60, 12, 34], ["rgba(60,70,90,.2)", 40, 8, 24]], 10);
   const top = new THREE.Mesh(new THREE.CircleGeometry(24, 48), new THREE.MeshStandardMaterial({ map: grass, roughness: 0.95 }));
   top.rotation.x = -Math.PI / 2; top.position.y = 0.0; top.receiveShadow = true; OUT.add(top);
-  const rockMat = new THREE.MeshStandardMaterial({ color: lin(0x84728a), roughness: 0.95, flatShading: true });
+  const rockMat = new THREE.MeshStandardMaterial({ color: lin(0x4a4660), roughness: 0.95, flatShading: true });
   const cliff = new THREE.Mesh(new THREE.CylinderGeometry(24, 15, 10, 28, 3), rockMat);
   const cp = cliff.geometry.attributes.position;
   for (let i = 0; i < cp.count; i++) { const y = cp.getY(i); if (y < 4.9) { cp.setX(i, cp.getX(i) * (0.92 + R() * 0.16)); cp.setZ(i, cp.getZ(i) * (0.92 + R() * 0.16)); } }
   cliff.geometry.computeVertexNormals(); cliff.position.y = -5.02; OUT.add(cliff);
   // 강물과 강둑
-  OUT.add(riverRibbon(RIVER_HW + 0.75, 0.02, new THREE.MeshStandardMaterial({ color: lin(0x8f7a55), roughness: 1 })));
+  OUT.add(riverRibbon(RIVER_HW + 0.75, 0.02, new THREE.MeshStandardMaterial({ color: lin(0x3e3c4a), roughness: 1 })));
   const waterTex = canvasTex(128, 256, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, w, 0);
-    gr.addColorStop(0, "#8fe0dc"); gr.addColorStop(0.22, "#3b9fcf"); gr.addColorStop(0.5, "#2376b8"); gr.addColorStop(0.78, "#3b9fcf"); gr.addColorStop(1, "#8fe0dc");
+    gr.addColorStop(0, "#5fc8e0"); gr.addColorStop(0.22, "#1f6a9a"); gr.addColorStop(0.5, "#123e70"); gr.addColorStop(0.78, "#1f6a9a"); gr.addColorStop(1, "#5fc8e0");
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
     for (let i = 0; i < 46; i++) {
       const x = 8 + R() * (w - 16), y = R() * h, rx = 1 + R() * 2.2, ry = 8 + R() * 22;
@@ -163,68 +168,48 @@ function buildWorld() {
     }
   });
   waterTex.wrapT = THREE.RepeatWrapping;
-  const water = riverRibbon(RIVER_HW, 0.06, new THREE.MeshStandardMaterial({ map: waterTex, roughness: 0.16, metalness: 0.1, emissive: lin(0x16507a), emissiveIntensity: 0.4 }));
+  const water = riverRibbon(RIVER_HW, 0.06, new THREE.MeshStandardMaterial({ map: waterTex, roughness: 0.16, metalness: 0.1, emissive: lin(0x1a6a9a), emissiveIntensity: 0.7 }));
   OUT.add(water); WATER = waterTex;
   // 경기장 바닥: 풀밭 가운데가 닳아서 흙이 드러난 모양
+  // 경기장 바닥: 크기가 제각각인 판석, 틈새 이끼, 가운데 희미한 마법진
   const arena = canvasTex(1024, 1024, (g, w, h) => {
-    const base = g.createLinearGradient(0, 0, w, h);
-    base.addColorStop(0, "#5f9039"); base.addColorStop(0.5, "#6b9c3f"); base.addColorStop(1, "#4d8235");
-    g.fillStyle = base; g.fillRect(0, 0, w, h);
-    const blob = (x, y, r, rgb, a) => {
-      const gr = g.createRadialGradient(x, y, 0, x, y, r);
-      gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`);
-      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#23262f"; g.fillRect(0, 0, w, h);
+    const slab = (x, y, sw, sh) => {
+      const l = 82 + R() * 30, tint = R() * 10;
+      g.fillStyle = `rgb(${l - 4 + tint},${l},${l + 10})`; g.fillRect(x + 3, y + 3, sw - 6, sh - 6);
+      const gr = g.createLinearGradient(x, y, x, y + sh); gr.addColorStop(0, "rgba(255,255,255,.08)"); gr.addColorStop(1, "rgba(0,0,0,.18)"); g.fillStyle = gr; g.fillRect(x + 3, y + 3, sw - 6, sh - 6);
+      for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(${R() < 0.5 ? "20,22,30" : "200,205,220"},${0.06 + R() * 0.06})`; g.beginPath(); g.ellipse(x + R() * sw, y + R() * sh, 6 + R() * 20, 4 + R() * 10, R() * 3, 0, Math.PI * 2); g.fill(); }
+      if (R() < 0.35) { g.strokeStyle = "rgba(20,22,30,.5)"; g.lineWidth = 2; let cx2 = x + R() * sw, cy2 = y + R() * sh; g.beginPath(); g.moveTo(cx2, cy2); for (let k = 0; k < 4; k++) { cx2 += (R() - 0.5) * 50; cy2 += (R() - 0.5) * 40; g.lineTo(Math.max(x + 4, Math.min(x + sw - 4, cx2)), Math.max(y + 4, Math.min(y + sh - 4, cy2))); } g.stroke(); }
     };
-    for (let i = 0; i < 70; i++) blob(R() * w, R() * h, 50 + R() * 130, R() < 0.5 ? "44,92,40" : "156,196,84", 0.2 + R() * 0.12);
-    const cx = w * 0.5, cy = h * 0.47;
-    for (let i = 0; i < 80; i++) { const a = R() * Math.PI * 2, d = Math.sqrt(R()); blob(cx + Math.cos(a) * d * 310, cy + Math.sin(a) * d * 255, 70 + R() * 110, "188,150,98", 0.3); }
-    for (let i = 0; i < 34; i++) { const a = R() * Math.PI * 2, d = Math.sqrt(R()); blob(cx + Math.cos(a) * d * 230, cy + Math.sin(a) * d * 180, 30 + R() * 60, "226,194,138", 0.2); }
-    for (let i = 0; i < 12; i++) blob(R() * w, R() * h, 40 + R() * 70, "170,136,90", 0.24);
-    for (let i = 0; i < 9000; i++) {
-      const x = R() * w, y = R() * h, inDirt = Math.hypot((x - cx) / 300, (y - cy) / 245) < 1;
-      if (inDirt && R() > 0.22) continue;
-      g.strokeStyle = R() < 0.5 ? "rgba(52,96,34,.5)" : "rgba(176,208,96,.34)"; g.lineWidth = 1.5;
-      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 4, y - 4 - R() * 6); g.stroke();
-    }
-    for (let i = 0; i < 46; i++) {
-      const x = R() * w, y = R() * h, rx = 5 + R() * 10, ry = 4 + R() * 7, rot = R() * 3;
-      g.fillStyle = "rgba(96,88,78,.5)"; g.beginPath(); g.ellipse(x, y + 2, rx, ry, rot, 0, Math.PI * 2); g.fill();
-      g.fillStyle = "rgba(196,188,170,.6)"; g.beginPath(); g.ellipse(x, y, rx * 0.85, ry * 0.8, rot, 0, Math.PI * 2); g.fill();
-    }
-    g.strokeStyle = "rgba(255,238,200,.1)"; g.lineWidth = 12; g.beginPath(); g.arc(cx, cy, 178, 0, Math.PI * 2); g.stroke();
-    g.strokeStyle = "rgba(60,40,20,.08)"; g.lineWidth = 4; g.beginPath(); g.arc(cx, cy, 190, 0, Math.PI * 2); g.stroke();
-    // 가장자리 돌 포장과 이끼
-    const pave = (x, y, pw, ph) => {
-      g.fillStyle = `rgb(${172 + R() * 26},${162 + R() * 24},${138 + R() * 22})`; g.fillRect(x + 2, y + 2, pw - 4, ph - 4);
-      g.fillStyle = "rgba(255,250,235,.2)"; g.fillRect(x + 2, y + 2, pw - 4, 3);
-      g.fillStyle = "rgba(60,50,38,.18)"; g.fillRect(x + 2, y + ph - 5, pw - 4, 3);
-    };
-    g.fillStyle = "#6f6552"; g.fillRect(0, 0, w, 44); g.fillRect(0, h - 44, w, 44); g.fillRect(0, 0, 44, h); g.fillRect(w - 44, 0, 44, h);
-    for (let x = 0; x < w; x += 64) { pave(x, 0, 64, 44); pave(x, h - 44, 64, 44); }
-    for (let y = 44; y < h - 44; y += 64) { const ph = Math.min(64, h - 44 - y); pave(0, y, 44, ph); pave(w - 44, y, 44, ph); }
-    for (let i = 0; i < 70; i++) {
-      const k = i % 4, u = R() * w, v = 30 + R() * 30;
-      blob(k === 0 ? u : k === 1 ? u : k === 2 ? v : w - v, k === 0 ? v : k === 1 ? h - v : u, 12 + R() * 22, R() < 0.5 ? "70,118,48" : "104,150,62", 0.5);
-    }
-    const edge = (x0, y0, x1, y1, rx, ry, rw, rh) => {
-      const gr = g.createLinearGradient(x0, y0, x1, y1);
-      gr.addColorStop(0, "rgba(22,40,30,.42)"); gr.addColorStop(1, "rgba(22,40,30,0)");
-      g.fillStyle = gr; g.fillRect(rx, ry, rw, rh);
-    };
-    edge(0, 0, 120, 0, 0, 0, 120, h); edge(w, 0, w - 120, 0, w - 120, 0, 120, h);
-    edge(0, 0, 0, 120, 0, 0, w, 120); edge(0, h, 0, h - 120, 0, h - 120, w, 120);
+    for (let y = 0; y < h; ) { const rh = 70 + Math.floor(R() * 4) * 18; for (let x = -R() * 80; x < w; ) { const sw = 80 + R() * 110; slab(x, y, sw, rh); x += sw; } y += rh; }
+    // 틈새 이끼와 잡초
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${40 + R() * 30},${90 + R() * 40},${60 + R() * 20},${0.35 + R() * 0.3})`; g.beginPath(); g.ellipse(R() * w, R() * h, 2 + R() * 7, 1.5 + R() * 4, R() * 3, 0, Math.PI * 2); g.fill(); }
+    // 가운데 마법진 (아주 희미하게)
+    const cx = w / 2, cy = h * 0.47;
+    g.strokeStyle = "rgba(120,220,255,.16)"; g.lineWidth = 6; for (const r of [150, 196]) { g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke(); }
+    g.lineWidth = 3; g.beginPath(); for (let i = 0; i <= 6; i++) { const a2 = (i / 6) * Math.PI * 2 - Math.PI / 2, a3 = ((i + 2) / 6) * Math.PI * 2 - Math.PI / 2; g.moveTo(cx + Math.cos(a2) * 150, cy + Math.sin(a2) * 150); g.lineTo(cx + Math.cos(a3) * 150, cy + Math.sin(a3) * 150); } g.stroke();
+    g.fillStyle = "rgba(120,220,255,.16)"; g.font = "28px serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    for (let i = 0; i < 16; i++) { const a2 = (i / 16) * Math.PI * 2; g.save(); g.translate(cx + Math.cos(a2) * 173, cy + Math.sin(a2) * 173); g.rotate(a2 + Math.PI / 2); g.fillText("ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊ"[i], 0, 0); g.restore(); }
+    // 가장자리로 갈수록 어둡게
+    const vg = g.createRadialGradient(cx, cy, 200, cx, cy, 720); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(8,8,20,.45)"); g.fillStyle = vg; g.fillRect(0, 0, w, h);
   });
   const af = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 16.8), new THREE.MeshStandardMaterial({ map: arena, roughness: 0.95 }));
   af.rotation.x = -Math.PI / 2; af.position.set(0, 0.16, 0.9); af.receiveShadow = true; scene.add(af);
   // 돌 재질
-  const stoneTex = noiseTex(256, "#d3c7ab", [["rgba(110,98,78,.16)", 90, 4, 14], ["rgba(255,250,236,.22)", 70, 2, 9], ["rgba(70,62,50,.22)", 40, 1, 3]], 1);
+  const stoneTex = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#7e8090"; g.fillRect(0, 0, w, h);
+    for (const [col, n, r0, r1] of [["rgba(96,84,66,.2)", 90, 4, 14], ["rgba(255,248,230,.25)", 70, 2, 9], ["rgba(60,52,42,.28)", 50, 1, 3], ["rgba(86,120,62,.2)", 14, 6, 16]]) for (let i = 0; i < n; i++) { g.fillStyle = col; g.beginPath(); g.ellipse(R() * w, R() * h, r0 + R() * (r1 - r0), (r0 + R() * (r1 - r0)) * 0.6, R() * 3, 0, Math.PI * 2); g.fill(); }
+    const eg = (x0, y0, x1, y1, c0) => { const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, c0); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); };
+    eg(0, 0, 26, 0, "rgba(40,32,24,.4)"); eg(w, 0, w - 26, 0, "rgba(40,32,24,.4)"); eg(0, h, 0, h - 30, "rgba(40,32,24,.5)"); eg(0, 0, 0, 22, "rgba(255,250,235,.35)");
+    g.strokeStyle = "rgba(40,32,24,.35)"; g.lineWidth = 2; for (let i = 0; i < 3; i++) { let x = 30 + R() * (w - 60), y = 30 + R() * (h - 60); g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (R() - 0.5) * 40; y += (R() - 0.3) * 30; g.lineTo(x, y); } g.stroke(); }
+  });
   const stoneMat = new THREE.MeshStandardMaterial({ map: stoneTex, roughness: 0.92 });
   const stoneDark = new THREE.MeshStandardMaterial({ map: stoneTex, color: lin(0xa99c8c), roughness: 0.95 });
   const stoneFlat = new THREE.MeshStandardMaterial({ map: stoneTex, roughness: 0.92, flatShading: true });
-  const mauveMat = new THREE.MeshStandardMaterial({ color: lin(0x8f7494), roughness: 0.95, flatShading: true });
-  const greyMat = new THREE.MeshStandardMaterial({ color: lin(0xa9a394), roughness: 0.95, flatShading: true });
+  const mauveMat = new THREE.MeshStandardMaterial({ color: lin(0x5c5272), roughness: 0.95, flatShading: true });
+  const greyMat = new THREE.MeshStandardMaterial({ color: lin(0x6a6c78), roughness: 0.95, flatShading: true });
   // 바닥 받침(흙)
-  const dirtTex = noiseTex(256, "#86735a", [["rgba(60,48,36,.25)", 120, 3, 10], ["rgba(190,165,120,.2)", 90, 2, 7]], 6);
+  const dirtTex = noiseTex(256, "#3a3a46", [["rgba(20,20,30,.3)", 120, 3, 10], ["rgba(120,125,150,.18)", 90, 2, 7]], 6);
   addBox(scene, 18.2, 0.16, 19.6, new THREE.MeshStandardMaterial({ map: dirtTex, roughness: 1 }), 0, 0.07, 0.7, false);
   // 뒤쪽 돌담
   addBox(scene, 17.6, 0.5, 1.0, stoneDark, 0, 0.25, -8.0);
@@ -260,11 +245,11 @@ function buildWorld() {
     sh.rotation.y = Math.PI / 4; sh.position.y = 0.5 + hgt / 2; sh.castShadow = true; sh.receiveShadow = true; g.add(sh);
     addBox(g, 1.2, 0.2, 1.2, stoneMat, 0, 0.6 + hgt, 0);
     const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 10), bowlMat); bowl.position.y = 0.85 + hgt; bowl.castShadow = true; g.add(bowl);
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.9, 10), new THREE.MeshBasicMaterial({ color: lin(0xffa23a), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.9, 10), new THREE.MeshBasicMaterial({ color: lin(0x3fb8ff), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
     flame.position.y = 1.4 + hgt; g.add(flame);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 8), new THREE.MeshBasicMaterial({ color: lin(0xfff0a0), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 8), new THREE.MeshBasicMaterial({ color: lin(0xd8f8ff), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
     inner.position.y = 1.3 + hgt; g.add(inner);
-    const light = new THREE.PointLight(0xffa040, 1.4, 9, 2); light.position.y = 1.6 + hgt; g.add(light);
+    const light = new THREE.PointLight(0x5fc8ff, 1.6, 10, 2); light.position.y = 1.6 + hgt; g.add(light);
     TORCH.push({ flame, inner, light });
     addTorchFx(g, 1.4 + hgt);
   };
@@ -276,7 +261,7 @@ function buildWorld() {
     m.scale.set(s * (0.8 + R() * 0.5), s * (0.55 + R() * 0.45), s * (0.8 + R() * 0.5));
     m.rotation.set(R(), R() * 3, R()); m.castShadow = true; m.receiveShadow = true; OUT.add(m);
   };
-  for (const [x, z, s] of [[12, -11, 2.2], [14.6, -1, 1.8], [12.3, 10, 1.6], [17.5, 6.5, 2.4], [10.4, 2.4, 0.9], [18, -11, 2.6], [10.2, -5.5, 1.1], [15.5, -6.5, 1.3]]) stone(x, z, s, mauveMat);
+  for (const [x, z, s] of [[12, -11, 2.2], [14.6, -1, 1.8], [12.3, 10, 1.6], [17.5, 6.5, 2.4], [13.6, 4.4, 0.9], [18, -11, 2.6], [10.2, -5.5, 1.1], [15.5, -6.5, 1.3]]) stone(x, z, s, mauveMat);
   for (let z = -18; z <= 18; z += 2.4) {
     const side = R() < 0.5 ? -1 : 1;
     stone(riverX(z) + side * (RIVER_HW + 0.35 + R() * 0.3), z + R(), 0.5 + R() * 0.7, greyMat);
@@ -286,14 +271,14 @@ function buildWorld() {
     if (!inRiver(x, z, 1)) stone(x, z, 0.6 + R() * 1.2, x > 0 ? mauveMat : greyMat);
   }
   // 나무: 왼쪽·뒤쪽은 짙은 침엽수 숲, 오른쪽은 분홍 꽃나무
-  const leafP1 = new THREE.MeshStandardMaterial({ color: lin(0x2f6140), roughness: 0.9, flatShading: true });
-  const leafP2 = new THREE.MeshStandardMaterial({ color: lin(0x3d7446), roughness: 0.9, flatShading: true });
-  const leafP3 = new THREE.MeshStandardMaterial({ color: lin(0x558f52), roughness: 0.9, flatShading: true });
-  const leafG = new THREE.MeshStandardMaterial({ color: lin(0x5a8f38), roughness: 0.9, flatShading: true });
-  const leafA = new THREE.MeshStandardMaterial({ color: lin(0xc07a3a), roughness: 0.9, flatShading: true });
-  const leafK1 = new THREE.MeshStandardMaterial({ color: lin(0xdb8fb6), roughness: 0.9, flatShading: true });
-  const leafK2 = new THREE.MeshStandardMaterial({ color: lin(0xb86c9e), roughness: 0.9, flatShading: true });
-  const bark = new THREE.MeshStandardMaterial({ color: lin(0x4f382a), roughness: 0.9 });
+  const leafP1 = new THREE.MeshStandardMaterial({ color: lin(0x1c3d36), roughness: 0.9, flatShading: true });
+  const leafP2 = new THREE.MeshStandardMaterial({ color: lin(0x24493f), roughness: 0.9, flatShading: true });
+  const leafP3 = new THREE.MeshStandardMaterial({ color: lin(0x34604f), roughness: 0.9, flatShading: true });
+  const leafG = new THREE.MeshStandardMaterial({ color: lin(0x2e5a40), roughness: 0.9, flatShading: true });
+  const leafA = new THREE.MeshStandardMaterial({ color: lin(0x5a3f7a), roughness: 0.9, flatShading: true });
+  const leafK1 = new THREE.MeshStandardMaterial({ color: lin(0x3a8aa8), roughness: 0.8, flatShading: true, emissive: lin(0x0e4a6a), emissiveIntensity: 0.8 });
+  const leafK2 = new THREE.MeshStandardMaterial({ color: lin(0x5a5aa8), roughness: 0.8, flatShading: true, emissive: lin(0x24206a), emissiveIntensity: 0.8 });
+  const bark = new THREE.MeshStandardMaterial({ color: lin(0x3a2c2a), roughness: 0.9 });
   const pine = (x, z, s, mat) => {
     const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s); g.rotation.y = R() * 3; OUT.add(g); FXD.sway.push(g);
     const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.25, 1.2, 7), bark); tr.position.y = 0.6; tr.castShadow = true; g.add(tr);
@@ -310,11 +295,11 @@ function buildWorld() {
   };
   const LEFT = [[-15.5, -12], [-16, -7], [-15, -2.5], [-16.5, 2], [-15.2, 6.5], [-16.8, 10.5], [-18.5, -9.5], [-19, -4], [-19.5, 1], [-19, 6], [-18, 13], [-21.5, -1.5], [-15, 14.5], [-9.6, 12.5]];
   const BACK = [[-8.6, -11.4], [-5.6, -11.8], [-2.4, -12.8], [1.2, -11.6], [4.6, -12.9], [8, -11.7], [-7.5, -15.5], [-3, -16.8], [2, -15.8], [6.5, -16.4], [10.8, -15.2], [-1, -20.5], [4, -20], [-6, -20.2], [-12, -17.5]];
-  const RIGHT = [[12.6, -7], [11.4, -2.2], [13.6, 1.6], [11.2, 5.6], [13.2, 8.4], [10.9, 12.2], [15.4, -9.5], [16.4, -3.6], [16.6, 2.8], [15.8, 10], [14, 13.6], [19.2, -6], [19.8, 0.4], [19.2, 5.4], [12.6, -14], [16, -13.4]];
+  const RIGHT = [[12.6, -7], [11.6, -3.2], [14.2, 1.6], [12.0, 6.6], [13.2, 9.4], [10.9, 12.2], [15.4, -9.5], [16.4, -3.6], [16.6, 2.8], [15.8, 10], [14, 13.6], [19.2, -6], [19.8, 0.4], [19.2, 5.4], [12.6, -14], [16, -13.4]];
   LEFT.forEach(([x, z], i) => { if (inRiver(x, z, 1.2)) return; const s = 1 + R() * 0.7; if (i % 4 === 3) round(x, z, s * 1.1, leafG); else pine(x, z, s * 1.15, i % 2 ? leafP1 : leafP2); });
   BACK.forEach(([x, z], i) => { if (inRiver(x, z, 1.2)) return; const s = 1 + R() * 0.7; if (i % 3 === 1) round(x, z, s * 1.1, i % 2 ? leafG : leafA); else pine(x, z, s * 1.2, i % 2 ? leafP1 : leafP2); });
   RIGHT.forEach(([x, z], i) => { const s = 0.95 + R() * 0.6; if (i % 5 === 4) pine(x, z, s * 1.1, leafP2); else round(x, z, s * 1.1, i % 3 === 2 ? leafG : i % 2 ? leafK1 : leafK2); });
-  for (const [x, z, s] of [[-9.25, -9.6, 1], [9.6, -9.2, 1.1], [9.7, 4.2, 0.9], [9.8, -3.4, 1], [-9.3, 10.9, 0.9], [9.5, 10.8, 1], [-3.5, -9.8, 0.9], [4.2, -9.9, 1]]) {
+  for (const [x, z, s] of [[-9.25, -9.6, 1], [11.6, -9.4, 1.1], [9.7, 5.6, 0.9], [9.8, -4.4, 1], [-9.3, 10.9, 0.9], [9.5, 10.8, 1], [-3.5, -9.8, 0.9], [4.2, -9.9, 1]]) {
     if (!inRiver(x, z, 0.6)) bush(x, z, s, x > 0 ? (z > 0 ? leafK2 : leafG) : leafP2);
   }
   // 멀리 떠 있는 작은 섬들
@@ -342,16 +327,16 @@ function buildArena() {
     }
   }
   // 대기석: 돌판
-  const slabMat = new THREE.MeshStandardMaterial({ color: lin(0xc2b69c), roughness: 0.9 });
+  const slabMat = new THREE.MeshStandardMaterial({ color: lin(0x5c6070), roughness: 0.9 });
   addBox(scene, 13.8, 0.26, 1.5, slabMat, 0, 0.06, BENCH_Z, false).receiveShadow = true;
   const slotGeo = new THREE.PlaneGeometry(SLOT_W - 0.18, 1.2);
   for (let i = 0; i < BENCH; i++) {
-    const p = new THREE.Mesh(slotGeo, new THREE.MeshStandardMaterial({ color: lin(0x968a74), roughness: 0.9 })); p.rotation.x = -Math.PI / 2;
+    const p = new THREE.Mesh(slotGeo, new THREE.MeshStandardMaterial({ color: lin(0x40444f), roughness: 0.9 })); p.rotation.x = -Math.PI / 2;
     p.position.set(benchX(i), 0.2, BENCH_Z); p.receiveShadow = true; scene.add(p); pads.push(p);
   }
   // 급식 줄 원판
   carousel = new THREE.Group(); scene.add(carousel);
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(4.7, 4.9, 0.2, 64), new THREE.MeshStandardMaterial({ color: lin(0xb8ab92), roughness: 0.85 }));
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(4.7, 4.9, 0.2, 64), new THREE.MeshStandardMaterial({ color: lin(0x5a5e6e), roughness: 0.85 }));
   disc.position.y = 0.2; disc.receiveShadow = true; carousel.add(disc);
   const rimT = new THREE.Mesh(new THREE.TorusGeometry(4.75, 0.14, 10, 64), new THREE.MeshStandardMaterial({ color: lin(0xd8b45a), roughness: 0.3, metalness: 0.8 }));
   rimT.rotation.x = Math.PI / 2; rimT.position.y = 0.32; carousel.add(rimT);
@@ -415,6 +400,8 @@ function makePortraits() {
       const [a, b] = BG[def.c];
       sc.background = canvasTex(8, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, a); gr.addColorStop(1, b); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
       const unit = buildStudent(def, false); unit.children[0].visible = false; unit.rotation.y = 0.25;
+      const tall = lookOf(def, nameHash(def.n)).tall, hy = 0.2 + 1.36 * tall;
+      cam.position.set(0.4, hy + 0.2, 2.25); cam.lookAt(0, hy, 0);
       sc.add(unit); r2.render(sc, cam); PORTRAIT[i] = cvs.toDataURL("image/jpeg", 0.88); sc.remove(unit);
       unit.traverse((m) => { if (m.material) [].concat(m.material).forEach((x) => x.dispose()); });
     });
@@ -470,13 +457,13 @@ function buildDecor() {
     const sc = 0.6 + Math.random() * 0.9;
     m4.compose(new THREE.Vector3(x, inArena ? 0.16 : 0, z), q, new THREE.Vector3(sc, sc * (0.7 + Math.random() * 0.8), sc));
     grass.setMatrixAt(n, m4);
-    col.setHSL(0.24 + Math.random() * 0.06, 0.45 + Math.random() * 0.2, 0.22 + Math.random() * 0.14).convertSRGBToLinear();
+    col.setHSL(0.36 + Math.random() * 0.08, 0.35 + Math.random() * 0.15, 0.14 + Math.random() * 0.1).convertSRGBToLinear();
     grass.setColorAt(n, col); n++;
   }
   grass.receiveShadow = true; OUT.add(grass);
   // 꽃
-  const fl = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 6, 5), new THREE.MeshStandardMaterial({ roughness: 0.6 }), 500);
-  const FC = [0xffffff, 0xffe066, 0xff9ac8, 0xb59aff];
+  const fl = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 6, 5), new THREE.MeshBasicMaterial({}), 500); // 밤에 빛나는 작은 버섯·꽃
+  const FC = [0x7fe6ff, 0xb48aff, 0x8affc8, 0xdff6ff];
   for (let i = 0; i < 500; i++) {
     let x, z; do { const a = Math.random() * Math.PI * 2, r = 9 + Math.random() * 14; x = Math.cos(a) * r; z = Math.sin(a) * r; } while ((Math.abs(x) < 9.4 && z > -9.4 && z < 10.8) || inRiver(x, z, 0.6));
     m4.makeTranslation(x, 0.22 + Math.random() * 0.15, z); fl.setMatrixAt(i, m4); fl.setColorAt(i, col.setHex(rnd(FC)).convertSRGBToLinear());
@@ -485,7 +472,7 @@ function buildDecor() {
   // 구름
   const cloudTex = softTex("rgba(255,255,255,.95)", "rgba(255,255,255,0)");
   for (let i = 0; i < 26; i++) {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, color: lin(i % 3 ? 0xffe3ea : 0xdcc6f2), transparent: true, opacity: 0.75, depthWrite: false }));
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, color: lin(i % 3 ? 0x4a4278 : 0x2e3a6a), transparent: true, opacity: 0.6, depthWrite: false }));
     const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 26;
     sp.position.set(Math.cos(a) * r, -10 + Math.random() * 14, Math.sin(a) * r - 6);
     const w = 14 + Math.random() * 18; sp.scale.set(w, w * 0.45, 1); OUT.add(sp);
@@ -494,10 +481,10 @@ function buildDecor() {
   const P = HQ ? 260 : 120, pos = new Float32Array(P * 3);
   for (let i = 0; i < P; i++) { pos[i * 3] = (Math.random() - 0.5) * 30; pos[i * 3 + 1] = Math.random() * 6; pos[i * 3 + 2] = (Math.random() - 0.5) * 30; }
   const pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  pollen = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.16, map: softTex("rgba(255,244,190,1)", "rgba(255,244,190,0)"), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: lin(0xfff2b0) }));
+  pollen = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.2, map: softTex("rgba(210,255,160,1)", "rgba(210,255,160,0)"), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: lin(0xd8ff9a) })); // 반딧불
   scene.add(pollen);
   // 뒤쪽 테두리 빛
-  const rimL = new THREE.DirectionalLight(0xe2b0ff, 0.7); rimL.position.set(8, 7, -14); scene.add(rimL);
+  const rimL = new THREE.DirectionalLight(0x9a8aff, 0.8); rimL.position.set(8, 7, -14); scene.add(rimL);
 }
 function stepDecor(dt) {
   if (WATER) WATER.offset.y = (WATER.offset.y + dt * 0.14) % 1;
@@ -511,15 +498,15 @@ function stepDecor(dt) {
   a.needsUpdate = true;
 }
 // ----- 분위기 더하기: 불티 · 꽃잎 · 물빛 · 깃발 · 구름 바다 · 빛줄기 -----
-const FXD = { sway: [], embers: [], halos: [], flags: [], rays: [], petals: null, sparks: null, foam: null, sea: null, glow: null, t: 0, sparkT: 0 };
+const FXD = { crystals: [], bunting: [], boat: null, sway: [], embers: [], halos: [], flags: [], rays: [], petals: null, sparks: null, foam: null, sea: null, glow: null, t: 0, sparkT: 0 };
 function addTorchFx(g, y) {
-  if (!FXD.glow) FXD.glow = softTex("rgba(255,196,110,.85)", "rgba(255,140,40,0)");
+  if (!FXD.glow) FXD.glow = softTex("rgba(140,220,255,.85)", "rgba(60,140,255,0)");
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: FXD.glow, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
   halo.position.y = y; halo.scale.set(3, 3, 1); g.add(halo); FXD.halos.push(halo);
   const n = 12, pos = new Float32Array(n * 3), sp = [];
   for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - 0.5) * 0.4; pos[i * 3 + 1] = y + Math.random() * 2.2; pos[i * 3 + 2] = (Math.random() - 0.5) * 0.4; sp.push(0.6 + Math.random() * 0.9); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.13, map: FXD.glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: lin(0xffc070) }));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.13, map: FXD.glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: lin(0x9fe8ff) }));
   pts.frustumCulled = false; g.add(pts); FXD.embers.push({ a: geo.attributes.position, sp, y });
 }
 function buildExtras() {
@@ -532,7 +519,7 @@ function buildExtras() {
       const x = R() * w, y = R() * h, r = 30 + R() * 70, a = 0.12 + R() * 0.22;
       for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) {
         const gr = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
-        gr.addColorStop(0, `rgba(255,236,240,${a})`); gr.addColorStop(1, "rgba(255,236,240,0)");
+        gr.addColorStop(0, `rgba(110,100,170,${a})`); gr.addColorStop(1, "rgba(110,100,170,0)");
         g.fillStyle = gr; g.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
       }
     }
@@ -550,7 +537,7 @@ function buildExtras() {
     }
   });
   foamTex.wrapT = THREE.RepeatWrapping; foamTex.repeat.set(1, 3);
-  const foamMat = new THREE.MeshBasicMaterial({ map: foamTex, transparent: true, opacity: 0.7, depthWrite: false });
+  const foamMat = new THREE.MeshBasicMaterial({ map: foamTex, color: lin(0xa8e8ff), transparent: true, opacity: 0.5, depthWrite: false });
   for (const off of [-(RIVER_HW - 0.12), RIVER_HW - 0.12]) OUT.add(riverRibbon(0.17, 0.075, foamMat, off));
   FXD.foam = foamTex;
   // 물 위 반짝임
@@ -566,7 +553,7 @@ function buildExtras() {
     const z = (R() - 0.5) * 38, side = R() < 0.5 ? -1 : 1;
     e.set((R() - 0.5) * 0.3, R() * 3, (R() - 0.5) * 0.3); q.setFromEuler(e);
     m4.compose(v3.set(riverX(z) + side * (RIVER_HW + 0.15 + R() * 0.5), 0, z), q, sc.set(1, 0.6 + R() * 0.8, 1));
-    reeds.setMatrixAt(i, m4); reeds.setColorAt(i, col.setHSL(0.2 + R() * 0.08, 0.45, 0.3 + R() * 0.16).convertSRGBToLinear());
+    reeds.setMatrixAt(i, m4); reeds.setColorAt(i, col.setHSL(0.36 + R() * 0.08, 0.35, 0.16 + R() * 0.1).convertSRGBToLinear());
   }
   OUT.add(reeds);
   // 연잎
@@ -587,11 +574,11 @@ function buildExtras() {
     else v3.set((k === 1 ? -1 : 1) * (8.05 + (R() - 0.5) * 0.7), 0.49, -7 + R() * 16);
     e.set(R(), R() * 3, R()); q.setFromEuler(e);
     m4.compose(v3, q, sc.set(s, s * 0.32, s));
-    moss.setMatrixAt(i, m4); moss.setColorAt(i, col.setHSL(0.25 + R() * 0.08, 0.5, 0.24 + R() * 0.12).convertSRGBToLinear());
+    moss.setMatrixAt(i, m4); moss.setColorAt(i, col.setHSL(0.36 + R() * 0.06, 0.45, 0.16 + R() * 0.08).convertSRGBToLinear());
   }
   moss.receiveShadow = true; scene.add(moss);
   // 깃발
-  for (const [x, hex] of [[-9.9, 0x2fa3b0], [9.9, 0xe0b64e]]) {
+  for (const [x, hex] of [[-9.9, 0x24407a], [9.9, 0x5a2a6a]]) {
     const g = new THREE.Group(); g.position.set(x, 0, -8.4); OUT.add(g);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 4.8, 8), new THREE.MeshStandardMaterial({ color: lin(0x5a4030), roughness: 0.8 }));
     pole.position.y = 2.4; pole.castShadow = true; g.add(pole);
@@ -610,7 +597,7 @@ function buildExtras() {
     const gr = g.createRadialGradient(-6, 0, 0, 0, 0, 24); gr.addColorStop(0, "#fff2f7"); gr.addColorStop(1, "#f29cc4");
     g.fillStyle = gr; g.beginPath(); g.ellipse(0, 0, 23, 12, 0, 0, Math.PI * 2); g.fill(); g.restore();
   });
-  const TN = HQ ? 200 : 90, tpos = new Float32Array(TN * 3), tsp = [];
+  const TN = 0, tpos = new Float32Array(TN * 3), tsp = [];
   for (let i = 0; i < TN; i++) { tpos[i * 3] = -9 + R() * 29; tpos[i * 3 + 1] = R() * 10; tpos[i * 3 + 2] = -15 + R() * 29; tsp.push(0.45 + R() * 0.5); }
   const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.BufferAttribute(tpos, 3));
   const petals = new THREE.Points(tg, new THREE.PointsMaterial({ size: 0.3, map: petalTex, transparent: true, alphaTest: 0.15, depthWrite: false }));
@@ -626,14 +613,52 @@ function buildExtras() {
       g.fillStyle = gy; g.fillRect(0, 0, w, h);
       g.globalCompositeOperation = "source-over";
     });
-    const d = new THREE.Vector3(-14, 18, 6).normalize(), cam = new THREE.Vector3(0, 0.69, 0.72);
+    const d = new THREE.Vector3(10, 18, -6).normalize(), cam = new THREE.Vector3(0, 0.69, 0.72);
     const zAxis = cam.clone().addScaledVector(d, -cam.dot(d)).normalize(), xAxis = new THREE.Vector3().crossVectors(d, zAxis);
     const rot = new THREE.Matrix4().makeBasis(xAxis, d, zAxis);
     for (const [x, z, wd, op] of [[-4.5, -3.5, 4.5, 0.06], [1.5, 0.5, 3.2, 0.045], [-8, 3, 5.5, 0.05]]) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(wd, 28), new THREE.MeshBasicMaterial({ map: rayTex, color: lin(0xffe0b0), transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(wd, 28), new THREE.MeshBasicMaterial({ map: rayTex, color: lin(0xa8c8ff), transparent: true, opacity: op * 1.3, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
       m.quaternion.setFromRotationMatrix(rot); m.position.set(x, 0, z).addScaledVector(d, 12); OUT.add(m); FXD.rays.push({ m, op });
     }
   }
+}
+// ----- 달빛 유적 소품: 빛나는 돌 비석 · 부서진 기둥 · 떠 있는 수정 -----
+function buildProps() {
+  const R = Math.random;
+  const slate = new THREE.MeshStandardMaterial({ color: lin(0x6c6f7c), roughness: 0.9, flatShading: true }), slateDark = new THREE.MeshStandardMaterial({ color: lin(0x464957), roughness: 0.95, flatShading: true });
+  const runeMat = new THREE.MeshBasicMaterial({ color: lin(0x7fe6ff), transparent: true, opacity: 0.85 });
+  // 뒤쪽 비석: 반 이름이 새겨진 돌판
+  const cb = new THREE.Group(); cb.position.set(0, -0.3, -9.1); cb.rotation.x = -0.2; cb.scale.setScalar(0.74); OUT.add(cb);
+  addBox(cb, 7.3, 2.9, 0.4, slateDark, 0, 2.25, -0.1);
+  chalk = canvasTex(2048, 720, paintChalk);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(6.7, 2.4), new THREE.MeshStandardMaterial({ map: chalk, roughness: 0.95, emissive: lin(0x1a3a4a), emissiveIntensity: 0.5 })); board.position.set(0, 2.25, 0.11); cb.add(board);
+  addBox(cb, 7.9, 0.4, 0.7, slate, 0, 0.75, 0); addBox(cb, 7.9, 0.34, 0.6, slate, 0, 3.85, -0.1);
+  for (const x of [-3.75, 3.75]) { addBox(cb, 0.5, 3.4, 0.6, slate, x, 2.25, -0.05); const gem = new THREE.Mesh(new THREE.OctahedronGeometry ? new THREE.OctahedronGeometry(0.22) : new THREE.SphereGeometry(0.2, 6, 4), runeMat); gem.position.set(x, 4.25, 0); cb.add(gem); FXD.crystals.push({ m: gem, y: 4.25, ph: x }); }
+  // 부서진 기둥 (경기장 바깥을 둘러싸요)
+  const colGeo = new THREE.CylinderGeometry(0.42, 0.48, 1, 10), capGeo = new THREE.BoxGeometry(1.25, 0.28, 1.25);
+  const column = (x, z, hgt, broken) => {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = R() * 3; OUT.add(g);
+    const base = new THREE.Mesh(capGeo, slateDark); base.position.y = 0.14; base.castShadow = true; base.receiveShadow = true; g.add(base);
+    const sh = new THREE.Mesh(colGeo, slate); sh.scale.y = hgt; sh.position.y = 0.28 + hgt / 2; sh.castShadow = true; sh.receiveShadow = true; g.add(sh);
+    if (!broken) { const cap = new THREE.Mesh(capGeo, slate); cap.position.y = 0.42 + hgt; cap.castShadow = true; g.add(cap); }
+    else { const chunk = new THREE.Mesh(colGeo, slate); chunk.scale.y = 0.9; chunk.position.set(0.9, 0.4, 0.3); chunk.rotation.set(0.2, 0, Math.PI / 2 - 0.15); chunk.castShadow = true; g.add(chunk); }
+    // 기둥 둘레 덩굴 띠
+    const vine = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.05, 5, 14), new THREE.MeshStandardMaterial({ color: lin(0x2f5a3a), roughness: 1, flatShading: true }));
+    vine.rotation.x = Math.PI / 2 + 0.2; vine.position.y = 0.28 + hgt * 0.45; g.add(vine);
+  };
+  for (const [x, z, h, b] of [[-11.2, -10.6, 3.6, 0], [-4.6, -11.6, 2.2, 1], [4.8, -11.8, 3.9, 0], [11.4, -10.2, 1.6, 1], [12.0, -3.8, 3.2, 0], [12.4, 3.4, 1.4, 1], [11.6, 9.4, 3.0, 0], [-13.8, 9.8, 2.0, 1]]) column(x, z, h, !!b);
+  // 떠 있는 수정: 천천히 위아래로 움직이고 빛나요
+  const crysGeo = new THREE.OctahedronGeometry ? new THREE.OctahedronGeometry(0.35) : new THREE.SphereGeometry(0.32, 6, 4);
+  for (const [x, z, y, c] of [[-10.2, -6.2, 2.4, 0x7fe6ff], [10.6, -6.6, 2.8, 0xb48aff], [10.2, 6.2, 2.2, 0x7fe6ff], [-9.6, 13.8, 2.6, 0xb48aff], [0.8, -13.6, 4.2, 0x7fe6ff]]) {
+    const m = new THREE.Mesh(crysGeo, new THREE.MeshStandardMaterial({ color: lin(c), roughness: 0.2, emissive: lin(c), emissiveIntensity: 0.9, flatShading: true }));
+    m.position.set(x, y, z); m.scale.set(0.8, 1.6, 0.8); OUT.add(m); FXD.crystals.push({ m, y, ph: x + z });
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex(`rgba(${(c >> 16) & 255},${(c >> 8) & 255},${c & 255},.7)`, "rgba(0,0,0,0)"), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.scale.set(2.6, 2.6, 1); m.add(halo);
+  }
+  // 나무·바위 밑 그늘
+  const shTex = softTex("rgba(6,8,18,.6)", "rgba(6,8,18,0)");
+  const shGeo = new THREE.CircleGeometry(1, 20), shMat = new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false });
+  for (const g of FXD.sway) { const m = new THREE.Mesh(shGeo, shMat); m.rotation.x = -Math.PI / 2; m.position.set(g.position.x + 0.5, 0.03, g.position.z + 0.3); m.scale.setScalar(g.scale.x * 1.7); OUT.add(m); }
 }
 function stepExtras(dt) {
   const t = (FXD.t += dt);
@@ -669,13 +694,16 @@ function stepExtras(dt) {
     for (let k = 0; k < 6; k++) { const i = Math.floor(Math.random() * a.count), z = (Math.random() - 0.5) * 38; a.setX(i, riverX(z) + (Math.random() - 0.5) * RIVER_HW * 1.6); a.setZ(i, z); }
     a.needsUpdate = true;
   }
+  FXD.bunting.forEach((b) => { b.f.rotation.x = Math.sin(t * 2.2 + b.ph) * 0.28; });
+  FXD.crystals.forEach((c) => { c.m.position.y = c.y + Math.sin(t * 1.2 + c.ph) * 0.18; c.m.rotation.y = t * 0.6 + c.ph; });
+  if (FXD.boat) { FXD.boat.position.y = 0.12 + Math.sin(t * 1.3) * 0.025; FXD.boat.rotation.z = Math.sin(t * 0.9) * 0.05; }
   FXD.rays.forEach((r, i) => { r.m.material.opacity = r.op * (0.8 + Math.sin(t * 0.5 + i * 2) * 0.2); });
 }
 function init3D() {
   renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.76;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(32, 1, 0.1, 200);
@@ -683,17 +711,18 @@ function init3D() {
     const pm = new THREE.PMREMGenerator(renderer);
     scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
   }
-  scene.add(new THREE.HemisphereLight(0xc4c8ff, 0x58506e, scene.environment ? 0.38 : 0.8));
-  const sun = new THREE.DirectionalLight(0xffdcae, 1.5);
-  sun.position.set(-14, 18, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  scene.add(new THREE.HemisphereLight(0x9aa8ff, 0x3a3050, scene.environment ? 0.42 : 0.85));
+  const sun = new THREE.DirectionalLight(0xd6e2ff, 1.45); // 달빛
+  sun.position.set(10, 18, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
   Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 14, bottom: -14, near: 1, far: 60 });
   scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xbfd0ff, 0.3); fill.position.set(10, 10, 16); scene.add(fill);
+  const fill = new THREE.DirectionalLight(0xffc89a, 0.35); fill.position.set(-10, 8, 16); // 화로 쪽 따뜻한 보조광 scene.add(fill);
   buildWorld(); buildArena(); buildDecor();
   try { buildExtras(); } catch (e) { if (window.console) console.warn("extras", e); }
+  try { buildProps(); } catch (e) { if (window.console) console.warn("props", e); }
   setupPost();
-  PLATFORM = new THREE.Mesh(new THREE.BoxGeometry(18.4, 3, 20.2), new THREE.MeshStandardMaterial({ color: lin(0x8a7a68), roughness: 0.95, flatShading: true }));
+  PLATFORM = new THREE.Mesh(new THREE.BoxGeometry(18.4, 3, 20.2), new THREE.MeshStandardMaterial({ color: lin(0x4a4c5a), roughness: 0.95, flatShading: true }));
   PLATFORM.position.set(0, -1.52, 0.9); PLATFORM.receiveShadow = true; PLATFORM.visible = false; scene.add(PLATFORM);
   SKY = scene.background;
   loadBackdrop();
@@ -762,6 +791,184 @@ function chestTex(text, col = "#ffffff", bg = null) {
   });
   return (CHEST[key] = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
 }
+// ----- 생김새(스킨): 머리 모양 · 표정 · 장식 (표는 friends.js 의 LOOKS) -----
+const HAIR_STYLES = ["bowl", "spiky", "side", "buzz", "pomp", "curtain", "curly", "mushroom", "messy", "wavy"];
+function lookOf(def, h) {
+  const L = (typeof LOOKS !== "undefined" && LOOKS[def.n]) || {};
+  return { hair: L.hair || HAIR_STYLES[(h >> 7) % HAIR_STYLES.length], hc: L.hc ?? HAIRC[(h >> 3) % HAIRC.length], tip: L.tip, skin: SKINS[(L.skin ?? h) % SKINS.length],
+    tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: L.head || 1.1, eye: L.eye || 1, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [] };
+}
+function buildHair(st, put, head, mHair, mTip) {
+  const back = put(GEO.hairBack, mHair, 0, 0.04, -0.04, head); back.scale.set(0.95, 1.0, 1.0);
+  const cap = put(GEO.hairCap, mHair, 0, 0.03, -0.005, head); cap.scale.set(0.96, 1.05, 1.02); cap.rotation.x = -0.2;
+  const tuft = (x, y, z, sx, sy, sz, rz = 0, rx = 0, m = mHair) => { const f = put(GEO.fringe, m, x, y, z, head); f.scale.set(sx, sy, sz); f.rotation.set(rx, 0, rz); return f; };
+  const spike = (x, y, z, rx, rz, s = 1, m = mHair) => { const p = put(GEO.spike, m, x, y, z, head); p.scale.set(1.15 * s, 0.75 * s, 1.15 * s); p.rotation.set(rx, 0, rz); return p; };
+  switch (st) {
+    case "bowl": cap.scale.set(1.03, 1.1, 1.06); tuft(0, 0.1, 0.14, 1.85, 0.55, 0.65, 0, 0, mTip); break;
+    case "spiky":
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; spike(Math.cos(a) * 0.11, 0.2, Math.sin(a) * 0.09 - 0.01, Math.sin(a) * 0.75, -Math.cos(a) * 0.75, 1.25, i % 2 ? mTip : mHair); }
+      spike(0, 0.25, 0, 0, 0, 1.4, mTip); tuft(0, 0.15, 0.13, 1.3, 0.35, 0.6);
+      break;
+    case "side": tuft(0.05, 0.145, 0.115, 1.6, 0.42, 0.9, -0.4, 0, mTip); tuft(-0.13, 0.11, 0.08, 0.6, 0.55, 0.8, 0.5); break;
+    case "buzz": cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96); break;
+    case "pomp": cap.rotation.x = -0.38; tuft(0, 0.215, 0.085, 1.45, 0.8, 1.05, 0, -0.35, mTip); tuft(0, 0.165, 0.15, 1.2, 0.5, 0.55); break;
+    case "curtain": cap.scale.set(1.0, 1.08, 1.04); tuft(-0.088, 0.122, 0.128, 0.98, 0.5, 0.72, 0.6, 0, mTip); tuft(0.088, 0.122, 0.128, 0.98, 0.5, 0.72, -0.6, 0, mTip); break;
+    case "curly":
+      cap.scale.set(1.02, 1.08, 1.05);
+      for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + (i % 2) * 0.2, up = (i % 3) * 0.05; tuft(Math.cos(a) * (0.165 - up * 0.6), 0.1 + up * 1.7, Math.sin(a) * (0.16 - up * 0.6) - 0.01, 0.62, 0.62, 0.62, 0, 0, i % 4 === 0 ? mTip : mHair); }
+      tuft(0, 0.25, 0, 0.8, 0.6, 0.8); tuft(-0.06, 0.15, 0.15, 0.6, 0.5, 0.5); tuft(0.07, 0.16, 0.14, 0.6, 0.5, 0.5);
+      break;
+    case "mushroom": cap.position.y = 0.0; cap.rotation.x = -0.06; cap.scale.set(1.1, 1.14, 1.1); back.scale.set(1.04, 1.08, 1.06); tuft(0, 0.08, 0.15, 1.9, 0.5, 0.6, 0, 0, mTip); break;
+    case "messy":
+      tuft(0.02, 0.13, 0.125, 1.7, 0.45, 0.8, 0.18, 0, mTip);
+      [[-0.12, 0.19, 0.04, 0.5, 0.9], [0.13, 0.19, 0.0, 0.2, -1.0], [-0.05, 0.23, -0.06, -0.6, 0.4], [0.07, 0.23, 0.05, 0.6, -0.4], [0.0, 0.2, -0.14, -1.0, 0], [-0.15, 0.13, -0.08, -0.4, 1.2], [0.15, 0.12, -0.09, -0.4, -1.2]].forEach(([x, y, z, rx, rz], i) => spike(x, y, z, rx, rz, 1.15, i % 3 === 0 ? mTip : mHair));
+      spike(0.02, 0.28, 0.0, 0.5, -0.35, 0.8, mTip);
+      break;
+    case "mohawk":
+      cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96);
+      for (let i = 0; i < 6; i++) { const t = i / 5, a = -0.9 + t * 2.4; spike(0, 0.215 * Math.cos(a) + 0.03, -0.2 * Math.sin(a) * 0.9, -a * 0.9, 0, 1.5 - Math.abs(t - 0.35) * 0.7, mTip); }
+      break;
+    case "slick": cap.rotation.x = -0.5; cap.scale.set(0.97, 1.04, 1.06); tuft(0, 0.2, 0.03, 1.6, 0.5, 1.35, 0, -0.25, mTip); break;
+    case "flat": {
+      cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96);
+      const top = put(HAIR_FLAT || (HAIR_FLAT = new THREE.CylinderGeometry(0.14, 0.165, 0.06, 14)), mTip, 0, 0.205, -0.01, head); top.scale.set(1, 1, 1.08);
+      break;
+    }
+    case "wavy": tuft(0.0, 0.14, 0.12, 1.7, 0.5, 0.8, -0.2, 0, mTip); tuft(-0.17, 0.03, 0.03, 0.5, 0.9, 0.85); tuft(0.17, 0.03, 0.03, 0.5, 0.9, 0.85); tuft(0, 0.22, -0.02, 1.5, 0.5, 1.4); break;
+    case "long":
+      back.scale.set(1.0, 1.45, 1.0); back.position.y = -0.03; cap.scale.set(1.0, 1.08, 1.04);
+      tuft(-0.165, -0.1, 0.02, 0.5, 1.9, 0.7); tuft(0.165, -0.1, 0.02, 0.5, 1.9, 0.7);
+      tuft(-0.085, 0.125, 0.13, 0.95, 0.5, 0.7, 0.6); tuft(0.085, 0.125, 0.13, 0.95, 0.5, 0.7, -0.6);
+      break;
+    default: tuft(0, 0.14, 0.12, 1.75, 0.45, 0.85);
+  }
+}
+let HAIR_FLAT = null, LOOK_GEO = null;
+function applyLook(LK, C) {
+  const { put, mk, head, torso, ud, def, mHair } = C;
+  const LG = LOOK_GEO || (LOOK_GEO = {
+    band: new THREE.TorusGeometry(0.212, 0.02, 6, 28), tail: new THREE.BoxGeometry(0.05, 0.16, 0.012), visor: new THREE.CylinderGeometry(0.15, 0.15, 0.014, 18, 1, false, -Math.PI / 2, Math.PI),
+    sq: (() => { const g = new THREE.TorusGeometry(0.056, 0.008, 6, 4); g.rotateZ(Math.PI / 4); return g; })(), lensFill: new THREE.CircleGeometry(0.044, 16), temple: new THREE.BoxGeometry(0.008, 0.008, 0.16),
+    pencil: new THREE.CylinderGeometry(0.009, 0.009, 0.17, 6), tip: new THREE.ConeGeometry(0.009, 0.03, 6), strip: new THREE.BoxGeometry(0.07, 0.024, 0.008),
+    neckRing: new THREE.TorusGeometry(0.078, 0.03, 8, 18), flap: new THREE.BoxGeometry(0.06, 0.2, 0.018), cuff: new THREE.CylinderGeometry(0.05, 0.05, 0.05, 12),
+    pack: new THREE.BoxGeometry(0.25, 0.3, 0.1), packPocket: new THREE.BoxGeometry(0.17, 0.12, 0.03), strap: new THREE.BoxGeometry(0.028, 0.3, 0.012),
+    gem: new THREE.SphereGeometry(0.022, 10, 8), bow: new THREE.ConeGeometry(0.03, 0.05, 4), leaf: new THREE.ConeGeometry(0.022, 0.07, 4), feather: new THREE.SphereGeometry(0.1, 10, 8),
+    string: new THREE.BoxGeometry(0.006, 0.17, 0.006), whistle: new THREE.CylinderGeometry(0.016, 0.016, 0.04, 8), device: new THREE.BoxGeometry(0.06, 0.035, 0.07),
+  });
+  const hex = (n) => "#" + n.toString(16).padStart(6, "0");
+  for (const a of LK.acc) {
+    const [kind, p1, p2, p3] = a;
+    switch (kind) {
+      case "headband": case "sweatband": {
+        const m = mk(p1 ?? 0xffffff, 0.8), b = put(LG.band, m, 0, kind === "sweatband" ? 0.105 : 0.1, -0.005, head);
+        b.rotation.x = Math.PI / 2 - 0.1; b.scale.set(0.97, 1.03, kind === "sweatband" ? 2.3 : 1.5);
+        if (p2 === "tails") for (const s of [-1, 1]) { const t = put(LG.tail, m, s * 0.035, 0.0, -0.225, head); t.rotation.set(0.35, 0, s * 0.3); }
+        break;
+      }
+      case "cap": {
+        const m = mk(p1 ?? 0x2f5fa8, 0.75), back = p2 === "back";
+        const cr = put(GEO.hairCap, m, 0, 0.055, -0.004, head); cr.scale.set(1.03, 1.02, 1.07); cr.rotation.x = back ? -0.32 : -0.1;
+        const v = put(LG.visor, mk(p3 ?? p1 ?? 0x2f5fa8, 0.7), 0, back ? 0.04 : 0.085, back ? -0.2 : 0.185, head); v.rotation.set(back ? -0.25 : 0.2, back ? Math.PI : 0, 0); v.scale.set(1.05, 1, 1.15);
+        put(GEO.pin, m, 0, 0.275, -0.01, head).scale.setScalar(0.5);
+        break;
+      }
+      case "beanie": {
+        const m = mk(p1 ?? 0xc8323a, 0.95), cr = put(GEO.hairCap, m, 0, 0.05, -0.004, head); cr.scale.set(1.05, 1.16, 1.09); cr.rotation.x = -0.12;
+        const f = put(LG.band, m, 0, 0.075, -0.004, head); f.rotation.x = Math.PI / 2 - 0.12; f.scale.set(1.03, 1.08, 2.6);
+        put(GEO.pom, mk(0xf4f4f4, 0.9, { flatShading: true }), 0, 0.31, -0.03, head).scale.setScalar(0.5);
+        break;
+      }
+      case "beret": {
+        const m = mk(p1 ?? 0x7a5cd0, 0.9), b = put(GEO.hairBack, m, 0.035, 0.215, -0.01, head); b.scale.set(1.08, 0.3, 1.08); b.rotation.z = -0.3;
+        put(GEO.pin, m, 0.06, 0.285, -0.01, head).scale.set(0.3, 0.6, 0.3);
+        break;
+      }
+      case "glasses": {
+        const m = mk(p2 ?? 0x222222, 0.3, { metalness: 0.6 }), y = 0.018, z = 0.192;
+        if (p1 === "sport") { const sh = put(LG.strip, mk(p2 ?? 0x2f5fa8, 0.2, { transparent: true, opacity: 0.75 }), 0, y, z + 0.004, head); sh.scale.set(3.2, 2.3, 1); const t = put(LG.band, m, 0, y, -0.005, head); t.rotation.x = Math.PI / 2; t.scale.set(0.9, 0.95, 0.5); break; }
+        for (const s of [-1, 1]) {
+          if (p1 === "square") put(LG.sq, m, s * 0.07, y, z, head).scale.set(1.05, 0.8, 1);
+          else if (p1 !== "rimless") put(GEO.lens, m, s * 0.068, y, z, head).scale.set(p1 === "round" ? 1.12 : 1, p1 === "round" ? 1.05 : 0.8, 1);
+          if (p1 === "tint" || p1 === "rimless") put(LG.lensFill, mk(p1 === "tint" ? p2 ?? 0x3fd8ff : 0xffffff, 0.1, { transparent: true, opacity: p1 === "tint" ? 0.55 : 0.28, emissive: lin(p1 === "tint" ? p2 ?? 0x3fd8ff : 0x000000), emissiveIntensity: 0.4 }), s * 0.068, y, z - 0.002, head).scale.set(1, 0.82, 1);
+          const tp = put(LG.temple, m, s * 0.125, y + 0.004, z - 0.085, head); tp.rotation.y = -s * 0.42;
+        }
+        put(GEO.bridge, m, 0, y + 0.004, z + 0.003, head);
+        break;
+      }
+      case "pencil": {
+        const p = put(LG.pencil, mk(0xf2c230, 0.5), 0.192, 0.045, 0.0, head); p.rotation.x = Math.PI / 2 - 0.35;
+        const t = put(LG.tip, mk(0x3a2a1a, 0.5), 0.192, 0.012, 0.09, head); t.rotation.x = Math.PI / 2 - 0.35 + Math.PI * 0; t.rotation.x += 0;
+        put(GEO.pin, mk(0xf08aa8, 0.6), 0.192, 0.075, -0.082, head).scale.setScalar(0.35);
+        break;
+      }
+      case "bandage": {
+        const m = mk(0xf6e6cc, 0.9);
+        if (p1 === "nose") { const b = put(LG.strip, m, 0, -0.008, 0.2, head); b.scale.set(1.0, 0.9, 1); }
+        else { const b = put(LG.strip, m, 0.11, -0.04, 0.16, head); b.rotation.set(0, 0.62, 0.35); b.scale.set(0.85, 1, 1); const b2 = put(LG.strip, m, 0.11, -0.04, 0.161, head); b2.rotation.set(0, 0.62, -0.35 + Math.PI / 2 - 1.2); b2.scale.set(0.85, 1, 1); }
+        break;
+      }
+      case "blush": for (const s of [-1, 1]) put(GEO.fringe, mk(0xf29a9a, 0.9, { transparent: true, opacity: 0.7 }), s * 0.115, -0.045, 0.148, head).scale.set(0.34, 0.2, 0.1); break;
+      case "scarf": {
+        const m = mk(p1 ?? 0xfff0c8, 0.95), r = put(LG.neckRing, m, 0, 0.6, 0.0, torso); r.rotation.x = Math.PI / 2; r.scale.set(1.15, 1.0, 1.2);
+        const f = put(LG.flap, m, 0.06, 0.48, 0.105, torso); f.rotation.z = -0.12; put(LG.flap, m, -0.02, 0.5, -0.095, torso).scale.set(1, 0.8, 1);
+        break;
+      }
+      case "towel": {
+        const m = mk(p1 ?? 0xf4f4f4, 0.95), r = put(LG.neckRing, m, 0, 0.59, -0.01, torso); r.rotation.x = Math.PI / 2; r.scale.set(1.1, 1.0, 0.6);
+        for (const s of [-1, 1]) { const f = put(LG.flap, m, s * 0.072, 0.47, 0.1, torso); f.rotation.z = s * 0.08; }
+        break;
+      }
+      case "whistle": {
+        const m = mk(0x222222, 0.6);
+        for (const s of [-1, 1]) { const st = put(LG.string, m, s * 0.035, 0.49, 0.105, torso); st.rotation.set(-0.12, 0, s * 0.42); }
+        const w = put(LG.whistle, mk(0xffcf4a, 0.3, { metalness: 0.7 }), 0, 0.4, 0.122, torso); w.rotation.z = Math.PI / 2;
+        break;
+      }
+      case "armband": { const b = put(LG.cuff, mk(p1 ?? 0xffd24a, 0.7), 0, -0.13, 0, ud.arms[0]); b.scale.set(1.36, 1.0, 1.36); break; }
+      case "wristband": for (const el of ud.elbows) put(LG.cuff, mk(p1 ?? 0xffffff, 0.9), 0, -0.225, 0, el).scale.set(1.02, 0.9, 1.02); break;
+      case "sleeve": { const m = mk(p1 ?? 0x1a1a1e, 0.6); put(GEO.human.upper, m, 0, -0.17, 0, ud.arms[1]).scale.set(0.96, 0.9, 0.96); put(GEO.human.fore, m, 0, -0.12, 0, ud.elbows[1]).scale.set(0.95, 0.95, 0.95); break; }
+      case "backpack": {
+        const m = mk(p1 ?? 0x2a3550, 0.85), m2 = mk(0xf2f0ea, 0.8);
+        put(LG.pack, m, 0, 0.36, -0.158, torso); put(LG.packPocket, mk(p1 ?? 0x2a3550, 0.7, { emissive: lin(0x111111) }), 0, 0.29, -0.215, torso);
+        put(GEO.pin, mk(COST_HEX[def.c] || 0xffffff, 0.4), 0.07, 0.44, -0.212, torso).scale.setScalar(0.55);
+        for (const s of [-1, 1]) { const st = put(LG.strap, m2, s * 0.1, 0.42, 0.108, torso); st.rotation.x = -0.1; }
+        break;
+      }
+      case "pendant": {
+        for (const s of [-1, 1]) { const st = put(LG.string, mk(0x333333, 0.6), s * 0.03, 0.5, 0.108, torso); st.rotation.set(-0.12, 0, s * 0.36); st.scale.y = 0.75; }
+        put(LG.gem, mk(p1 ?? 0x7ff0e0, 0.2, { emissive: lin(p1 ?? 0x7ff0e0), emissiveIntensity: 1.2 }), 0, 0.435, 0.125, torso);
+        break;
+      }
+      case "bowtie": { const m = mk(p1 ?? 0xffcf4a, 0.6); for (const s of [-1, 1]) { const b = put(LG.bow, m, s * 0.028, 0.545, 0.118, torso); b.rotation.z = s * Math.PI / 2; b.scale.set(1, 1, 0.5); } put(GEO.pin, m, 0, 0.545, 0.122, torso).scale.setScalar(0.4); break; }
+      case "badge": put(GEO.human.patch, chestTex(String(p1), p2 || "#ffffff", p3 || "#333333"), 0.08, 0.4, 0.119, torso).scale.setScalar(0.75); break;
+      case "backprint": { const bp = put(GEO.human.patch, chestTex(String(p1), hex(p2 ?? 0xffffff)), 0, 0.37, -0.112, torso); bp.rotation.y = Math.PI; bp.scale.setScalar(String(p1).length > 1 ? 1.9 : 1.6); break; }
+      case "laurel": {
+        const m = mk(0xffd86b, 0.3, { metalness: 0.6, emissive: lin(0xa87810), emissiveIntensity: 0.5 });
+        const r = put(LG.band, m, 0, 0.1, -0.005, head); r.rotation.x = Math.PI / 2 - 0.12; r.scale.set(0.98, 1.04, 0.8);
+        for (let i = 0; i < 12; i++) { const s = i < 6 ? -1 : 1, t = (i % 6) / 5, a = 0.5 + t * 2.0; const lf = put(LG.leaf, m, s * Math.sin(a) * 0.215, 0.125 + t * 0.015, Math.cos(a) * 0.215 - 0.005, head); lf.rotation.set(0.4 * Math.cos(a), 0, -s * (0.5 + 0.3 * Math.sin(a))); }
+        break;
+      }
+      case "wings": {
+        const m = mk(0xffffff, 0.6, { emissive: lin(0x8a7a50), emissiveIntensity: 0.5 });
+        // 어깨뼈에서 부채꼴로 펼친 깃털: 위쪽은 길게 위·바깥으로, 아래쪽은 짧게 아래·바깥으로
+        for (const s of [-1, 1]) for (let i = 0; i < 6; i++) {
+          const a = 0.45 + i * 0.4, len = 0.5 - i * 0.055, ax = s * 0.07, ay = 0.44;
+          const f = put(LG.feather, m, ax + s * Math.sin(a) * len * 0.5, ay + Math.cos(a) * len * 0.5, -0.135 - i * 0.008, torso);
+          f.scale.set(0.42, len * 5.2, 0.14); f.rotation.z = -s * a;
+        }
+        break;
+      }
+    }
+  }
+  // 합체로봇 대원: 손목에 빛나는 합체 장치
+  if (def.t.includes("합체로봇")) {
+    const col = (OUTFITS[def.n] && (OUTFITS[def.n].accent ?? OUTFITS[def.n].top)) || 0x7ff0ff, glow = col === 0xf4f4f4 || col === 0x111111 ? 0x7ff0ff : col;
+    const el = ud.elbows[0];
+    put(LG.device, mk(0x2a2e36, 0.35, { metalness: 0.7 }), 0, -0.2, 0.0, el).scale.set(1.1, 1.3, 1.1);
+    put(LG.gem, mk(glow, 0.2, { emissive: lin(glow), emissiveIntensity: 1.4 }), -0.036, -0.2, 0.0, el).scale.setScalar(0.9);
+    put(LG.gem, mk(glow, 0.2, { emissive: lin(glow), emissiveIntensity: 1.4 }), 0.036, -0.2, 0.0, el).scale.setScalar(0.9);
+  }
+}
 function buildStudent(def, enemy) {
   const g = new THREE.Group(); g.rotation.order = "YXZ";
   const ud = g.userData; ud.mats = []; ud.walk = Math.random() * 6; ud.move = 0;
@@ -770,7 +977,8 @@ function buildStudent(def, enemy) {
   const h = nameHash(def.n);
   const sporty = def.t.includes("운동광"), nerd = def.t.includes("공부는 잘함"), soccer = def.t.includes("축구부");
   const kind = def.t.includes("다 퍼줌"), fierce = def.t.includes("지는 거 못 참음");
-  const skin = SKINS[h % SKINS.length], hairCol = HAIRC[(h >> 3) % HAIRC.length];
+  const LK = lookOf(def, h);
+  const skin = LK.skin, hairCol = LK.hc;
   // ----- 사람 비율(약 7등신) 캐릭터 -----
   // 발바닥 y=0.2, 엉덩이 관절 y=1.0, 어깨 y≈1.52, 머리 꼭대기 y≈1.86
   // 옷: friends.js 의 OUTFITS 표 (없으면 운동광은 체육복, 나머지는 교복)
@@ -900,32 +1108,33 @@ function buildStudent(def, enemy) {
   if (kind) put(GEO.pin, mk(0xff7aa8, 0.4), 0.085, 0.45, 0.108, torso).scale.setScalar(0.7);
   put(HG.neck, mSkin, 0, 0.615, 0, torso);
   // 머리 (머리 모양 데이터는 반지름 0.2 기준이라 0.6배로 줄여 써요)
-  const head = new THREE.Group(); head.position.y = 0.735; head.scale.setScalar(0.6); torso.add(head); ud.head = head;
+  const head = new THREE.Group(); head.position.y = 0.735; head.scale.setScalar(0.6 * LK.head); torso.add(head); ud.head = head;
   put(HG.skull, mSkin, 0, 0.0, -0.005, head).scale.set(0.9, 1.04, 0.98);
   for (const s of [-1, 1]) {
     put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
-    const e1 = put(GEO.sclera, mWhite, s * 0.066, 0.018, 0.158, head); e1.scale.set(0.85, 0.5, 0.38);
-    const e2 = put(GEO.iris, mIris, s * 0.066, 0.017, 0.17, head); e2.scale.set(0.72, 0.72, 0.5);
+    const e1 = put(GEO.sclera, mWhite, s * 0.066, 0.018, 0.158, head); e1.scale.set(0.85 * LK.eye, 0.5 * LK.eye, 0.38);
+    const e2 = put(GEO.iris, mIris, s * 0.066, 0.017, 0.17, head); e2.scale.set(0.72 * LK.eye, 0.72 * LK.eye, 0.5);
     const e3 = put(GEO.shine, mWhite, s * 0.066 + 0.006, 0.022, 0.178, head); e3.scale.setScalar(0.45);
     for (const e of [e1, e2, e3]) { e.userData.sy = e.scale.y; (ud.eyes || (ud.eyes = [])).push(e); }
     const lash = put(HG.lash, mDark, s * 0.066, 0.018, 0.168, head); lash.scale.set(0.95, 0.6, 1); // 위 속눈썹 선
     lash.userData.sy = lash.scale.y; ud.eyes.push(lash);
-    const b = put(GEO.brow, mBrow, s * 0.068, 0.068, 0.168, head); b.scale.set(1.15, 0.75, 1);
+    const b = put(GEO.brow, mBrow, s * 0.068, 0.068 + (LK.eye - 1) * 0.03, 0.168, head); b.scale.set(1.15, 0.75 * LK.brow, 1);
     b.rotation.z = fierce ? s * 0.22 : kind ? -s * 0.1 : -s * 0.04;
   }
   const nz = put(HG.nose, mSkin, 0, -0.01, 0.183, head); nz.rotation.x = 0.35; nz.scale.set(1, 1, 0.75); // 콧등
   put(HG.noseTip, mSkin, 0, -0.042, 0.19, head).scale.set(1.05, 0.8, 0.85);
-  put(HG.lip, mLip, 0, -0.094, 0.162, head).scale.set(1.3, 0.26, 0.45);
-  put(HG.lip, mLip, 0, -0.106, 0.158, head).scale.set(1.05, 0.32, 0.45);
-  // 머리카락 (이름마다 다른 스타일)
-  const style = (h >> 7) % 5;
-  const back = put(GEO.hairBack, mHair, 0, 0.04, -0.04, head); back.scale.set(0.95, 1.0, 1.0);
-  const cap = put(GEO.hairCap, mHair, 0, 0.03, -0.005, head); cap.scale.set(0.96, 1.05, 1.02); cap.rotation.x = -0.2;
-  if (style === 0) { const f = put(GEO.fringe, mHair, 0, 0.14, 0.12, head); f.scale.set(1.75, 0.45, 0.85); }
-  else if (style === 1) { for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; const sp = put(GEO.spike, mHair, Math.cos(a) * 0.1, 0.19, Math.sin(a) * 0.08 - 0.01, head); sp.scale.set(1.1, 0.55, 1.1); sp.rotation.set(Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7); } }
-  else if (style === 2) { const f = put(GEO.fringe, mHair, 0.05, 0.145, 0.115, head); f.scale.set(1.6, 0.42, 0.9); f.rotation.z = -0.4; }
-  else if (style === 3) { cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96); }
-  else { cap.scale.set(1.03, 1.1, 1.06); const f = put(GEO.fringe, mHair, 0, 0.1, 0.14, head); f.scale.set(1.85, 0.55, 0.65); }
+  // 입: 표정마다 달라요
+  if (LK.mouth === "smile" || LK.mouth === "grin") {
+    const sm = put(GEO.mouth, mLip, 0, -0.082, 0.166, head); sm.rotation.z = Math.PI; sm.scale.set(LK.mouth === "grin" ? 1.5 : 1.15, LK.mouth === "grin" ? 1.5 : 1.0, 1.3);
+    if (LK.mouth === "grin") put(HG.lip, mWhite, 0, -0.1, 0.16, head).scale.set(1.15, 0.5, 0.3);
+  } else if (LK.mouth === "pout") { put(HG.lip, mLip, 0, -0.1, 0.163, head).scale.set(0.8, 0.3, 0.45); }
+  else if (LK.mouth === "flat") { put(HG.lip, mLip, 0, -0.1, 0.162, head).scale.set(1.2, 0.16, 0.4); }
+  else {
+    put(HG.lip, mLip, 0, -0.094, 0.162, head).scale.set(1.3, 0.26, 0.45);
+    put(HG.lip, mLip, 0, -0.106, 0.158, head).scale.set(1.05, 0.32, 0.45);
+  }
+  // 머리카락 (친구마다 다른 모양 — friends.js 의 LOOKS)
+  buildHair(LK.hair, put, head, mHair, LK.tip != null ? mk(LK.tip, 0.5) : mHair);
   if (def.t.includes("프로게이머")) {
     const hs = mk(0x26282c, 0.4, { metalness: 0.3 }), led = mk(0x7ff0ff, 0.3, { emissive: lin(0x3fd8ff) });
     put(new THREE.TorusGeometry(0.255, 0.022, 8, 24, Math.PI), hs, 0, 0.02, 0, head);
@@ -935,11 +1144,7 @@ function buildStudent(def, enemy) {
     put(new THREE.BoxGeometry(0.04, 0.1, 0.008), mk(0xc8323a, 0.6), -0.07, 0.45, 0.11, torso);
     const md = put(new THREE.CylinderGeometry(0.036, 0.036, 0.012, 20), mk(0xffd24a, 0.25, { metalness: 0.85 }), -0.07, 0.385, 0.115, torso); md.rotation.x = Math.PI / 2;
   }
-  if (nerd) {
-    const mg = mk(0x222222, 0.3, { metalness: 0.6 });
-    for (const s of [-1, 1]) put(GEO.lens, mg, s * 0.068, 0.018, 0.19, head).scale.set(1, 0.8, 1);
-    put(GEO.bridge, mg, 0, 0.022, 0.195, head);
-  }
+  if (nerd && !LK.acc.some((a) => a[0] === "glasses")) LK.acc = [...LK.acc, ["glasses", "plain", 0x222222]];
   // 팔: 어깨 → 위팔 → 팔꿈치(살짝 굽힘) → 아래팔 → 소매 끝 → 손
   ud.arms = []; ud.elbows = []; const grip = [];
   for (const s of [-1, 1]) {
@@ -959,6 +1164,7 @@ function buildStudent(def, enemy) {
     const gp = new THREE.Group(); gp.scale.setScalar(0.8); gp.position.y = -0.3 + 0.39 * 0.8; el.add(gp); grip.push(gp);
     ud.arms.push(sh); ud.elbows.push(el);
   }
+  applyLook(LK, { put, mk, head, torso, ud, def, mHair });
   ud.restZ = [-0.07, 0.07];
   const [L, R] = grip;
   const WP = WEAPONS[def.n];
@@ -994,6 +1200,10 @@ function buildStudent(def, enemy) {
       break;
     }
   }
+  // 키·체격: 발밑 고리만 빼고 몸 전체를 한 묶음으로 늘리거나 줄여요
+  const body = new THREE.Group(); body.scale.set(LK.wide, LK.tall, LK.wide);
+  for (const ch of g.children.slice()) if (ch !== ring) body.add(ch);
+  body.position.y = 0.2 * (1 - LK.tall); g.add(body);
   // 그림자는 큰 부품만 만들어요 (작은 부품까지 그림자를 그리면 폰에서 많이 느려져요)
   const BIG = new Set([HG.thigh, HG.shin, HG.pelvis, HG.chest, HG.upper, HG.fore, HG.skull, HG.shoe, GEO.hairCap, GEO.hairBack, HG.skirt, HG.hood]);
   g.traverse((o) => { if (o.isMesh) o.castShadow = BIG.has(o.geometry); });
