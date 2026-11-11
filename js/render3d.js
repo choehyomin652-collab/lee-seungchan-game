@@ -1569,7 +1569,8 @@ function drawOverlay(dt, R) {
   if (B && (S.phase === "combat" || S.phase === "result")) {
     for (const f of B.floats) {
       f.t -= dt; f.h += dt * (f.huge ? 0.5 : 1.3);
-      const [x, y] = proj(worldX(f.X), f.h, worldZ(f.Y));
+      // 작은 숫자는 이름표 위에서 시작해서 이름표·체력바를 가리지 않아요
+      const [x, y] = proj(worldX(f.X), f.h + (f.huge ? 0 : 0.6), worldZ(f.Y));
       if (f.huge) { // 스킬 연출용 큰 글자: 쾅 하고 커졌다가 사라져요
         const q = Math.min(1, (f.t0 - f.t) / 0.12), sc = 1 + (1 - q) * 1.4, px = u0 * f.huge;
         ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); ctx.rotate(-0.08); ctx.globalAlpha = Math.max(0, Math.min(1, f.t * 3)) * q;

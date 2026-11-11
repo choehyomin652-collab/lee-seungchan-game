@@ -69,7 +69,8 @@ button:disabled { opacity: .45; }
 .odds i { display: inline-block; width: var(--u); height: var(--u); border-radius: 50%; margin-right: calc(var(--u) * .4); }
 /* 왼쪽 시너지 */
 .traits { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 5); left: max(calc(var(--u) * 1.2), env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: calc(var(--u) * .6); max-height: 40vh; overflow: hidden; }
-.trait { display: flex; align-items: center; gap: var(--u); background: none; border: 0; padding: 0; color: var(--chalk-dim); font-family: var(--body); font-size: calc(var(--u) * 1.7); text-align: left; text-shadow: 0 1px 3px #000; }
+.trait { display: flex; align-items: center; gap: var(--u); background: none; border: 0; padding: 0; color: #d4e2e6; font-family: var(--body); font-size: calc(var(--u) * 1.7); text-align: left; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+.trait > span:last-child { background: rgba(6, 16, 20, .62); border-radius: calc(var(--u) * .6); padding: calc(var(--u) * .2) calc(var(--u) * .8); }
 .trait .hx { width: calc(var(--u) * 4.4); height: calc(var(--u) * 5); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: grid; place-items: center; background: #17323c; color: #86a6ae; font-family: var(--display); font-size: calc(var(--u) * 2); flex: none; }
 .trait b { display: block; font-family: var(--display); font-weight: 400; font-size: calc(var(--u) * 1.9); color: #fff; }
 .trait.l1 .hx { background: linear-gradient(#d9a066, #8a5426); color: #23140a; }
@@ -219,7 +220,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .dock .lockbtn { position: static; margin-left: auto; width: calc(var(--u) * 2.9); height: calc(var(--u) * 2.9); border-radius: calc(var(--u) * .6); font-size: calc(var(--u) * 1.8); flex: none; box-shadow: none; }
 .dockbtns { display: flex; flex-direction: column; gap: calc(var(--u) * .6); width: min(calc(var(--u) * 13.5), 17vw); flex: none; }
 .dock .cbtn { width: 100%; height: auto; flex: 1; border-radius: calc(var(--u) * .6); display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lbl ico" "cost ico"; align-items: center; justify-items: start; gap: calc(var(--u) * .2) calc(var(--u) * .4); padding: 0 calc(var(--u) * 1); text-align: left; }
-.dock .cbtn .lbl { grid-area: lbl; align-self: end; font-size: calc(var(--u) * 1.5); }
+.dock .cbtn .lbl { grid-area: lbl; align-self: end; font-size: calc(var(--u) * 1.5); white-space: nowrap; word-break: keep-all; }
 .dock .cbtn .cost { grid-area: cost; align-self: start; font-size: calc(var(--u) * 1.45); }
 .dock .cbtn svg { grid-area: ico; font-size: calc(var(--u) * 3); opacity: .9; }
 .dock #buyxp { background: linear-gradient(180deg, #3470bd, #17386e); border-color: rgba(176, 220, 255, .7); }
