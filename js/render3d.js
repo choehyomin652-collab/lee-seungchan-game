@@ -923,6 +923,9 @@ function buildStudent(def, enemy) {
       break;
     }
   }
+  // 그림자는 큰 부품만 만들어요 (작은 부품까지 그림자를 그리면 폰에서 많이 느려져요)
+  const BIG = new Set([HG.thigh, HG.shin, HG.pelvis, HG.chest, HG.upper, HG.fore, HG.skull, HG.shoe, GEO.hairCap, GEO.hairBack]);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = BIG.has(o.geometry); });
   return g;
 }
 function buildMonster(mon, enemy) {

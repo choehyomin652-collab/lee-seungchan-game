@@ -156,10 +156,13 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 }
 .overlay {
   position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(16, 42, 54, .78), rgba(4, 10, 14, .92)); z-index: 30;
-  display: flex; align-items: center; justify-content: center; overflow-y: auto;
+  /* 화면보다 길면 위가 잘리지 않고 스크롤돼요 (가운데 정렬은 자식의 margin: auto 로) */
+  display: flex; align-items: flex-start; justify-content: center; overflow-y: auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: 16px; padding-bottom: 16px;
 }
-.ov-box { background: linear-gradient(#15323e, #0a1a22); border: 1px solid var(--edge); box-shadow: 0 0 0 4px rgba(0, 0, 0, .35), 0 0 0 5px rgba(228, 192, 114, .28), inset 0 1px 0 rgba(255, 255, 255, .12), 0 20px 60px rgba(0, 0, 0, .6); border-radius: 18px; padding: 24px; max-width: 420px; width: 100%; text-align: center; display: flex; flex-direction: column; gap: 12px; margin-block: 16px; }
+.overlay > * { margin-block: auto; }
+.ov-box { background: linear-gradient(#15323e, #0a1a22); border: 1px solid var(--edge); box-shadow: 0 0 0 4px rgba(0, 0, 0, .35), 0 0 0 5px rgba(228, 192, 114, .28), inset 0 1px 0 rgba(255, 255, 255, .12), 0 20px 60px rgba(0, 0, 0, .6); border-radius: 18px; padding: 24px; max-width: 420px; width: 100%; text-align: center; display: flex; flex-direction: column; gap: 12px; margin-block: auto; }
 .ov-box h1 { font-family: var(--display); font-weight: 400; font-size: 32px; margin: 0; color: var(--gold); text-wrap: balance; text-shadow: 0 2px 0 rgba(60, 36, 4, .7), 0 0 18px rgba(240, 207, 116, .35); }
 .ov-box p { margin: 0; line-height: 1.6; }
 .ov-box ul { text-align: left; margin: 0; padding-left: 18px; line-height: 1.6; font-size: 13px; color: var(--chalk-dim); }
