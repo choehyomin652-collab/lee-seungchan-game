@@ -44,6 +44,30 @@ const TRAITS = {
   "합체로봇": { t: [4],      d: "조하윤·박희찬·윤동욱·이보경 4명이 모두 보드에 있으면 전투 시작 때 4인 합체로봇으로 합체!" },
   "신":       { t: [1],       d: "신의 가호: 아군 전체 공격력·체력 +12%" },
 };
+// ---------- 옷 ----------
+// type: uniform(교복) cardigan(카디건) vest(조끼+셔츠) track(체육복) hoodie(후드티) padding(패딩)
+//       varsity(야구 점퍼) jersey(운동 유니폼·반바지) tank(민소매) tshirt(티셔츠) dobok(도복) robe(로브)
+// top: 윗옷 색, bottom: 바지 색, accent: 포인트 색, num: 등번호, print: 가슴 글자, sleeve: "long"|"short"|"none"
+const OUTFITS = {
+  "이승찬": { type: "hoodie", top: 0xf08a3a, bottom: 0xcbb592, accent: 0xffffff },
+  "이현": { type: "track", top: 0xc8323a, accent: 0xffffff },
+  "최효민": { type: "jersey", top: 0xf4f4f4, bottom: 0x2f5fa8, accent: 0x2f5fa8, num: "7" },
+  "전하율": { type: "padding", top: 0x1e2126, bottom: 0x3c5a86, accent: 0xe8402e },
+  "이준희": { type: "tank", top: 0xf08a1a, bottom: 0xf08a1a, accent: 0x5a2a8a, num: "23" },
+  "김현우": { type: "cardigan", top: 0x2a3550, bottom: 0x4a4e57, accent: 0xf2f0ea },
+  "이보경": { type: "jersey", top: 0x2f9a5a, bottom: 0xf4f4f4, accent: 0xf4f4f4, num: "4", socks: 0x2f9a5a },
+  "윤동욱": { type: "dobok", top: 0xf6f4ee, bottom: 0xf6f4ee, accent: 0x111111 },
+  "김민기": { type: "tshirt", top: 0xf4f4f4, bottom: 0x3c5a86, accent: 0x7a5cd0, print: "✎" },
+  "임시온": { type: "jersey", top: 0xd8e83a, bottom: 0x1e2126, accent: 0x1e2126, num: "1", sleeve: "long", socks: 0xd8e83a },
+  "김예균": { type: "hoodie", top: 0x2a7a78, bottom: 0x2b303b, accent: 0x7ff0e0 },
+  "박현호": { type: "varsity", top: 0xb8323a, bottom: 0x3c5a86, accent: 0xf2e6c8 },
+  "조하윤": { type: "hoodie", top: 0x1a1a22, bottom: 0x1a1a22, accent: 0x3fd8ff },
+  "박희찬": { type: "jersey", top: 0x2a5ad0, bottom: 0xf4f4f4, accent: 0xf4f4f4, num: "10", socks: 0x2a5ad0 },
+  "진성욱": { type: "tank", top: 0x5a5f66, bottom: 0x1e2126, accent: 0xe8402e, print: "GYM" },
+  "박준서": { type: "vest", top: 0x7a2a3a, bottom: 0x4a4e57, accent: 0xf2f0ea },
+  "손태민": { type: "uniform", top: 0x1f2a44, bottom: 0x343a44 },
+  "정주환": { type: "robe", top: 0xf8f6f0, bottom: 0xf8f6f0, accent: 0xffcf4a },
+};
 // ---------- 밸런스 표 ----------
 // 친구마다 체력(hp) · 공격력(ad) · 스킬 세기(sk)에 곱하는 숫자예요. 1 = 그대로, 1.1 = 10% 강하게, 0.9 = 10% 약하게.
 // 같은 골드로 짠 무작위 팀끼리 수천 판 싸우게 해서, 승률이 50%에 가깝도록 맞춘 값이에요.
