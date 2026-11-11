@@ -197,7 +197,7 @@ function startPlan() {
   const tier = AUG_ROUNDS[`${S.stage}-${S.k}`];
   for (const P of alivePlayers().filter(isLocal)) {
     mergeAll(P);
-    if (tier && !P.human) { const a = rnd(augOptions(P)); P.augs.push(a.id); a.f(P); }
+    if (tier && !P.human) { const a = rnd(augOptions(P, TIER_IX[tier])); P.augs.push(a.id); a.f(P); }
     if (!P.human) aiPlan(P);
   }
   if (tier && human().alive) showAugments(tier);
@@ -213,9 +213,13 @@ function tapButton(el, fn) {
 }
 function reportError(e) { try { toast("오류가 났어요: " + (e && e.message ? e.message : e)); } catch (x) {} }
 window.addEventListener("error", (e) => reportError(e.error || e.message));
-function augOptions(P) { return shuffle(AUGS.filter((a) => (ITEMS_ON || !["supplies", "complete"].includes(a.id)) && (a.id.startsWith("emb-") || !P.augs.includes(a.id)))).slice(0, 3); }
+// 등급(ti)에 맞는 숫자를 넣은 증강 3개 (등급 전용 증강은 그 등급에서만)
+function augOptions(P, ti) {
+  return shuffle(AUGS.filter((a) => (ITEMS_ON || !["supplies", "complete"].includes(a.id)) && (a.id.startsWith("emb-") || !P.augs.includes(a.id)) && (!a.tiers || a.tiers.includes(ti))))
+    .slice(0, 3).map((a) => { const v = a.v ? a.v[ti] : undefined; return { id: a.id, n: a.n, d: a.d(v), f: (Q) => a.f(Q, v) }; });
+}
 function showAugments(tier, rerolled) {
-  const P = human(), opts = augOptions(P);
+  const P = human(), opts = augOptions(P, TIER_IX[tier]);
   S.augPending = true;
   $("augre").hidden = !!rerolled;
   tapButton($("augre"), () => { if (S.augPending) showAugments(tier, true); });
