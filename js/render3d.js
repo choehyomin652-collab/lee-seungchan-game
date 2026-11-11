@@ -1281,6 +1281,35 @@ function drawFx(list, dt) {
       grp.position.set(x, 0.9, z);
       grp.children.forEach((s, i) => { s.position.copy(grp.userData.dirs[i]).multiplyScalar(k * 0.7); s.scale.setScalar(1 - k * 0.7); });
       grp.children[0].material.opacity = Math.max(0, 1 - k);
+    } else if (g.kind === "pillar") { // 합성: 바닥에서 하늘로 솟는 빛 기둥
+      const grp = useMesh(g, () => {
+        const gg = new THREE.Group(), geo = GEO.pillar || (GEO.pillar = new THREE.CylinderGeometry(1, 1, 1, 24, 1, true));
+        gg.add(new THREE.Mesh(geo, additive(g.col)), new THREE.Mesh(geo, additive("#ffffff")));
+        return gg;
+      });
+      const up = Math.min(1, k / 0.25), fade = k < 0.55 ? 1 : Math.max(0, 1 - (k - 0.55) / 0.45), h = (g.big ? 9 : 6) * up, w = g.big ? 0.75 : 0.55;
+      grp.position.set(x, h / 2, z);
+      grp.children[0].scale.set(w * (1 - k * 0.4), Math.max(0.01, h), w * (1 - k * 0.4)); grp.children[0].material.opacity = 0.55 * fade;
+      grp.children[1].scale.set(w * 0.35, Math.max(0.01, h), w * 0.35); grp.children[1].material.opacity = 0.8 * fade;
+      grp.rotation.y += dt * 3;
+    } else if (g.kind === "stars") { // 합성: 별 폭죽이 솟았다가 떨어져요
+      sgeo();
+      const grp = useMesh(g, () => {
+        const gg = new THREE.Group(), mat = additive(g.col);
+        gg.userData.v = [];
+        for (let i = 0; i < g.n; i++) {
+          const s = new THREE.Mesh(SGEO.star, mat), a = (i / g.n) * Math.PI * 2 + Math.random() * 0.4, sp = 1.4 + Math.random() * 1.6;
+          gg.add(s); gg.userData.v.push([Math.cos(a) * sp, 3.5 + Math.random() * 3, Math.sin(a) * sp, Math.random() * 10]);
+        }
+        return gg;
+      });
+      const tt = g.t0 - g.t;
+      grp.position.set(x, 0.6, z);
+      grp.children.forEach((s, i) => {
+        const v = grp.userData.v[i]; s.position.set(v[0] * tt, v[1] * tt - 4.5 * tt * tt, v[2] * tt);
+        s.rotation.set(v[3] + tt * 8, v[3] + tt * 11, 0); s.scale.setScalar(2.2 * (1 - k * 0.6));
+      });
+      grp.children[0].material.opacity = Math.max(0, 1 - k * k);
     } else {
       const m = useMesh(g, () => { const mm = new THREE.Mesh(GEO.ringFx, additive(g.col)); mm.rotation.x = -Math.PI / 2; return mm; });
       m.position.set(x, 0.24, z); m.scale.setScalar(Math.max(0.05, g.r * (0.3 + 0.9 * k)));
@@ -1761,7 +1790,8 @@ function drawOverlay(dt, R) {
   if (B && (S.phase === "combat" || S.phase === "result")) {
     for (const f of B.floats) {
       f.t -= dt; f.h += dt * (f.huge ? 0.5 : 1.3);
-      const [x, y] = proj(worldX(f.X), f.h, worldZ(f.Y));
+      // 작은 숫자는 이름표 위에서 시작해서 이름표·체력바를 가리지 않아요
+      const [x, y] = proj(worldX(f.X), f.h + (f.huge ? 0 : 0.6), worldZ(f.Y));
       if (f.huge) { // 스킬 연출용 큰 글자: 쾅 하고 커졌다가 사라져요
         const q = Math.min(1, (f.t0 - f.t) / 0.12), sc = 1 + (1 - q) * 1.4, px = u0 * f.huge;
         ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); ctx.rotate(-0.08); ctx.globalAlpha = Math.max(0, Math.min(1, f.t * 3)) * q;
@@ -1870,6 +1900,29 @@ function drawOverlay(dt, R) {
     if (t < SMITE_CHARGE) big("천벌", ox, oy, Math.min(1, t / 0.15), 3.2);
     else if (sz.big && sz.big.mega && t < sz.big.at - 0.05) { if (t > sz.big.at - 0.7) big("신이 노하셨다…", W / 2, H3 * 0.3, Math.min(1, (t - sz.big.at + 0.7) / 0.2), 2.6); }
     else if (sz.big && t >= sz.big.at - 0.05) big(sz.big.mega ? "신의 심판!!" : "심판!", W / 2, H3 * 0.36, Math.min(1, (t - sz.big.at + 0.05) / 0.12), sz.big.mega ? 6.4 : 4.6);
+  }
+  // 합성 배너: "★★ 이름!" 이 쾅 하고 커졌다가 위로 사라져요
+  if (S.mergeFx) {
+    const m = S.mergeFx; m.t -= dt;
+    const e = m.t0 - m.t, q = Math.min(1, e / 0.14), gold = m.star >= 3;
+    const sc = 1 + (1 - q) * 1.6 + (q >= 1 ? Math.max(0, 0.12 - (e - 0.14)) : 0), cy = H3 * 0.3 - Math.max(0, e - 1.1) * u0 * 6, px = u0 * (gold ? 2.4 : 1.9);
+    ctx.save(); ctx.translate(W / 2, cy); ctx.scale(sc, sc); ctx.rotate(-0.05);
+    ctx.globalAlpha = q * Math.max(0, Math.min(1, m.t * 2.5));
+    // 뒤에서 도는 빛살
+    ctx.save(); ctx.rotate(e * 0.8); ctx.globalAlpha *= 0.35;
+    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.fillStyle = gold ? "#ffd75a" : "#cfe6ff"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(px * 2.6, -px * 0.22); ctx.lineTo(px * 2.6, px * 0.22); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const stars = "★".repeat(m.star);
+    ctx.font = font(px * 0.9); ctx.lineWidth = Math.max(3, px * 0.09); ctx.strokeStyle = "rgba(20,10,0,.9)";
+    ctx.shadowColor = gold ? "#ffb43a" : "#7fc8ff"; ctx.shadowBlur = 26;
+    ctx.strokeText(stars, 0, -px * 0.75); ctx.fillStyle = gold ? "#ffd75a" : "#e8f2ff"; ctx.fillText(stars, 0, -px * 0.75);
+    ctx.font = font(px); ctx.strokeText(m.name + "!", 0, px * 0.35);
+    const gr = ctx.createLinearGradient(0, -px * 0.15, 0, px * 0.85);
+    if (gold) { gr.addColorStop(0, "#fff6c8"); gr.addColorStop(1, "#ff9a3a"); } else { gr.addColorStop(0, "#ffffff"); gr.addColorStop(1, "#8fc8ff"); }
+    ctx.fillStyle = gr; ctx.fillText(m.name + "!", 0, px * 0.35);
+    ctx.restore();
+    if (m.t <= 0) S.mergeFx = null;
   }
   // 승패 배너
   if (S.banner) {

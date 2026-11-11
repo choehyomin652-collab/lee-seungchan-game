@@ -92,9 +92,18 @@ function merge(P, d, star) {
   keep.u.star = star + 1;
   if (P.human && typeof WFX !== "undefined") {
     const x = keep.w === "b" ? worldX(gridX(4 + keep.r, keep.c)) : benchX(keep.i), z = keep.w === "b" ? worldZ(4 + keep.r) : BENCH_Z;
-    WFX.push({ w: 1, X: x, Y: z, r: 1.4, col: "#ffd75a", t: 0.7, t0: 0.7 }, { w: 1, kind: "spark", X: x, Y: z, col: "#ffe9a0", t: 0.6, t0: 0.6 });
+    // 합성 연출: 빛 기둥 + 별 폭죽 + 퍼지는 고리 (★3은 금색으로 더 크게)
+    const gold = star + 1 >= 3, col = gold ? "#ffd75a" : "#cfe6ff";
+    WFX.push({ w: 1, X: x, Y: z, r: 1.4, col: "#ffd75a", t: 0.7, t0: 0.7 }, { w: 1, kind: "spark", X: x, Y: z, col: "#ffe9a0", t: 0.6, t0: 0.6 },
+      { w: 1, kind: "pillar", X: x, Y: z, col, big: gold, t: gold ? 1.3 : 1.0, t0: gold ? 1.3 : 1.0 },
+      { w: 1, kind: "stars", X: x, Y: z, col: gold ? "#fff1a8" : "#ffffff", n: gold ? 18 : 10, t: 1.1, t0: 1.1 },
+      { w: 1, X: x, Y: z, r: gold ? 3.2 : 2.2, col, t: 0.9, t0: 0.9 });
+    if (gold) { WFX.push({ w: 1, X: x, Y: z, r: 4.5, col: "#ff9a3a", t: 1.2, t0: 1.2 }); S.shake = Math.max(S.shake || 0, 0.4); }
   }
-  if (P.human) { sfx("merge"); toast(`${DEFS[d].n} ★${star + 1}!`); }
+  if (P.human) {
+    sfx("merge"); if (star + 1 >= 3) sfx("level");
+    S.mergeFx = { name: DEFS[d].n, star: star + 1, t: 1.6, t0: 1.6 };
+  }
   merge(P, d, star + 1);
 }
 function mergeAll(P) { for (let star = 1; star <= 2; star++) for (let d = 0; d < DEFS.length; d++) merge(P, d, star); }

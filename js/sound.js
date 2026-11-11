@@ -3,7 +3,7 @@
 // ============================================================
 "use strict";
 // =============== 소리 ===============
-let AC = null, muted = false, lastHit = 0;
+let AC = null, muted = false, lastHit = 0, noiseSeed = 12345;
 try { muted = localStorage.getItem("uri-mute") === "1"; } catch (e) {}
 function sfx(name) {
   if (muted || !AC) return;
@@ -33,7 +33,8 @@ function sfx(name) {
     case "charge": tone(80, 0.7, "sawtooth", 0.04, 640); tone(1200, 0.5, "square", 0.012, 3000, 0.15); break;
     case "thunder": { // 지지직 + 우르릉 (잡음)
       const len = 0.6, buf = AC.createBuffer(1, AC.sampleRate * len, AC.sampleRate), d = buf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) { const k = i / d.length; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - k, 2.2) * (k < 0.05 ? 1 : 0.6); }
+      // 잡음은 따로 만든 난수로 (Math.random 을 쓰면 온라인 전투의 난수 순서가 소리 켠 사람만 달라져요)
+      for (let i = 0; i < d.length; i++) { const k = i / d.length; noiseSeed = (noiseSeed * 1664525 + 1013904223) >>> 0; d[i] = (noiseSeed / 2147483648 - 1) * Math.pow(1 - k, 2.2) * (k < 0.05 ? 1 : 0.6); }
       const src = AC.createBufferSource(), lp = AC.createBiquadFilter(), g = AC.createGain();
       src.buffer = buf; lp.type = "lowpass"; lp.frequency.setValueAtTime(5000, now); lp.frequency.exponentialRampToValueAtTime(200, now + len);
       g.gain.value = 0.12; src.connect(lp).connect(g).connect(AC.destination); src.start(now);
