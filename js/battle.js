@@ -11,9 +11,10 @@ function makeFighter(spec, team, r, c, cnt, buff) {
     Object.assign(f, { mon: m, d: -1, maxHp: m.hp, ad: m.ad, as0: m.as, rg: m.rg, ar: m.ar, mm: Infinity });
     f.hp = f.maxHp; return f;
   }
-  const def = DEFS[spec.d], cl = CLASS[def.k], cf = 1 + (def.c - 1) * 0.22, sm = STARM[spec.star], tn = tuneOf(def);
-  Object.assign(f, { d: spec.d, star: spec.star, items: spec.items.slice(), maxHp: cl.hp * cf * sm * tn.hp, ad: cl.ad * cf * sm * tn.ad,
-    as0: cl.as, rg: cl.rg, ar: cl.ar, mm: cl.mm, power: cf * sm * tn.sk });
+  const def = DEFS[spec.d], cl = CLASS[def.k], cf = 1 + (def.c - 1) * 0.22, sm = STARM[spec.star], tn = tuneOf(def), lg = legendOf(def, spec.star);
+  Object.assign(f, { d: spec.d, star: spec.star, items: spec.items.slice(), maxHp: cl.hp * cf * sm * tn.hp * lg.hp, ad: cl.ad * cf * sm * tn.ad * lg.ad,
+    as0: cl.as, rg: cl.rg, ar: cl.ar, mm: cl.mm, power: cf * sm * tn.sk * lg.sk });
+  if (lg.sk > 1) f.mana = cl.mm; // 전설은 시작하자마자 스킬을 써요
   const L = (t) => traitLvl(t, cnt[t] || 0), has = (t) => (def.t.includes(t) ? L(t) : 0);
   f.maxHp *= [1, 1.2, 1.45, 1.8][has("운동광")];
   if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.8][has("지는 거 못 참음")]; f.crit = 0.2; }

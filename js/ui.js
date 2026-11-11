@@ -148,7 +148,7 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 1800);
 }
 function skillText(def, star) {
-  const cf = 1 + (def.c - 1) * 0.22, P = cf * STARM[star] * tuneOf(def).sk;
+  const cf = 1 + (def.c - 1) * 0.22, P = cf * STARM[star] * tuneOf(def).sk * legendOf(def, star).sk;
   if (SK[def.n]) return SK[def.n].d(P);
   return {
     "수호자": `자신에게 보호막 ${Math.round(260 * P)}`,
@@ -164,7 +164,7 @@ function showUnit(u, foe) {
   const def = DEFS[u.d], cl = CLASS[def.k], cf = 1 + (def.c - 1) * 0.22, sm = STARM[u.star];
   const its = u.items.length ? "<br>" + u.items.map((id) => `${itemTag(id)} ${ITEMS[id].d}`).join("<br>") : "";
   $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${def.n}</b> ${"★".repeat(u.star)} · ${def.c}코스트 · ${def.t.join(", ")}${foe ? " · <span style='color:var(--danger)'>상대</span>" : ""}<br>
-    체력 ${Math.round(cl.hp * cf * sm * tuneOf(def).hp)} · 공격 ${Math.round(cl.ad * cf * sm * tuneOf(def).ad)} · 사거리 ${cl.rg}칸<br>스킬 <b>${SK[def.n] ? SK[def.n].s : cl.sk}</b>: ${skillText(def, u.star)}<br>무기 <b>${WEAPONS[def.n] ? WEAPONS[def.n].n : "없음"}</b>${its}</div>`;
+    ${def.c === 5 && u.star >= 3 ? "<b style='color:var(--c5)'>전설!</b> " : ""}체력 ${Math.round(cl.hp * cf * sm * tuneOf(def).hp * legendOf(def, u.star).hp)} · 공격 ${Math.round(cl.ad * cf * sm * tuneOf(def).ad * legendOf(def, u.star).ad)} · 사거리 ${cl.rg}칸<br>스킬 <b>${SK[def.n] ? SK[def.n].s : cl.sk}</b>: ${skillText(def, u.star)}<br>무기 <b>${WEAPONS[def.n] ? WEAPONS[def.n].n : "없음"}</b>${its}</div>`;
   const P = human();
   const sellable = !foe && S.sel && S.sel.w !== "i" && (S.sel.w === "n" ? shopOpen() : S.phase === "plan");
   if (sellable) {

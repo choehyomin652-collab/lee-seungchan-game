@@ -272,7 +272,7 @@ function stepSmite(B, z, dt) {
   const foes = B.f.filter((o) => o.alive && o.team !== z.team);
   if (t0 < SMITE_CHARGE && z.t >= SMITE_CHARGE) {
     const order = shuffle(foes.slice());
-    z.strikes = order.map((o, i) => ({ o, at: SMITE_CHARGE + i * 0.09, X: o.X, Y: o.Y }));
+    z.strikes = order.map((o, i) => ({ o, at: SMITE_CHARGE + i * 0.12, X: o.X, Y: o.Y }));
     const last = z.strikes.length ? z.strikes[z.strikes.length - 1].at : SMITE_CHARGE;
     const boss = foes.slice().sort((a, b) => b.hp - a.hp)[0];
     z.big = boss ? { o: boss, at: last + 0.35, X: boss.X, Y: boss.Y, big: 1 } : null;
