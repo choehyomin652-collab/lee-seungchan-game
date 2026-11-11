@@ -1333,7 +1333,8 @@ function collect(dt) {
       let face = isFoe(u) ? 0 : Math.PI;
       if (u.alive && u.tgt) face = Math.atan2(worldX(u.tgt.X) - worldX(u.X), worldZ(u.tgt.Y) - worldZ(u.Y));
       push(u, u, x, z, { hit: u.alive ? { g: "board", r: u.r, c: u.c } : null, enemy: isFoe(u), f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, Math.min(1, u.deadT / 0.6)), face,
-        jump: u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive });
+        jump: u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive,
+        lift: u.dropT > 0 ? u.dropT * u.dropT * 9 : 0 }); // 소환수가 하늘에서 떨어지는 중
     }
   } else {
     if (S.scout != null) {
@@ -1354,7 +1355,7 @@ function collect(dt) {
 }
 function placeUnit(it, dt) {
   const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
-  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? 0.85 : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.6 : 1)) * (it.bench ? 0.8 : 1);
+  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.6 : 1)) * (it.bench ? 0.8 : 1);
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
   const pv = ud.prev || { x: it.x, z: it.z };
@@ -1846,7 +1847,37 @@ function drawMathRain(z, dt) {
     ud.ring.position.y = 0.26; ud.ring.scale.setScalar((1.5 - p) * big); ud.ring.material.opacity = p;
   });
 }
-const ZDRAW = { smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
+// 김예균 "이다연 군단": 발밑의 큰 마법진, 하늘의 소환문, 떨어질 자리로 꽂히는 빛줄기
+function drawLegion(z, dt) {
+  const t = z.t, x = worldX(z.X), y = worldZ(z.Y), fade = Math.max(0, Math.min(1, (z.dur - t) / 0.45)), grow = Math.min(1, t / 0.3);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.circle = new THREE.Group(); grp.add(ud.circle);
+    const flat = (geo, col, s, parent) => { const m = new THREE.Mesh(geo, additive(col)); m.rotation.x = -Math.PI / 2; m.scale.setScalar(s); parent.add(m); return m; };
+    for (const [s, c] of [[2.8, "#7ff0e0"], [2.4, "#ffffff"], [1.6, "#2fd0c0"]]) flat(GEO.ringFx, c, s, ud.circle);
+    ud.tri = [flat(zgeo().tri, "#2fd0c0", 2.35, ud.circle), flat(zgeo().tri, "#7ff0e0", 2.35, ud.circle)]; ud.tri[1].rotation.z = Math.PI;
+    ud.portal = new THREE.Group(); ud.portal.position.y = 7; grp.add(ud.portal);
+    for (const [s, c] of [[3.2, "#7ff0e0"], [2.5, "#ffffff"], [1.8, "#2fd0c0"], [1.0, "#ffffff"]]) flat(GEO.ringFx, c, s, ud.portal);
+    ud.core = new THREE.Mesh(GEO.ball, additive("#bffff6")); ud.core.scale.setScalar(6); ud.portal.add(ud.core);
+    ud.beams = z.news.map((f) => { const b = new THREE.Mesh(zgeo().tube, additive(f.mon.giant ? "#ffffff" : "#7ff0e0")); grp.add(b); return b; });
+    ud.marks = z.news.map((f) => flat(GEO.ringFx, f.mon.giant ? "#ffffff" : "#7ff0e0", f.mon.giant ? 1.8 : 0.9, grp));
+    return grp;
+  });
+  const ud = g.userData; g.position.set(x, 0, y);
+  ud.circle.position.y = 0.27; ud.circle.scale.setScalar(Math.max(0.01, grow)); ud.circle.rotation.y += dt * 1.6;
+  ud.circle.children.forEach((m) => (m.material.opacity = 0.85 * fade)); ud.tri[1].rotation.z -= dt * 3.5;
+  ud.portal.rotation.y -= dt * 2.4; ud.portal.scale.setScalar(Math.max(0.01, grow) * (z.legend ? 1.4 : 1) * (1 + Math.sin(t * 9) * 0.04));
+  ud.portal.children.forEach((m) => (m.material.opacity = 0.75 * fade)); ud.core.material.opacity = 0.35 * fade;
+  z.news.forEach((f, i) => {
+    const b = ud.beams[i], mk = ud.marks[i], fx = worldX(f.X) - x, fy = worldZ(f.Y) - y;
+    const pre = Math.min(1, t / 0.35), on = f.landed ? Math.max(0, 1 - (t - f.dropAt) / 0.35) : pre;
+    const dx = fx, dz = fy, top = 7, len = Math.hypot(dx, top, dz); // 소환문 → 떨어질 자리
+    b.position.set(dx / 2, top / 2, dz / 2); b.lookAt(x + dx, 0, y + dz); b.rotateX(Math.PI / 2);
+    const w = f.mon.giant ? 0.35 : 0.12; b.scale.set(w * on, len, w * on); b.material.opacity = 0.55 * on * fade;
+    mk.position.set(fx, 0.28, fy); mk.scale.setScalar((f.mon.giant ? 1.8 : 0.9) * (f.landed ? 1 + (t - f.dropAt) * 4 : 1.3 - 0.3 * pre)); mk.material.opacity = (f.landed ? on : 0.9) * fade;
+  });
+}
+const ZDRAW = { legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();

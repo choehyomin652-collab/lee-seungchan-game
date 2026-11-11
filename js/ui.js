@@ -236,7 +236,7 @@ function updateMeter() {
 }
 function showFighter(f) {
   S.infoHold = performance.now() + 3000;
-  if (f.mon) { $("info").innerHTML = `<div class="txt"><b>${f.mon.summon ? "이다연" : f.mon.mn}</b> ${f.mon.summon ? "소환수 (김예균이 불러냄)" : "몬스터"} · 체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)}</div>`; return; }
+  if (f.mon) { $("info").innerHTML = `<div class="txt"><b>${f.mon.summon ? (f.mon.giant ? "거대 이다연" : "이다연") : f.mon.mn}</b> ${f.mon.summon ? "소환수 (김예균이 불러냄)" : "몬스터"} · 체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)}</div>`; return; }
   const def = DEFS[f.d];
   $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${f.robot ? ROBOT_NAME : def.n}</b> ${"★".repeat(f.star)} ${f.team ? "<span style='color:var(--danger)'>상대</span>" : ""}<br>
     체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)} · 공속 ${speedOf(f).toFixed(2)} · 마나 ${Math.round(f.mana)}/${f.mm}${!f.robot && WEAPONS[def.n] ? "<br>무기 " + WEAPONS[def.n].n : ""}${f.items.length ? "<br>" + f.items.map(itemTag).join(" ") : ""}</div>`;
