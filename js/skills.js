@@ -88,7 +88,7 @@ const SK = {
     run(B, u, P, t, al, fo) { const o = fo.slice().sort(byHp)[0]; if (!o) return; B.zones.push({ kind: "snipe", step: stepSnipe, team: u.team, owner: u, P, tgt: o, X: u.X, Y: u.Y, t: 0, dur: 0.4 }); } },
   "손태민": { s: "블랙홀", d: (P) => `대상 자리에 블랙홀을 열어 2.5초 동안 주변 3칸의 적을 빨아들이고, 0.25초마다 ${R0(16 * P)} 피해. 마지막에 폭발해 ${R0(100 * P)} 피해`,
     run(B, u, P, t) { if (!t) return; B.zones.push({ team: u.team, owner: u, P, r: t.r, c: t.c, X: t.c + (t.r & 1) * 0.5, Y: t.r, t: 0, dur: 2.5, tick: 0, pull: 0 }); addFloat(B, t, "블랙홀!", "#c9a0ff", true); if (B.visual) { S.shake = 0.15; sfx("boom"); } } },
-  "정주환": { s: "천벌", d: (P) => `하늘에 먹구름을 부르고, 적 모두에게 하나씩 번개를 내리쳐 ${R0(110 * P)} 피해 + 0.6초 기절. 마지막엔 체력이 가장 많은 적에게 거대한 심판의 번개로 ${R0(150 * P)} 피해, 주변 적 ${R0(60 * P)}. 시전할 때 아군 전체 ${R0(110 * P)} 회복 + 4초 동안 공격 속도 +30%`,
+  "정주환": { s: "천벌", d: (P) => `하늘에 먹구름을 부르고, 적 모두에게 하나씩 번개를 내리쳐 ${R0(110 * P)} 피해 + 0.6초 기절. 마지막엔 체력이 가장 많은 적에게 거대한 심판의 번개로 ${R0(150 * P)} 피해, 주변 적 ${R0(60 * P)}. ★3이 되면 마지막 번개 대신 적이 가장 많이 모인 곳에 엄청 큰 "신의 심판" 번개가 떨어져 둘레 2칸 적에게 ${R0(260 * P)} 피해 + 1초 기절, 나머지 적 모두 ${R0(120 * P)}. 시전할 때 아군 전체 ${R0(110 * P)} 회복 + 4초 동안 공격 속도 +30%`,
     run(B, u, P) {
       B.zones.push({ kind: "smite", step: stepSmite, team: u.team, owner: u, P, r: u.r, c: u.c, X: u.X, Y: u.Y, t: 0, dur: 2, strikes: null, big: null });
       B.f.filter((o) => o.alive && o.team === u.team).forEach((o) => { heal(B, o, 110 * P); o.asBuff = Math.max(o.asBuff || 0, 0.3); o.asBuffT = 4; addFx(B, o.X, o.Y, 0.8, "#bfe8ff", 0.6); });
@@ -266,6 +266,7 @@ function stepMathRain(B, z, dt) {
 
 // 정주환 "천벌": ① 먹구름이 몰려오며 번개 기운을 모아요 → ② 적마다 번개가 하나씩 → ③ 마지막 거대한 심판의 번개
 const SMITE_CHARGE = 0.7; // 번개를 모으는 시간(초)
+const MEGA_R = 2; // ★3 큰 번개가 크게 맞히는 범위(칸)
 function stepSmite(B, z, dt) {
   const t0 = z.t; z.t += dt;
   const foes = B.f.filter((o) => o.alive && o.team !== z.team);
@@ -275,7 +276,13 @@ function stepSmite(B, z, dt) {
     const last = z.strikes.length ? z.strikes[z.strikes.length - 1].at : SMITE_CHARGE;
     const boss = foes.slice().sort((a, b) => b.hp - a.hp)[0];
     z.big = boss ? { o: boss, at: last + 0.35, X: boss.X, Y: boss.Y, big: 1 } : null;
-    z.dur = (z.big ? z.big.at : last) + 0.6;
+    // ★3: 마지막은 적이 가장 많이 모인 곳에 떨어지는 엄청 큰 번개
+    if (z.owner.star >= 3 && foes.length) {
+      const crowd = (o) => near(foes, o, MEGA_R).length * 1000 + o.hp / 1e4;
+      const c = foes.slice().sort((a, b) => crowd(b) - crowd(a))[0];
+      z.big = { o: c, at: last + 0.85, X: c.X, Y: c.Y, big: 1, mega: 1 };
+    }
+    z.dur = (z.big ? z.big.at : last) + (z.big && z.big.mega ? 1.3 : 0.6);
   }
   for (const s of z.strikes || []) if (!s.hit && z.t >= s.at) {
     s.hit = 1; s.X = s.o.X; s.Y = s.o.Y;
@@ -286,10 +293,22 @@ function stepSmite(B, z, dt) {
   const s = z.big;
   if (s && !s.hit && z.t >= s.at) {
     s.hit = 1; s.X = s.o.X; s.Y = s.o.Y;
-    if (s.o.alive) dealDamage(B, z.owner, s.o, 150 * z.P, "skill");
-    near(foes, s.o, 1).forEach((o) => o !== s.o && dealDamage(B, z.owner, o, 60 * z.P, "skill"));
-    addFx(B, s.X, s.Y, 3, "#9fdcff", 0.7); addFx(B, s.X, s.Y, 1.8, "#ffffff", 0.5); addFx(B, s.X, s.Y, 2.4, "#ffe66b", 0.8);
-    if (B.visual) { S.shake = 0.45; sfx("thunder"); sfx("boom"); }
+    if (s.mega) {
+      // 신의 심판: 가운데 MEGA_R칸 안은 크게 + 1초 기절, 나머지 적 모두에게도 피해
+      const cr = { r: s.o.r, c: s.o.c };
+      foes.forEach((o) => {
+        const inside = hexDist(o, cr) <= MEGA_R;
+        dealDamage(B, z.owner, o, (inside ? 260 : 120) * z.P, "skill");
+        if (inside && o.alive) o.stunT = Math.max(o.stunT || 0, 1);
+      });
+      for (const [r, col, d] of [[7, "#ffffff", 0.9], [5, "#9fdcff", 1.1], [9, "#ffe66b", 1.3], [3, "#ffffff", 0.6]]) addFx(B, s.X, s.Y, r, col, d);
+      if (B.visual) { S.shake = 1.1; sfx("thunder"); sfx("boom"); setTimeout(() => sfx("thunder"), 120); }
+    } else {
+      if (s.o.alive) dealDamage(B, z.owner, s.o, 150 * z.P, "skill");
+      near(foes, s.o, 1).forEach((o) => o !== s.o && dealDamage(B, z.owner, o, 60 * z.P, "skill"));
+      addFx(B, s.X, s.Y, 3, "#9fdcff", 0.7); addFx(B, s.X, s.Y, 1.8, "#ffffff", 0.5); addFx(B, s.X, s.Y, 2.4, "#ffe66b", 0.8);
+      if (B.visual) { S.shake = 0.45; sfx("thunder"); sfx("boom"); }
+    }
   }
   if (z.t >= z.dur) z.done = 1;
 }

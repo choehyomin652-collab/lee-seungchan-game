@@ -749,6 +749,19 @@ function init3D() {
 // ----- 친구 캐릭터 -----
 function nameHash(n) { let h = 7; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
 
+// 옷에 붙는 글자·번호 (한 번 만든 그림은 다시 써요)
+const CHEST = {};
+function chestTex(text, col = "#ffffff", bg = null) {
+  const key = text + col + bg;
+  if (CHEST[key]) return CHEST[key];
+  const tex = textTex("chest" + key, 128, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    if (bg) { g.fillStyle = bg; g.beginPath(); g.arc(w / 2, h / 2, w * 0.46, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = col; g.textAlign = "center"; g.textBaseline = "middle";
+    g.font = `bold ${text.length > 2 ? 44 : 92}px ${TOK["--display"] || "sans-serif"}`; g.fillText(text, w / 2, h / 2 + 6);
+  });
+  return (CHEST[key] = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+}
 function buildStudent(def, enemy) {
   const g = new THREE.Group(); g.rotation.order = "YXZ";
   const ud = g.userData; ud.mats = []; ud.walk = Math.random() * 6; ud.move = 0;
@@ -760,12 +773,19 @@ function buildStudent(def, enemy) {
   const skin = SKINS[h % SKINS.length], hairCol = HAIRC[(h >> 3) % HAIRC.length];
   // ----- 사람 비율(약 7등신) 캐릭터 -----
   // 발바닥 y=0.2, 엉덩이 관절 y=1.0, 어깨 y≈1.52, 머리 꼭대기 y≈1.86
-  const jacket = sporty ? TRACK[(h >> 5) % TRACK.length] : 0x1f2a44;
+  // 옷: friends.js 의 OUTFITS 표 (없으면 운동광은 체육복, 나머지는 교복)
+  const OF = OUTFITS[def.n] || (sporty ? { type: "track", top: TRACK[(h >> 5) % TRACK.length], accent: 0xffffff } : { type: "uniform", top: 0x1f2a44, bottom: 0x343a44 });
+  const T = OF.type, formal = ["uniform", "cardigan", "vest"].includes(T);
+  const sleeve = OF.sleeve || ({ jersey: "short", tshirt: "short", tank: "none" }[T] || "long");
+  const shorts = ["jersey", "tank"].includes(T), barefoot = T === "dobok";
   const fab = (hex, r = 0.92) => mk(hex, r);
   const mSkin = mk(skin, 0.62, { emissive: lin(0x2a0e06), emissiveIntensity: 0.35 });
-  const mJacket = fab(jacket, sporty ? 0.7 : 0.9), mPants = fab(sporty ? jacket : 0x343a44);
-  const mShirt = fab(0xf2f0ea, 0.8), mHair = mk(hairCol, 0.55), mShoe = mk(sporty ? 0xf2f2f2 : 0x1d1814, sporty ? 0.6 : 0.35);
-  const mSole = mk(sporty ? (COST_HEX[def.c] || 0xcccccc) : 0x0e0c0a, 0.8), mSock = fab(sporty ? 0xf4f4f4 : 0x22252b);
+  const mJacket = fab(OF.top, T === "padding" ? 0.55 : T === "track" ? 0.7 : 0.9), mPants = fab(OF.bottom ?? OF.top);
+  const mAcc = fab(OF.accent ?? 0xffffff, 0.8);
+  const mShirt = fab(0xf2f0ea, 0.8), mHair = mk(hairCol, 0.55);
+  const mSleeve = T === "vest" ? mShirt : T === "varsity" ? mAcc : mJacket;
+  const mShoe = barefoot ? mSkin : T === "robe" ? mk(0xd8a83a, 0.35, { metalness: 0.5 }) : formal ? mk(0x1d1814, 0.35) : mk(0xf2f2f2, 0.6);
+  const mSole = mk(formal ? 0x0e0c0a : COST_HEX[def.c] || 0xcccccc, 0.8), mSock = fab(OF.socks ?? (formal ? 0x22252b : 0xf4f4f4));
   const mDark = mk(0x1c1410, 0.3), mWhite = mk(0xffffff, 0.3, { emissive: lin(0x222222) });
   const mLip = mk(0xb5675e, 0.55), mBrow = mk(hairCol, 0.8), mIris = mk([0x3a2414, 0x2a1a10, 0x4a3020][h % 3], 0.2);
   const mStripe = fab(0xf4f4f4, 0.7), mCost = fab(COST_HEX[def.c] || 0xc9d1cc, 0.6);
@@ -796,38 +816,86 @@ function buildStudent(def, enemy) {
     noseTip: new THREE.SphereGeometry(0.024, 12, 10), nose: new THREE.ConeGeometry(0.022, 0.075, 10),
     lip: new THREE.SphereGeometry(0.03, 14, 10), lash: new THREE.TorusGeometry(0.036, 0.006, 4, 12, Math.PI),
     stripe: new THREE.BoxGeometry(0.012, 1, 0.012),
+    shortLeg: new THREE.CylinderGeometry(0.084, 0.078, 0.2, 12), longSock: new THREE.CylinderGeometry(0.052, 0.047, 0.22, 12),
+    shortSleeve: new THREE.CylinderGeometry(0.066, 0.062, 0.15, 12), hood: new THREE.SphereGeometry(0.13, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+    pocket: new THREE.BoxGeometry(0.17, 0.08, 0.018), string: new THREE.CylinderGeometry(0.005, 0.005, 0.11, 6),
+    tallCollar: new THREE.CylinderGeometry(0.078, 0.085, 0.09, 14, 1, true), quilt: new THREE.TorusGeometry(0.163, 0.007, 4, 24),
+    patch: new THREE.PlaneGeometry(0.1, 0.1), beltTail: new THREE.BoxGeometry(0.028, 0.12, 0.01),
+    skirt: new THREE.CylinderGeometry(0.15, 0.27, 0.62, 18, 1, true), sash: new THREE.BoxGeometry(0.06, 0.48, 0.25),
   });
   // 다리: 엉덩이 → 허벅지 → 무릎 → 정강이 → 양말 → 신발
   ud.legs = []; ud.knees = [];
   for (const s of [-1, 1]) {
     const hip = new THREE.Group(); hip.position.set(s * 0.078, 1.0, 0); g.add(hip);
-    put(HG.thigh, mPants, 0, -0.17, 0, hip);
+    if (shorts) { put(HG.thigh, mSkin, 0, -0.19, 0, hip).scale.set(0.92, 1, 0.92); put(HG.shortLeg, mPants, 0, -0.1, 0, hip); }
+    else put(HG.thigh, mPants, 0, -0.17, 0, hip);
     const knee = new THREE.Group(); knee.position.y = -0.35; hip.add(knee);
-    put(HG.knee, mPants, 0, 0, 0.004, knee).scale.set(1, 0.8, 1);
-    put(HG.shin, mPants, 0, -0.18, 0, knee);
-    if (sporty) { const st = put(HG.stripe, mStripe, s * 0.06, -0.18, 0, knee); st.scale.y = 0.34; const st2 = put(HG.stripe, mStripe, s * 0.07, 0.18, 0, knee); st2.scale.y = 0.34; }
-    put(HG.sock, mSock, 0, -0.37, 0, knee);
-    put(HG.shoe, mShoe, 0, -0.415, 0.045, knee).scale.set(0.95, 0.62, 2.1);
-    put(HG.sole, mSole, 0, -0.448, 0.045, knee);
+    put(HG.knee, shorts ? mSkin : mPants, 0, 0, 0.004, knee).scale.set(shorts ? 0.88 : 1, 0.8, shorts ? 0.88 : 1);
+    put(HG.shin, shorts ? mSkin : mPants, 0, -0.18, 0, knee).scale.set(shorts ? 0.88 : 1, 1, shorts ? 0.88 : 1);
+    if (T === "track") { const st = put(HG.stripe, mAcc, s * 0.06, -0.18, 0, knee); st.scale.y = 0.34; const st2 = put(HG.stripe, mAcc, s * 0.07, 0.18, 0, knee); st2.scale.y = 0.34; }
+    if (T === "dobok") put(HG.shin, mPants, 0, -0.2, 0, knee).scale.set(1.25, 0.95, 1.25); // 넓은 도복 바지
+    if (OF.socks) put(HG.longSock, mSock, 0, -0.27, 0, knee); // 축구 양말
+    else if (!barefoot) put(HG.sock, mSock, 0, -0.37, 0, knee);
+    put(HG.shoe, mShoe, 0, -0.415, 0.045, knee).scale.set(0.95, barefoot ? 0.45 : 0.62, barefoot ? 1.8 : 2.1);
+    if (!barefoot) put(HG.sole, T === "robe" ? mShoe : mSole, 0, -0.448, 0.045, knee);
     ud.legs.push(hip); ud.knees.push(knee);
   }
   // 몸통 (엉덩이 높이에서 시작)
   const torso = new THREE.Group(); torso.position.y = 1.0; g.add(torso); ud.torso = torso;
   put(HG.pelvis, mPants, 0, 0.03, 0, torso).scale.z = 0.72;
-  put(HG.belt, mk(0x1a1410, 0.4), 0, 0.12, 0, torso).scale.z = 0.73;
-  if (!sporty) put(HG.buckle, mk(0xb8b8b8, 0.3, { metalness: 0.8 }), 0, 0.12, 0.112, torso);
-  put(HG.chest, mJacket, 0, 0.12, 0, torso).scale.z = 0.64;
-  if (!sporty) {
-    // 교복: 셔츠 V, 넥타이(코스트 색), 재킷 깃, 단추
+  const chest = put(HG.chest, mJacket, 0, 0.12, 0, torso); chest.scale.z = 0.64;
+  if (T === "padding") chest.scale.set(1.12, 1.02, 0.74);
+  if (T === "tank") chest.scale.set(0.95, 1, 0.62);
+  if (formal) {
+    put(HG.belt, mk(0x1a1410, 0.4), 0, 0.12, 0, torso).scale.z = 0.73;
+    put(HG.buckle, mk(0xb8b8b8, 0.3, { metalness: 0.8 }), 0, 0.12, 0.112, torso);
+    // 셔츠 V, 넥타이(코스트 색)
     const v = put(GEO.shirtV, mShirt, 0, 0.47, 0.105, torso); v.rotation.x = Math.PI; v.scale.set(0.85, 1.05, 0.3);
     const tie = put(GEO.tie, mCost, 0, 0.42, 0.122, torso); tie.scale.set(0.75, 0.95, 0.6); tie.rotation.x = -0.12;
-    for (const s of [-1, 1]) { const l = put(HG.lapel, mJacket, s * 0.05, 0.47, 0.112, torso); l.rotation.set(-0.12, 0, s * 0.42); }
-    for (const y of [0.24, 0.32]) put(HG.button, mk(0x0e1220, 0.4), 0.018, y, 0.118, torso);
     put(HG.collar, mShirt, 0, 0.585, 0.004, torso).rotation.x = Math.PI / 2;
-  } else {
-    // 체육복: 지퍼, 깃, 어깨 줄무늬
+    if (T === "uniform") { // 재킷 깃과 단추
+      for (const s of [-1, 1]) { const l = put(HG.lapel, mJacket, s * 0.05, 0.47, 0.112, torso); l.rotation.set(-0.12, 0, s * 0.42); }
+      for (const y of [0.24, 0.32]) put(HG.button, mk(0x0e1220, 0.4), 0.018, y, 0.118, torso);
+    } else { // 카디건·조끼: 가운데 단추 줄, 아랫단
+      for (const y of [0.18, 0.25, 0.32]) put(HG.button, mk(0xe8e0c8, 0.4), 0.012, y, 0.116, torso);
+      put(HG.belt, mJacket, 0, 0.14, 0, torso).scale.set(1.04, 1.4, 0.72);
+    }
+  } else if (T === "track") { // 체육복: 지퍼, 깃
     const z = put(GEO.zip, mWhite, 0, 0.36, 0.123, torso); z.scale.set(0.6, 1.05, 0.6);
     put(HG.collar, mJacket, 0, 0.585, 0.004, torso).rotation.x = Math.PI / 2;
+  } else if (T === "hoodie") { // 후드티: 모자, 앞주머니, 끈
+    const hood = put(HG.hood, mJacket, 0, 0.56, -0.07, torso); hood.scale.set(1.15, 0.85, 0.9); hood.rotation.x = -0.5;
+    put(HG.pocket, mJacket, 0, 0.24, 0.118, torso);
+    for (const s of [-1, 1]) put(HG.string, mAcc, s * 0.035, 0.5, 0.118, torso);
+    put(HG.belt, mJacket, 0, 0.13, 0, torso).scale.set(1.02, 1.6, 0.7);
+  } else if (T === "padding") { // 패딩: 높은 깃, 누빔 줄, 지퍼
+    const col = put(HG.tallCollar, mJacket, 0, 0.585, 0, torso); col.scale.z = 0.9;
+    for (const y of [0.22, 0.32, 0.42]) { const r = put(HG.quilt, mk(0x0c0e12, 0.6), 0, y, 0, torso); r.rotation.x = Math.PI / 2; r.scale.set(1.1 - (y - 0.22) * 0.1, 0.78, 1); }
+    put(GEO.zip, mAcc, 0, 0.36, 0.142, torso).scale.set(0.6, 1.05, 0.6);
+  } else if (T === "varsity") { // 야구 점퍼: 줄무늬 깃·밑단, 가슴 글자
+    put(HG.collar, mAcc, 0, 0.585, 0.004, torso).rotation.x = Math.PI / 2;
+    put(HG.belt, mAcc, 0, 0.135, 0, torso).scale.set(1.04, 1.3, 0.72);
+    for (const y of [0.22, 0.29, 0.36]) put(HG.button, mAcc, 0.012, y, 0.116, torso);
+    put(HG.patch, chestTex(def.n[def.n.length - 1], "#f2e6c8", "#b8323a"), -0.075, 0.38, 0.113, torso);
+  } else if (T === "jersey" || T === "tank") { // 운동 유니폼: 목둘레 선, 번호
+    const nk = put(HG.collar, mAcc, 0, 0.575, 0.01, torso); nk.rotation.x = Math.PI / 2; nk.scale.set(1.1, 1.1, 0.6);
+    if (OF.num) { put(HG.patch, chestTex(OF.num, OF.accent ? "#" + OF.accent.toString(16).padStart(6, "0") : "#ffffff"), 0, 0.33, 0.116, torso).scale.setScalar(1.15); const bk = put(HG.patch, chestTex(OF.num, OF.accent ? "#" + OF.accent.toString(16).padStart(6, "0") : "#ffffff"), 0, 0.35, -0.106, torso); bk.rotation.y = Math.PI; bk.scale.setScalar(1.6); }
+    if (OF.print) put(HG.patch, chestTex(OF.print, "#" + (OF.accent ?? 0xffffff).toString(16).padStart(6, "0")), 0, 0.33, 0.116, torso).scale.setScalar(1.1);
+    const hem = put(HG.belt, mAcc, 0, 0.175, 0, torso); hem.scale.set(1.06, 0.6, 0.72); // 반바지 허리띠
+  } else if (T === "tshirt") { // 티셔츠: 목둘레, 가슴 그림
+    const nk = put(HG.collar, mJacket, 0, 0.58, 0.004, torso); nk.rotation.x = Math.PI / 2;
+    if (OF.print) put(HG.patch, chestTex(OF.print, "#" + (OF.accent ?? 0x333333).toString(16).padStart(6, "0")), 0, 0.33, 0.116, torso).scale.setScalar(1.3);
+    put(HG.belt, mk(0x2a2016, 0.5), 0, 0.12, 0, torso).scale.z = 0.73;
+  } else if (T === "dobok") { // 도복: 여밈 깃, 검은 띠와 매듭
+    for (const s of [-1, 1]) { const l = put(HG.lapel, mAcc, s * 0.04, 0.46, 0.112, torso); l.rotation.set(-0.12, 0, s * 0.6); l.scale.set(0.7, 1.25, 1); }
+    put(HG.belt, mAcc, 0, 0.16, 0, torso).scale.set(1.04, 1.4, 0.73);
+    for (const s of [-1, 1]) { const tl = put(HG.beltTail, mAcc, s * 0.03, 0.08, 0.112, torso); tl.rotation.z = s * 0.25; }
+    put(HG.collar, mJacket, 0, 0.585, 0.004, torso).rotation.x = Math.PI / 2;
+  } else if (T === "robe") { // 신의 로브: 긴 치마, 금빛 띠와 테두리
+    put(HG.skirt, mJacket, 0, -0.22, 0, torso).scale.z = 0.8;
+    const sash = put(HG.sash, mAcc, 0, 0.32, 0, torso); sash.rotation.z = 0.75; sash.scale.z = 0.68;
+    put(HG.belt, mAcc, 0, 0.13, 0, torso).scale.set(1.05, 1.2, 0.74);
+    const tr = put(HG.collar, mAcc, 0, 0.585, 0.004, torso); tr.rotation.x = Math.PI / 2; tr.scale.set(1.15, 1.15, 0.8);
   }
   if (kind) put(GEO.pin, mk(0xff7aa8, 0.4), 0.085, 0.45, 0.108, torso).scale.setScalar(0.7);
   put(HG.neck, mSkin, 0, 0.615, 0, torso);
@@ -876,13 +944,15 @@ function buildStudent(def, enemy) {
   ud.arms = []; ud.elbows = []; const grip = [];
   for (const s of [-1, 1]) {
     const sh = new THREE.Group(); sh.position.set(s * 0.2, 0.5, 0); torso.add(sh);
-    put(HG.delt, mJacket, 0, -0.01, 0, sh).scale.set(1, 0.95, 0.9);
-    put(HG.upper, mJacket, 0, -0.15, 0, sh);
-    if (sporty) { const st = put(HG.stripe, mStripe, s * 0.055, -0.15, 0, sh); st.scale.y = 0.28; }
+    const armSkin = sleeve !== "long";
+    put(HG.delt, sleeve === "none" ? mSkin : mSleeve, 0, -0.01, 0, sh).scale.set(1, 0.95, 0.9);
+    put(HG.upper, armSkin ? mSkin : mSleeve, 0, -0.15, 0, sh).scale.set(armSkin ? 0.9 : 1, 1, armSkin ? 0.9 : 1);
+    if (sleeve === "short") put(HG.shortSleeve, mSleeve, 0, -0.07, 0, sh); // 반팔 소매
+    if (T === "track") { const st = put(HG.stripe, mAcc, s * 0.055, -0.15, 0, sh); st.scale.y = 0.28; }
     const el = new THREE.Group(); el.position.y = -0.3; el.rotation.x = -0.22; sh.add(el);
-    put(HG.fore, mJacket, 0, -0.13, 0, el);
-    if (sporty) { const st = put(HG.stripe, mStripe, s * 0.047, -0.12, 0, el); st.scale.y = 0.22; }
-    put(HG.cuff, sporty ? mJacket : mShirt, 0, -0.265, 0, el);
+    put(HG.fore, armSkin ? mSkin : mSleeve, 0, -0.13, 0, el).scale.set(armSkin ? 0.88 : T === "padding" ? 1.15 : 1, 1, armSkin ? 0.88 : T === "padding" ? 1.15 : 1);
+    if (T === "track") { const st = put(HG.stripe, mAcc, s * 0.047, -0.12, 0, el); st.scale.y = 0.22; }
+    if (!armSkin) put(HG.cuff, formal ? mShirt : T === "varsity" ? mJacket : T === "robe" ? mAcc : mSleeve, 0, -0.265, 0, el);
     put(HG.palm, mSkin, 0, -0.3, 0.004, el).scale.set(0.82, 1.15, 0.55);
     const th = put(HG.thumb, mSkin, -s * 0.025, -0.29, 0.025, el); th.rotation.set(0.5, 0, s * 0.4);
     // 무기는 예전 손 높이(-0.39)·예전 몸 크기 기준이라, 80%로 줄이고 그 높이가 새 손(-0.3)에 오도록 맞춘 자리
@@ -925,7 +995,7 @@ function buildStudent(def, enemy) {
     }
   }
   // 그림자는 큰 부품만 만들어요 (작은 부품까지 그림자를 그리면 폰에서 많이 느려져요)
-  const BIG = new Set([HG.thigh, HG.shin, HG.pelvis, HG.chest, HG.upper, HG.fore, HG.skull, HG.shoe, GEO.hairCap, GEO.hairBack]);
+  const BIG = new Set([HG.thigh, HG.shin, HG.pelvis, HG.chest, HG.upper, HG.fore, HG.skull, HG.shoe, GEO.hairCap, GEO.hairBack, HG.skirt, HG.hood]);
   g.traverse((o) => { if (o.isMesh) o.castShadow = BIG.has(o.geometry); });
   return g;
 }
@@ -1266,7 +1336,7 @@ function drawSmite(z, dt) {
   ud.sky.rotation.y += dt * 2.5; ud.sky.scale.setScalar(0.3 + 0.7 * ck);
   ud.sky.children.forEach((m) => (m.material.opacity = 0.35 * ck * end));
   for (const s of (z.strikes || []).concat(z.big ? [z.big] : [])) {
-    const k = t - s.at, life = s.big ? 0.55 : 0.3; if (k < -0.18 || k > life) continue;
+    const k = t - s.at, life = s.mega ? 1.0 : s.big ? 0.55 : 0.3, pre = s.mega ? 0.7 : 0.18; if (k < -pre || k > life) continue;
     const m = useMesh(s, () => {
       const grp = new THREE.Group();
       grp.userData.ring = new THREE.Mesh(GEO.ringFx, additive("#bfe8ff")); grp.userData.ring.rotation.x = -Math.PI / 2; grp.userData.ring.position.y = 0.26; grp.add(grp.userData.ring);
@@ -1274,17 +1344,22 @@ function drawSmite(z, dt) {
     });
     const ud2 = m.userData, sx = s.hit ? s.X : s.o.X, sy = s.hit ? s.Y : s.o.Y;
     m.position.set(worldX(sx), 0, worldZ(sy));
-    if (k < 0) { const q = 1 + k / 0.18; ud2.ring.scale.setScalar((s.big ? 2.6 : 1.4) - q); ud2.ring.material.opacity = q; continue; }
+    if (k < 0) { // 떨어지기 전: 바닥에 모이는 고리 (큰 번개는 넓은 경고 원)
+      const q = 1 + k / pre; ud2.ring.scale.setScalar(s.mega ? 9 - q * 5 + Math.sin(t * 30) * 0.15 : (s.big ? 2.6 : 1.4) - q); ud2.ring.material.opacity = s.mega ? 0.4 + q * 0.6 : q;
+      if (ud2.bolt) ud2.bolt.visible = false; continue;
+    }
     // 번개는 0.05초마다 모양이 바뀌며 번쩍여요
     if (!ud2.bT || (ud2.bT -= dt) <= 0) {
       ud2.bT = 0.05;
       if (ud2.bolt) { m.remove(ud2.bolt); ud2.bolt.userData.mats.forEach((mt) => mt.dispose()); }
-      ud2.bolt = s.big ? makeBolt(14, 0.55, 0.16, ["#ffffff", "#9fdcff", "#ffe66b"], 4) : makeBolt(12, 0.35, 0.08, ["#ffffff", "#7fc8ff"], 2);
+      ud2.bolt = s.mega ? makeBolt(22, 1.6, 0.7, ["#ffffff", "#9fdcff", "#ffe66b"], 9) : s.big ? makeBolt(14, 0.55, 0.16, ["#ffffff", "#9fdcff", "#ffe66b"], 4) : makeBolt(12, 0.35, 0.08, ["#ffffff", "#7fc8ff"], 2);
+      if (s.mega) for (let i = 0; i < 6; i++) { const sb = makeBolt(16, 0.9, 0.18, ["#ffffff", "#9fdcff"], 2), a = (i / 6) * Math.PI * 2 + Math.random(); sb.position.set(Math.cos(a) * 3.2, 0, Math.sin(a) * 3.2); sb.userData.mats.forEach((mt) => ud2.bolt.userData.mats.push(mt)); ud2.bolt.add(sb); }
       m.add(ud2.bolt);
     }
     const q = Math.max(0, 1 - k / life), fl = 0.6 + Math.random() * 0.4;
     ud2.bolt.userData.mats.forEach((mt, j) => (mt.opacity = q * fl * (j ? 0.45 : 1)));
-    ud2.ring.scale.setScalar((s.big ? 1 : 0.5) + k * (s.big ? 8 : 5)); ud2.ring.material.opacity = q;
+    ud2.bolt.visible = true;
+    ud2.ring.scale.setScalar(s.mega ? 2 + k * 18 : (s.big ? 1 : 0.5) + k * (s.big ? 8 : 5)); ud2.ring.material.opacity = q;
   }
 }
 // ----- 4코스트 스킬 3D 연출 -----
@@ -1766,15 +1841,16 @@ function drawOverlay(dt, R) {
     const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
     vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, `rgba(0,0,10,${0.5 * dark})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     let fl = 0;
-    for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) { const k = t - s.at; if (k >= 0 && k < 0.12) fl = Math.max(fl, (1 - k / 0.12) * (s.big ? 0.55 : 0.2)); }
+    for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) { const k = t - s.at, fd = s.mega ? 0.45 : 0.12; if (k >= 0 && k < fd) fl = Math.max(fl, (1 - k / fd) * (s.mega ? 1 : s.big ? 0.55 : 0.2)); }
+    if (sz.big && sz.big.mega) { const k = t - sz.big.at; if (k > -0.7 && k < 0) { ctx.fillStyle = `rgba(4,6,24,${0.35 * (1 + k / 0.7)})`; ctx.fillRect(0, 0, W, H); } } // 큰 번개 직전엔 더 어둡게
     if (fl > 0) { ctx.fillStyle = `rgba(225,240,255,${fl})`; ctx.fillRect(0, 0, W, H); }
     // 화면 위에서 적에게 내리꽂는 지그재그 번개 (어두운 화면 위에 그려서 잘 보여요)
     for (const s of (sz.strikes || []).concat(sz.big ? [sz.big] : [])) {
-      const k = t - s.at, life = s.big ? 0.4 : 0.2; if (k < 0 || k > life) continue;
-      const [gx, gy] = proj(worldX(s.X), 0.9, worldZ(s.Y)), q = 1 - k / life, wd = s.big ? 2.2 : 1;
+      const k = t - s.at, life = s.mega ? 0.8 : s.big ? 0.4 : 0.2; if (k < 0 || k > life) continue;
+      const [gx, gy] = proj(worldX(s.X), 0.9, worldZ(s.Y)), q = 1 - k / life, wd = s.mega ? 6 : s.big ? 2.2 : 1;
       const zig = (x0, y0, x1, y1, n, jag) => { const pts = [[x0, y0]]; for (let i = 1; i < n; i++) { const kk = i / n; pts.push([x0 + (x1 - x0) * kk + (Math.random() - 0.5) * jag, y0 + (y1 - y0) * kk]); } pts.push([x1, y1]); return pts; };
       const main = zig(gx + (Math.random() - 0.5) * u0 * 6, 0, gx, gy, 10, u0 * 2.6 * wd), paths = [main];
-      for (let b = 0; b < (s.big ? 4 : 2); b++) { const p0 = main[2 + Math.floor(Math.random() * 6)]; paths.push(zig(p0[0], p0[1], p0[0] + (Math.random() - 0.5) * u0 * 8, p0[1] + u0 * (3 + Math.random() * 4), 4, u0 * 1.5)); }
+      for (let b = 0; b < (s.mega ? 10 : s.big ? 4 : 2); b++) { const p0 = main[2 + Math.floor(Math.random() * 6)]; paths.push(zig(p0[0], p0[1], p0[0] + (Math.random() - 0.5) * u0 * 8, p0[1] + u0 * (3 + Math.random() * 4), 4, u0 * 1.5)); }
       ctx.save(); ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.globalAlpha = q * (0.7 + Math.random() * 0.3);
       for (const [lw, col, blur] of [[u0 * 0.9 * wd, "rgba(110,190,255,.55)", 30], [u0 * 0.35 * wd, s.big ? "#fff3a0" : "#e8f6ff", 12], [u0 * 0.14 * wd, "#ffffff", 0]]) {
         ctx.strokeStyle = col; ctx.shadowColor = "#7fc8ff"; ctx.shadowBlur = blur;
@@ -1792,7 +1868,8 @@ function drawOverlay(dt, R) {
     };
     const [ox, oy] = proj(worldX(sz.X), 3.4, worldZ(sz.Y));
     if (t < SMITE_CHARGE) big("천벌", ox, oy, Math.min(1, t / 0.15), 3.2);
-    else if (sz.big && t >= sz.big.at - 0.05) big("심판!", W / 2, H3 * 0.36, Math.min(1, (t - sz.big.at + 0.05) / 0.12), 4.6);
+    else if (sz.big && sz.big.mega && t < sz.big.at - 0.05) { if (t > sz.big.at - 0.7) big("신이 노하셨다…", W / 2, H3 * 0.3, Math.min(1, (t - sz.big.at + 0.7) / 0.2), 2.6); }
+    else if (sz.big && t >= sz.big.at - 0.05) big(sz.big.mega ? "신의 심판!!" : "심판!", W / 2, H3 * 0.36, Math.min(1, (t - sz.big.at + 0.05) / 0.12), sz.big.mega ? 6.4 : 4.6);
   }
   // 승패 배너
   if (S.banner) {
