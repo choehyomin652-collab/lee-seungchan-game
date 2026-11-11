@@ -61,11 +61,18 @@ const SK = {
       addFx(B, u.X, u.Y, 1.6, C("--c3")); addFx(B, u.X, u.Y, 2.3, "#ffffff", 0.7); addHuge(B, u, "철벽!", "#ffffff", "#4fa8ff", 2.4);
       if (B.visual) { B.zones.push({ kind: "goal", step: stepShow, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 1.4 }); S.shake = Math.max(S.shake || 0, 0.15); sfx("boom"); }
     } },
-  "김예균": { s: "이다연 소환", d: (P) => `마법진을 펼쳐 소환수 이다연을 최대 4명까지 불러내요 (각각 체력 ${R0(260 * P)}, 공격력 ${R0(28 * P)}). 자신에게 보호막 ${R0(120 * P)}`,
+  "김예균": { s: "이다연 군단", d: (P) => `하늘에 소환문을 열어 이다연을 최대 5명까지 떨어뜨려요 (각각 체력 ${R0(260 * P)}, 공격력 ${R0(28 * P)}). 떨어진 자리 옆 적에게 ${R0(60 * P)} 피해 + 0.5초 기절. 이미 있던 이다연은 체력을 채우고 4초 동안 공격 속도 +50%. 자신에게 보호막 ${R0(200 * P)}. ★3이 되면 이다연 6명과 함께 거대 이다연(체력 4배·공격력 3배)이 내려와요`,
     run(B, u, P) {
-      const had = new Set(B.f);
-      summon(B, u, P, 4); u.shield += 120 * P; addFx(B, u.X, u.Y, 1.8, "#7ff0e0", 0.6);
-      if (B.visual) { B.zones.push({ kind: "summon", step: stepShow, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 1.2, spots: B.f.filter((o) => !had.has(o)).map((o) => ({ X: o.c + (o.r & 1) * 0.5, Y: o.r })) }); addHuge(B, u, "소환!", "#ffffff", "#2fd0c0", 2.4); sfx("charge"); }
+      // 이미 있던 이다연: 체력 가득 + 공격 속도
+      B.f.filter((o) => o.alive && o.owner === u).forEach((o) => { heal(B, o, o.maxHp); o.asBuff = Math.max(o.asBuff || 0, 0.5); o.asBuffT = 4; addFx(B, o.X, o.Y, 0.9, "#7ff0e0", 0.5); });
+      const legend = u.star >= 3;
+      const news = summon(B, u, P, legend ? 6 : 5);
+      if (legend) { const gi = summon(B, u, P, 99, { giant: 1, n: 1 }); news.push(...gi); }
+      news.forEach((f, i) => { f.dropAt = LEGION_AT + i * 0.08; f.dropT = 1; f.stunT = f.dropAt + 0.1; }); // 하늘에서 떨어지는 동안은 못 움직여요
+      u.shield += 200 * P;
+      B.zones.push({ kind: "legion", step: stepLegion, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, news, legend, dur: LEGION_AT + news.length * 0.08 + 0.7 });
+      addHuge(B, u, legend ? "거대 이다연 강림!" : "이다연 군단!", "#ffffff", "#2fd0c0", legend ? 3.4 : 2.8);
+      if (B.visual) { sfx("charge"); S.shake = Math.max(S.shake || 0, 0.15); }
     } },
   "박현호": { s: "응원가", d: (P) => `무대 조명 아래서 응원가를 불러요. 아군 전체 5초 동안 공격 속도 +25%, ${R0(70 * P)} 회복`,
     run(B, u, P, t, al) {
@@ -101,9 +108,10 @@ const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아
 const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5] };
 // 소환수 이다연: 김예균 주변 빈칸에 나타나요
 const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
-function summon(B, u, P, max) {
-  const mine = B.f.filter((o) => o.alive && o.owner === u).length;
-  let need = max - mine; if (need <= 0) return;
+function summon(B, u, P, max, opt = {}) {
+  const made = [];
+  const mine = B.f.filter((o) => o.alive && o.owner === u && !(o.mon && o.mon.giant)).length;
+  let need = opt.n != null ? opt.n : max - mine; if (need <= 0) return made;
   const occ = new Set(B.f.filter((o) => o.alive).map((o) => o.r * COLS + o.c));
   const seen = new Set([u.r * COLS + u.c]), q = [[u.r, u.c]];
   while (q.length && need > 0) {
@@ -111,11 +119,29 @@ function summon(B, u, P, max) {
     for (const [nr, nc] of neighbors(r, c)) {
       const k = nr * COLS + nc; if (seen.has(k)) continue; seen.add(k); q.push([nr, nc]);
       if (occ.has(k) || need <= 0) continue;
-      const f = makeFighter({ mon: { mn: "다연", hp: 260 * P, ad: 28 * P, as: 0.8, rg: 1, ar: 0.1, col: "#7ff0e0", summon: 1 } }, u.team, nr, nc, {});
-      f.owner = u; f.X = u.X; f.Y = u.Y; occ.add(k); B.f.push(f); need--;
-      addFx(B, nc + (nr & 1) * 0.5, nr, 0.7, "#7ff0e0", 0.5);
+      const g = opt.giant ? { hp: 4, ad: 3 } : { hp: 1, ad: 1 };
+      const f = makeFighter({ mon: { mn: opt.giant ? "거대 다연" : "다연", hp: 260 * P * g.hp, ad: 28 * P * g.ad, as: 0.8, rg: 1, ar: opt.giant ? 0.3 : 0.1, col: "#7ff0e0", summon: 1, giant: opt.giant ? 1 : 0 } }, u.team, nr, nc, {});
+      f.owner = u; f.X = nc + (nr & 1) * 0.5; f.Y = nr; occ.add(k); B.f.push(f); made.push(f); need--;
     }
   }
+  return made;
+}
+// 김예균 "이다연 군단": 소환문이 열리고(LEGION_AT초) 이다연이 하나씩 떨어져 쿵!
+const LEGION_AT = 0.6;
+function stepLegion(B, z, dt) {
+  z.t += dt;
+  for (const f of z.news) {
+    if (f.landed) continue;
+    f.dropT = Math.max(0, Math.min(1, (f.dropAt - z.t) / 0.35)); // 1 → 0 이 되면 땅에 닿아요
+    if (z.t < f.dropAt) continue;
+    f.landed = 1; f.dropT = 0;
+    if (!f.alive) continue;
+    const big = f.mon.giant;
+    near(B.f.filter((o) => o.alive && o.team !== z.team), f, big ? 2 : 1).forEach((o) => { dealDamage(B, z.owner, o, (big ? 180 : 60) * z.P, "skill"); if (o.alive) o.stunT = Math.max(o.stunT || 0, big ? 1.2 : 0.5); });
+    addFx(B, f.X, f.Y, big ? 3.2 : 1.3, "#7ff0e0", 0.55); addFx(B, f.X, f.Y, big ? 2 : 0.8, "#ffffff", 0.35);
+    if (B.visual) { B.fx.push({ kind: "puff", X: f.X, Y: f.Y, t: 0.5, t0: 0.5 }); S.shake = Math.max(S.shake || 0, big ? 0.6 : 0.12); sfx(big ? "boom" : "kick"); }
+  }
+  if (z.t >= z.dur) z.done = 1;
 }
 
 // ---------- 2코스트 스킬 연출 ----------
