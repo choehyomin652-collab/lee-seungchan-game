@@ -174,14 +174,18 @@ function showUnit(u, foe) {
     $("info").appendChild(b);
   }
   if (!foe) {
-    // 카드 사진 바꾸기: 내 기기 브라우저에만 저장돼요
+    // 카드 사진 바꾸기: 게임을 고칠 수 있는 사람이 올리면 모두에게, 아니면 내 기기에만 (photos.js)
     const row = document.createElement("div"); row.className = "cardrow";
     const pick = document.createElement("button"); pick.className = "sell cardpick"; pick.textContent = "카드 사진 바꾸기";
     pick.onclick = () => { CARD_TARGET = u.d; $("cardfile").click(); };
     row.appendChild(pick);
-    if (hasCustomCard(u.d)) {
+    if (hasCustomCard(u.d) || (canShare() && sharedCard(u.d))) {
       const back = document.createElement("button"); back.className = "sell cardpick"; back.textContent = "원래 사진으로";
-      back.onclick = () => { try { localStorage.removeItem("uri-card-" + DEFS[u.d].n); } catch (e) {} PORTRAIT[u.d] = BASE_PORTRAIT[u.d]; toast("원래 카드 사진으로 돌아왔어요"); renderUI(); };
+      back.onclick = () => {
+        if (!hasCustomCard(u.d)) return unshareCardPhoto(u.d);
+        try { localStorage.removeItem("uri-card-" + DEFS[u.d].n); } catch (e) {}
+        PORTRAIT[u.d] = sharedCard(u.d) ? blobUrl(sharedCard(u.d)) : BASE_PORTRAIT[u.d]; toast("원래 카드 사진으로 돌아왔어요"); renderUI();
+      };
       row.appendChild(back);
     }
     $("info").appendChild(row);
@@ -207,6 +211,7 @@ function pickCardPhoto(file) {
       const c = document.createElement("canvas"); c.width = 360; c.height = 450; const g = c.getContext("2d");
       const k = Math.max(c.width / img.width, c.height / img.height), w = img.width * k, h = img.height * k;
       g.drawImage(img, (c.width - w) / 2, (c.height - h) / 2, w, h);
+      if (canShare()) { shareCardPhoto(d, c); return; } // 모두에게 보이게
       const url = c.toDataURL("image/jpeg", 0.85);
       try { localStorage.setItem("uri-card-" + DEFS[d].n, url); } catch (e) { toast("저장 공간이 부족해서 이번 판에만 바뀌어요"); }
       PORTRAIT[d] = url; toast(`${DEFS[d].n} 카드 사진을 바꿨어요`); renderUI(); if (!$("cards").hidden) openCardMenu();
@@ -331,7 +336,13 @@ tapButton($("buyxp"), () => { const P = human(); if (!shopOpen()) return; if (!b
 tapButton($("lock"), () => { const P = human(); P.locked = !P.locked; sfx("place"); toast(P.locked ? "상점 잠금: 다음 라운드에도 이 상점이 유지돼요" : "상점 잠금 해제"); renderUI(); });
 tapButton($("ready"), () => startCombat());
 $("bgfile").onchange = (e) => { pickBackdrop(e.target.files && e.target.files[0]); e.target.value = ""; $("menu").hidden = true; };
-$("bgclear").onclick = () => { try { localStorage.removeItem("uri-backdrop"); } catch (e) {} applyBackdrop(null); toast("원래 배경으로 돌아왔어요"); $("menu").hidden = true; };
+$("bgclear").onclick = () => {
+  $("menu").hidden = true;
+  let local = null; try { local = localStorage.getItem("uri-backdrop"); localStorage.removeItem("uri-backdrop"); } catch (e) {}
+  if (!local && canShare() && SHARED.backdrop) return unshareBackdrop();
+  applyBackdrop(null); toast("원래 배경으로 돌아왔어요");
+  SHARED.shownBackdrop = undefined; if (SHARED.backdrop) applySharedPhotos(); // 공용 배경이 있으면 다시 보여요
+};
 $("gear").onclick = (e) => { e.stopPropagation(); const m = $("menu"); m.hidden = !m.hidden; $("gear").setAttribute("aria-expanded", String(!m.hidden)); };
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest || !e.target.closest(".mini")) { $("menu").hidden = true; $("gear").setAttribute("aria-expanded", "false"); } });
 $("qual").onclick = () => { HQ = !HQ; try { localStorage.setItem("uri-hq", HQ ? "1" : "0"); } catch (e) {} resize(); renderUI(); toast(HQ ? "화질 높음: 빛 번짐·고해상도" : "화질 보통: 더 부드럽게 움직여요"); };
@@ -357,6 +368,7 @@ $("rotok").onclick = () => { $("rotate").classList.add("dismissed"); resize(); }
 if (HAS3D) { init3D(); makePortraits(); }
 else $("info").innerHTML = `<div class="txt">3D 그래픽을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>`;
 loadCustomCards();
+photosInit();
 // 친구와 같이 하기
 $("online").onclick = () => { if (NET.ready) { netShowPanel(true); if (!$("netname").value) $("netname").focus(); } };
 $("netjoin").onclick = netJoin;
@@ -366,7 +378,7 @@ for (const id of ["netname", "netcode"]) $(id).addEventListener("keydown", (e) =
 netInit();
 function openCardMenu() {
   $("menu").hidden = true;
-  $("cardgrid").innerHTML = DEFS.map((d, i) => `<button data-d="${i}" style="--cc:var(${COST_COLOR[d.c]})"><img src="${PORTRAIT[i] || ""}" alt="">${d.n}${hasCustomCard(i) ? "<small>바꾼 사진</small>" : ""}</button>`).join("");
+  $("cardgrid").innerHTML = DEFS.map((d, i) => `<button data-d="${i}" style="--cc:var(${COST_COLOR[d.c]})"><img src="${PORTRAIT[i] || ""}" alt="">${d.n}${hasCustomCard(i) ? "<small>내 기기 사진</small>" : sharedCard(i) ? "<small>공유 사진</small>" : ""}</button>`).join("");
   $("cardgrid").querySelectorAll("button").forEach((el) => tapButton(el, () => { CARD_TARGET = +el.dataset.d; $("cardfile").click(); }));
   $("cards").hidden = false;
 }

@@ -102,6 +102,7 @@ function pickBackdrop(file) {
       const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
       c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      if (canShare()) { shareBackdrop(c); return; } // 모두에게 보이게 (photos.js)
       const url = c.toDataURL("image/jpeg", 0.85);
       try { localStorage.setItem("uri-backdrop", url); } catch (e) { toast("사진이 너무 커서 저장은 못 했어요. 이번 판에만 보여요"); }
       const im2 = new Image(); im2.onload = () => { applyBackdrop(im2); toast("배경 사진을 넣었어요"); }; im2.src = url;
