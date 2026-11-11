@@ -59,4 +59,5 @@
 
 `index.html`이 `js/friends.js → skills → augments → constants → game → battle → robot → weapons → sound → online → photos → render3d → ui` 순서로 불러와요.
 "친구와 같이 하기"는 claude.ai 아티팩트로 올린 페이지에서만 켜져요 (`index.html`을 그냥 열면 "혼자 하기"만 돼요).
+같이 할 친구는 게임 주인이 아티팩트의 공유 메뉴에서 **이메일로 초대**해야 해요. "링크가 있는 누구나"로 연 사람은 실시간 방에 못 들어와요.
 새 파일을 만들면 `index.html`에 `<script>` 줄을 같은 방식으로 추가해야 해요.

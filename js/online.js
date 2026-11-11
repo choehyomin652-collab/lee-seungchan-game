@@ -53,7 +53,7 @@ function netInit() {
   $("netcode").value = String(1000 + Math.floor(Math.random() * 9000));
   const use = window.claude && window.claude.use ? window.claude.use("room") : Promise.resolve(null);
   use.then((room) => {
-    if (!room) { $("netnote").textContent = "친구와 같이 하기는 claude.ai에 로그인해서 열면 쓸 수 있어요."; return; }
+    if (!room) { $("netnote").textContent = "친구와 같이 하기는 게임 주인이 공유 메뉴에서 초대한 claude.ai 계정으로 로그인해서 열어야 쓸 수 있어요. 링크만으로는 안 돼요."; return; }
     NET.room = room; NET.ready = true;
     $("online").disabled = false; $("netnote").hidden = true;
     room.onPeers(() => netLobby(), () => { NET.ready = false; $("online").disabled = true; $("netnote").hidden = false; $("netnote").textContent = "온라인 연결이 끊겼어요. 새로고침해 주세요."; });
@@ -88,7 +88,7 @@ function netLobby() {
   $("netlist").innerHTML = lobby.slice(0, 8).map((p, i) => `<li><span class="dot${p.guest ? " g" : ""}"></span>${esc(cleanName(p.presence.n) || "이름 없음")}${p.sameTab ? " <em>나</em>" : ""}${i === 0 ? " <small>방장</small>" : ""}</li>`).join("");
   const n = Math.min(8, lobby.length);
   $("netmsg").textContent = n < 2
-    ? `친구에게 이 링크와 방 코드 ${NET.code}를 알려주세요. 2명부터 시작할 수 있어요.`
+    ? `친구에게 이 링크와 방 코드 ${NET.code}를 알려주세요. 친구는 공유 메뉴에서 초대된 계정이어야 해요. 2명부터 시작할 수 있어요.`
     : iAmHost ? `${n}명 모였어요. 빈자리 ${8 - n}개는 컴퓨터 반이 채워요.` : `${n}명 모였어요. 방장이 시작하기를 기다리는 중…`;
   if (playing && lobby.length < 2) $("netmsg").textContent = `이 방은 이미 게임 중이에요 (${playing}명). 다른 방 코드를 써 주세요.`;
   if (lobby.length > 8) $("netmsg").textContent += " 8명까지만 들어가요.";
