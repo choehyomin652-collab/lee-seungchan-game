@@ -807,7 +807,7 @@ const HAIR_STYLES = ["bowl", "spiky", "side", "buzz", "pomp", "curtain", "curly"
 function lookOf(def, h) {
   const L = (typeof LOOKS !== "undefined" && LOOKS[def.n]) || {};
   return { hair: L.hair || HAIR_STYLES[(h >> 7) % HAIR_STYLES.length], hc: L.hc ?? HAIRC[(h >> 3) % HAIRC.length], tip: L.tip, skin: SKINS[(L.skin ?? h) % SKINS.length],
-    tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: (L.head || 1.1) * 1.1, eye: (L.eye || 1) * 1.12, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [] };
+    tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: (L.head || 1.1) * 1.1, eye: (L.eye || 1) * 1.12, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [], eyes: L.eyes || "round", iris: L.iris };
 }
 let HAIR_FLAT = null, LOOK_GEO = null;
 function applyLook(LK, C) {
@@ -851,7 +851,7 @@ function applyLook(LK, C) {
       }
       case "glasses": {
         const m = mk(p2 ?? 0x222222, 0.3, { metalness: 0.6 }), y = 0.018, z = 0.192;
-        if (p1 === "sport") { const sh = put(LG.strip, mk(p2 ?? 0x2f5fa8, 0.2, { transparent: true, opacity: 0.75 }), 0, y, z + 0.004, head); sh.scale.set(3.2, 2.3, 1); const t = put(LG.band, m, 0, y, -0.005, head); t.rotation.x = Math.PI / 2; t.scale.set(0.9, 0.95, 0.5); break; }
+        if (p1 === "sport") { const sh = put(LG.strip, mk(p2 ?? 0x2f5fa8, 0.2, { transparent: true, opacity: 0.4 }), 0, y, z + 0.004, head); sh.scale.set(3.2, 2.3, 1); const t = put(LG.band, m, 0, y, -0.005, head); t.rotation.x = Math.PI / 2; t.scale.set(0.9, 0.95, 0.5); break; }
         for (const s of [-1, 1]) {
           if (p1 === "square") put(LG.sq, m, s * 0.07, y, z, head).scale.set(1.05, 0.8, 1);
           else if (p1 !== "rimless") put(GEO.lens, m, s * 0.068, y, z, head).scale.set(p1 === "round" ? 1.12 : 1, p1 === "round" ? 1.05 : 0.8, 1);
@@ -1199,7 +1199,7 @@ function buildStudent(def, enemy) {
   put(HG.skull, mSkin, 0, 0.0, -0.005, head).scale.set(SKULL_SX, SKULL_SY, SKULL_SZ);
   for (const s of [-1, 1]) put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
   // 얼굴: 눈·눈썹·코·입은 그림으로 그려 씌워요 (figure.js). 눈 깜빡임은 그림 두 장을 바꿔 끼워요
-  const irisHex = [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
+  const irisHex = LK.iris ?? [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
   ud.faceTex = faceTexFor(def, LK, fierce, kind, hairCol, irisHex, skin);
   ud.face = faceMesh(ud.faceTex); head.add(ud.face); ud.mats.push(ud.face.material);
   // 머리카락 (friends.js 의 LOOKS.hair 모양대로, figure.js)
@@ -1560,8 +1560,9 @@ function placeUnit(it, dt) {
   }
   const a = it.alpha ?? 1;
   for (const m of ud.mats) {
-    const base = m.isMeshBasicMaterial && !m.userData.opq ? 0.9 : 1;
-    m.transparent = a < 1 || m.userData.keepT || (m.isMeshBasicMaterial && !m.userData.opq); m.opacity = a * base;
+    // 처음 만들 때의 투명 여부·투명도를 기억해 두고, 죽을 때 사라지는 정도(a)만 곱해요 (렌즈 같은 반투명 부품이 불투명해지지 않게)
+    if (m.userData.op0 === undefined) { m.userData.op0 = m.opacity; m.userData.t0 = m.transparent; }
+    m.transparent = a < 1 || m.userData.keepT || m.userData.t0; m.opacity = a * m.userData.op0;
     if (m.emissive && m.userData.e0 === undefined) m.userData.e0 = m.emissive.getHex();
     if (m.emissive) m.emissive.setHex(it.flash ? 0x3a3a3a : m.userData.e0);
   }
