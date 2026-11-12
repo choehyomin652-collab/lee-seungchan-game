@@ -16,15 +16,14 @@ function makeFighter(spec, team, r, c, cnt, buff) {
     as0: cl.as, rg: cl.rg, ar: cl.ar, mm: cl.mm, power: cf * sm * tn.sk * lg.sk });
   if (lg.sk > 1) f.mana = cl.mm; // 전설은 시작하자마자 스킬을 써요
   const L = (t) => traitLvl(t, cnt[t] || 0), has = (t) => (def.t.includes(t) ? L(t) : 0);
-  f.maxHp *= [1, 1.2, 1.45, 1.8][has("운동광")];
-  if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.8][has("지는 거 못 참음")]; f.crit = 0.2; }
-  f.amp = [1, 1.3, 1.7, 2.1][has("공부는 잘함")];
-  f.as0 *= [1, 1.25, 1.5][has("축구부")];
+  f.maxHp *= [1, 1.2, 1.4, 1.5][has("운동광")];
+  if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.6][has("지는 거 못 참음")]; f.crit = 0.2; }
+  f.amp = [1, 1.3, 1.8, 2.6][has("공부는 잘함")];
+  f.as0 *= [1, 1.3, 1.65][has("축구부")];
   if (has("수학왕")) f.mgain = 1.6;
   if (has("프로게이머")) f.as0 *= 1.3;
   if (has("전교 1등")) f.amp += 0.4;
   if (L("신") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
-  f.shield += [0, 150, 350][L("다 퍼줌")];
   const st = {};
   for (const id of f.items) for (const [k, v] of Object.entries(ITEMS[id].st)) st[k] = (st[k] || 0) + v;
   f.ad *= 1 + (st.adPct || 0); f.as0 *= 1 + (st.asPct || 0);
@@ -33,6 +32,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   f.crit += st.crit || 0; f.mgain *= 1 + (st.mgainPct || 0);
   for (const k of ["stackAs", "lifesteal", "splash", "skillCrit", "manaOnHit", "lowHpAs", "thorns", "manaTick", "lowShield", "regen", "teamShield", "castShield", "castHeal", "refund"]) f[k] = st[k] || 0;
   if (buff) { f.as0 *= 1 + buff.as; f.ar = Math.min(0.75, f.ar + buff.ar); f.ad *= 1 + buff.ad; f.maxHp *= 1 + buff.hp; }
+  f.shield += f.maxHp * [0, 0.15, 0.5][L("다 퍼줌")]; // 다 퍼줌: 최대 체력 비율만큼 보호막 (별·아이템이 오를수록 같이 커져요)
   f.hp = f.maxHp; f.mana = Math.min(f.mana, f.mm - 1);
   return f;
 }

@@ -13,7 +13,7 @@ function combineRobot(f, team, visual) {
   const b = ms[1], sum = (k) => ms.reduce((s2, m) => s2 + m[k], 0);
   const robot = Object.assign({}, b, {
     robot: 1, star: Math.max(...ms.map((m) => m.star)), items: [],
-    maxHp: sum("maxHp") * 0.8, ad: sum("ad") * 0.45, as0: sum("as0") / 4,
+    maxHp: sum("maxHp") * 0.9, ad: sum("ad") * 0.55, as0: sum("as0") / 4,
     rg: 2, ar: Math.min(0.75, Math.max(...ms.map((m) => m.ar)) + 0.1), mm: 90, mana: 10,
     amp: Math.max(...ms.map((m) => m.amp)), crit: Math.max(...ms.map((m) => m.crit)), power: sum("power") * 0.45,
     shield: sum("shield"), tgt: null, dmg: 0, flash: 0, lunge: 0,
