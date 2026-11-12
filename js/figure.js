@@ -33,6 +33,8 @@ function toonMat(hex, extra = {}) {
 
 // ---------- 외곽선 (뒤집은 껍데기) ----------
 // 각 꼭짓점에 'ow'(바깥으로 밀 길이)를 넣어 두고, 뒷면만 그려서 윤곽선처럼 보이게 해요.
+// 두개골 크기(머리 좌표). render3d.js 의 두개골 · 얼굴 껍데기 · 머리카락 모자가 같은 값을 써요
+const SKULL_SX = 0.95, SKULL_SY = 1.03, SKULL_SZ = 0.98;
 const OUTLINE_W = 0.0125, OUTLINE_COL = 0x140c0a, TOON_GAIN = 1.0;
 function outlineMat() {
   const m = new THREE.MeshBasicMaterial({ color: lin(OUTLINE_COL), side: THREE.BackSide });
@@ -158,15 +160,15 @@ function faceMaskGeo() {
   const map = new Map(), pos = [], nor = [], uv = [], ind = [];
   const V = (i) => {
     if (map.has(i)) return map.get(i);
-    let x = p.getX(i) * 0.9, y = p.getY(i) * 1.04, z = p.getZ(i) * 0.98 - 0.005;
-    let nx = nm.getX(i) / 0.9, ny = nm.getY(i) / 1.04, nz = nm.getZ(i) / 0.98; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+    let x = p.getX(i) * SKULL_SX, y = p.getY(i) * SKULL_SY, z = p.getZ(i) * SKULL_SZ - 0.005;
+    let nx = nm.getX(i) / SKULL_SX, ny = nm.getY(i) / SKULL_SY, nz = nm.getZ(i) / SKULL_SZ; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
     pos.push(x + nx * 0.0022, y + ny * 0.0022, z + nz * 0.0022); nor.push(nx, ny, nz); uv.push((x + 0.18) / 0.36, (y + 0.18) / 0.36);
     map.set(i, pos.length / 3 - 1); return map.get(i);
   };
   for (let t = 0; t < ix.count; t += 3) {
     const a = ix.getX(t), b = ix.getX(t + 1), c = ix.getX(t + 2);
     const nz = (nm.getZ(a) + nm.getZ(b) + nm.getZ(c)) / 3, zs = Math.min(p.getZ(a), p.getZ(b), p.getZ(c)), ys = (p.getY(a) + p.getY(b) + p.getY(c)) / 3;
-    if (nz > 0.28 && zs > 0.02 && Math.abs(ys * 1.04) < 0.2) ind.push(V(a), V(b), V(c));
+    if (nz > 0.28 && zs > 0.02 && Math.abs(ys * SKULL_SY) < 0.2) ind.push(V(a), V(b), V(c));
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(ind);
@@ -189,7 +191,7 @@ function hairShellGeo(p) {
   const key = "sh" + [p.front, p.side, p.back, p.vol].join("_");
   if (HAIR_CACHE[key]) return HAIR_CACHE[key];
   const R = 0.2 + 0.012 * p.vol * 1.0, g = new THREE.SphereGeometry(1, 34, 22), pos = g.attributes.position;
-  const rx = 0.9 * R * p.vol, ry = 1.04 * R * p.vol, rz = 0.98 * R * p.vol;
+  const rx = SKULL_SX * R * p.vol, ry = SKULL_SY * R * p.vol, rz = SKULL_SZ * R * p.vol;
   for (let i = 0; i < pos.count; i++) {
     let dx = pos.getX(i), dy = pos.getY(i), dz = pos.getZ(i);
     const az = Math.atan2(dx, dz), fa = Math.abs(az);
@@ -220,8 +222,8 @@ const hv3 = (x, y, z) => new THREE.Vector3(x, y, z);
 // o: len w th tp cv sw(옆으로 쓸기) out(바깥으로 뜨기) dir([x,y,z] 방향을 직접 지정) m(재질)
 function addLock(C, t, a, o) {
   const tr = (t * Math.PI) / 180, ar = (a * Math.PI) / 180, R = 0.206;
-  const P = hv3(Math.sin(tr) * Math.sin(ar) * 0.9 * R, Math.cos(tr) * 1.04 * R, Math.sin(tr) * Math.cos(ar) * 0.98 * R - 0.005);
-  const N = hv3(P.x / 0.81, P.y / 1.08, (P.z + 0.005) / 0.96).normalize();
+  const P = hv3(Math.sin(tr) * Math.sin(ar) * SKULL_SX * R, Math.cos(tr) * SKULL_SY * R, Math.sin(tr) * Math.cos(ar) * SKULL_SZ * R - 0.005);
+  const N = hv3(P.x / (SKULL_SX * SKULL_SX), P.y / (SKULL_SY * SKULL_SY), (P.z + 0.005) / (SKULL_SZ * SKULL_SZ)).normalize();
   let D;
   if (o.dir) D = hv3(...o.dir).normalize();
   else {
@@ -242,7 +244,7 @@ function lockRow(C, t, angles, o, per) {
 const range = (a, b, st) => { const r = []; for (let x = a; x <= b + 1e-6; x += st) r.push(x); return r; };
 function blobHair(C, t, a, r, m) {
   const tr = (t * Math.PI) / 180, ar = (a * Math.PI) / 180, R = 0.2;
-  const b = C.put(HAIR_CACHE.blob || (HAIR_CACHE.blob = new THREE.SphereGeometry(1, 8, 6)), m || C.mHair, Math.sin(tr) * Math.sin(ar) * 0.9 * R, Math.cos(tr) * 1.04 * R, Math.sin(tr) * Math.cos(ar) * 0.98 * R - 0.005, C.head);
+  const b = C.put(HAIR_CACHE.blob || (HAIR_CACHE.blob = new THREE.SphereGeometry(1, 8, 6)), m || C.mHair, Math.sin(tr) * Math.sin(ar) * SKULL_SX * R, Math.cos(tr) * SKULL_SY * R, Math.sin(tr) * Math.cos(ar) * SKULL_SZ * R - 0.005, C.head);
   b.scale.setScalar(r); return b;
 }
 // st: 머리 스타일 이름 (friends.js 의 LOOKS.hair)
