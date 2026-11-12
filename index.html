@@ -20,6 +20,11 @@
     <button class="tbtn" id="ready"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor" stroke="none"/></svg>시작</button>
     <div class="pill stat-hp" id="hp">♥ 100</div>
   </div>
+  <div class="hud pracbar" id="prac" hidden>
+    <span class="praclbl">김예균</span><button data-star="1">★1</button><button data-star="2">★2</button><button data-star="3">★3</button>
+    <span class="pracsep"></span><span class="praclbl">상대</span><button data-foe="dummy">허수아비</button><button data-foe="team">강한 적 팀</button>
+    <span class="pracsep"></span><button id="pracmana">바로 스킬 켜짐</button><button id="pracstop">전투 멈추기</button><button id="pracexit">나가기</button>
+  </div>
   <div class="hud traits" id="traits"></div>
   <div class="hud players" id="players"></div>
   <div class="info" id="info"></div>
@@ -62,7 +67,7 @@
       <li>빈 땅을 탭하면 내 마스코트가 걸어가요</li>
     </ul>
     <p id="best" style="font-size:13px;color:var(--chalk-dim)"></p>
-    <div class="ovbtns" id="ovbtns"><button class="go" id="start">혼자 하기</button><button class="go alt" id="online" disabled>친구와 같이 하기</button></div>
+    <div class="ovbtns" id="ovbtns"><button class="go" id="start">혼자 하기</button><button class="go alt" id="online" disabled>친구와 같이 하기</button><button class="go prac" id="practice">연습장</button></div>
     <p class="netnote" id="netnote">온라인 연결을 확인하는 중…</p>
     <div class="net" id="net" hidden>
       <div class="netrow"><label for="netname">내 이름</label><input id="netname" maxlength="8" autocomplete="nickname" placeholder="예: 예균"></div>
@@ -95,7 +100,9 @@
 <script src="js/online.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/figure.js"></script>
+<script src="js/hero.js"></script>
 <script src="js/render3d.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/practice.js"></script>
 </body>
 </html>

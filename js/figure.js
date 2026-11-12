@@ -66,8 +66,14 @@ function bakeFigure(g, ud) {
       let v0 = 0, i0 = 0;
       geos.forEach((gm, k) => {
         const p = gm.attributes.position, n = gm.attributes.normal, col = list[k].material.color, cnt = p.count;
+        let vc = gm.attributes.color ? gm.attributes.color.array : null; // hero.js 처럼 꼭짓점에 색을 칠해 둔 부품이면 그 색을 곱해요
+        if (!vc && cnt > 12) { // 아니면 위는 밝고 아래는 어두운 '칠한 음영'을 살짝 넣어요
+          let y0 = Infinity, y1 = -Infinity; for (let i = 0; i < cnt; i++) { const y = p.array[i * 3 + 1]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+          const span = Math.max(1e-4, y1 - y0); vc = new Float32Array(cnt * 3);
+          for (let i = 0; i < cnt; i++) { const k = 0.8 + 0.3 * Math.pow((p.array[i * 3 + 1] - y0) / span, 0.8); vc[i * 3] = vc[i * 3 + 1] = vc[i * 3 + 2] = k; }
+        }
         P.set(p.array.subarray(0, cnt * 3), v0 * 3); N.set(n.array.subarray(0, cnt * 3), v0 * 3);
-        for (let i = 0; i < cnt; i++) { C[(v0 + i) * 3] = col.r * TOON_GAIN; C[(v0 + i) * 3 + 1] = col.g * TOON_GAIN; C[(v0 + i) * 3 + 2] = col.b * TOON_GAIN; W[v0 + i] = OUTLINE_W / sc; }
+        for (let i = 0; i < cnt; i++) { C[(v0 + i) * 3] = col.r * TOON_GAIN * (vc ? vc[i * 3] : 1); C[(v0 + i) * 3 + 1] = col.g * TOON_GAIN * (vc ? vc[i * 3 + 1] : 1); C[(v0 + i) * 3 + 2] = col.b * TOON_GAIN * (vc ? vc[i * 3 + 2] : 1); W[v0 + i] = OUTLINE_W / sc; }
         if (gm.index) for (let i = 0; i < gm.index.count; i++) I[i0 + i] = gm.index.array[i] + v0; else for (let i = 0; i < cnt; i++) I[i0 + i] = v0 + i;
         v0 += cnt; i0 += gm.index ? gm.index.count : cnt; gm.dispose();
       });

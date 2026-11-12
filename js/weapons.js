@@ -26,7 +26,7 @@ function wStick(env, mat, len, r, x, y, z, th, parent) {
 // p: 0(시작)→1(끝), k: 가운데서 가장 큰 값(0→1→0). 돌려주는 값은 팔·몸의 각도예요.
 //   la/ra: 왼팔/오른팔 앞뒤 (음수 = 앞·위로), lz/rz: 팔 옆으로 벌리기, lean: 몸 숙이기, twist: 몸 비틀기
 //   hop: 폴짝 뛰기, kick: 오른 다리 차기, spin: 몸통 한 바퀴, head: 고개 젖히기
-const ATK_T = 0.3;
+const ATK_T = 0.42; // 보이는 공격 동작 길이(초). 전투 결과에는 영향 없어요
 // 뒤로 젖혔다가(a) 앞으로 휘두르는(b) 곡선
 const windup = (p, a, b, at = 0.38) => (p < at ? a * (p / at) : a + (b - a) * ((p - at) / (1 - at)));
 const ATK_ANIM = {

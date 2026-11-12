@@ -277,3 +277,12 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .linkbtn { align-self: center; background: none; border: 0; color: var(--chalk-dim); font-size: 14px; padding: 4px 10px; text-decoration: underline; }
 .pl .nm { max-width: calc(var(--u) * 9); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(var(--u) * 1.4); color: #cfe9ff; }
 .pl.net .av { border-color: #6fc3ff; }
+
+/* 연습장 패널 (practice.js) */
+.go.prac { background: linear-gradient(#e0606a, #8a1828); color: #fff; border-color: #ffc0c4; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.pracbar { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 5.2); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: calc(var(--u) * .6); flex-wrap: wrap; justify-content: center; max-width: 94vw;
+  background: var(--glass); border: 1px solid var(--edge); box-shadow: var(--lift); border-radius: calc(var(--u) * 2); padding: calc(var(--u) * .5) calc(var(--u) * 1.2); font-family: var(--display); font-size: calc(var(--u) * 1.7); }
+.pracbar button { background: rgba(255, 255, 255, .08); color: var(--chalk); border: 1px solid var(--edge); border-radius: calc(var(--u) * 1.2); padding: calc(var(--u) * .3) calc(var(--u) * 1); font-size: inherit; }
+.pracbar button.on { background: linear-gradient(#e0606a, #8a1828); color: #fff; border-color: #ffc0c4; }
+.pracbar .praclbl { color: var(--chalk-dim); font-size: .85em; }
+.pracsep { width: 1px; align-self: stretch; background: var(--edge); margin: 0 calc(var(--u) * .3); }
