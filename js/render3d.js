@@ -1475,15 +1475,13 @@ function buildJelly(giant, enemy) {
   // 얼굴
   const mWhite = mk(0xffffff, 0.25), mDark = mk(0x0e2a2a, 0.3);
   ud.eyes = [];
-  if (SHOW_FACE) {
-    for (const s of [-1, 1]) {
-      const e = put(J.eye, mWhite, s * 0.13, 0.42, 0.385); e.scale.set(1, 1.15, 0.5);
-      const p = put(J.pupil, mDark, s * 0.13, 0.41, 0.415); p.scale.set(1, 1.2, 0.45);
-      const sh = put(J.shine, mWhite, s * 0.13 + 0.018, 0.44, 0.432);
-      for (const o of [e, p, sh]) { o.userData.sy = o.scale.y; ud.eyes.push(o); }
-    }
-    const mo = put(J.mouth, mDark, 0, 0.29, 0.415); mo.rotation.z = Math.PI; mo.scale.set(1, 0.8, 1);
+  for (const s of [-1, 1]) {
+    const e = put(J.eye, mWhite, s * 0.13, 0.42, 0.385); e.scale.set(1, 1.15, 0.5);
+    const p = put(J.pupil, mDark, s * 0.13, 0.41, 0.415); p.scale.set(1, 1.2, 0.45);
+    const sh = put(J.shine, mWhite, s * 0.13 + 0.018, 0.44, 0.432);
+    for (const o of [e, p, sh]) { o.userData.sy = o.scale.y; ud.eyes.push(o); }
   }
+  const mo = put(J.mouth, mDark, 0, 0.29, 0.415); mo.rotation.z = Math.PI; mo.scale.set(1, 0.8, 1);
   if (giant) { // 거대 이다연: 수정 왕관
     const gold = mk(0xe8c25a, 0.25, { metalness: 0.85 }), crys = mk(0x9ffff0, 0.15, { emissive: lin(0x5fe8d8), emissiveIntensity: 1.3 });
     const cr = put(J.crown, gold, 0, 0.68, 0); cr.rotation.x = Math.PI / 2;
