@@ -798,51 +798,6 @@ function lookOf(def, h) {
   return { hair: L.hair || HAIR_STYLES[(h >> 7) % HAIR_STYLES.length], hc: L.hc ?? HAIRC[(h >> 3) % HAIRC.length], tip: L.tip, skin: SKINS[(L.skin ?? h) % SKINS.length],
     tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: L.head || 1.1, eye: L.eye || 1, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [] };
 }
-function buildHair(st, put, head, mHair, mTip) {
-  const back = put(GEO.hairBack, mHair, 0, 0.04, -0.04, head); back.scale.set(0.95, 1.0, 1.0);
-  const cap = put(GEO.hairCap, mHair, 0, 0.03, -0.005, head); cap.scale.set(0.96, 1.05, 1.02); cap.rotation.x = -0.2;
-  const tuft = (x, y, z, sx, sy, sz, rz = 0, rx = 0, m = mHair) => { const f = put(GEO.fringe, m, x, y, z, head); f.scale.set(sx, sy, sz); f.rotation.set(rx, 0, rz); return f; };
-  const spike = (x, y, z, rx, rz, s = 1, m = mHair) => { const p = put(GEO.spike, m, x, y, z, head); p.scale.set(1.15 * s, 0.75 * s, 1.15 * s); p.rotation.set(rx, 0, rz); return p; };
-  switch (st) {
-    case "bowl": cap.scale.set(1.03, 1.1, 1.06); tuft(0, 0.1, 0.14, 1.85, 0.55, 0.65, 0, 0, mTip); break;
-    case "spiky":
-      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; spike(Math.cos(a) * 0.11, 0.2, Math.sin(a) * 0.09 - 0.01, Math.sin(a) * 0.75, -Math.cos(a) * 0.75, 1.25, i % 2 ? mTip : mHair); }
-      spike(0, 0.25, 0, 0, 0, 1.4, mTip); tuft(0, 0.15, 0.13, 1.3, 0.35, 0.6);
-      break;
-    case "side": tuft(0.05, 0.145, 0.115, 1.6, 0.42, 0.9, -0.4, 0, mTip); tuft(-0.13, 0.11, 0.08, 0.6, 0.55, 0.8, 0.5); break;
-    case "buzz": cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96); break;
-    case "pomp": cap.rotation.x = -0.38; tuft(0, 0.215, 0.085, 1.45, 0.8, 1.05, 0, -0.35, mTip); tuft(0, 0.165, 0.15, 1.2, 0.5, 0.55); break;
-    case "curtain": cap.scale.set(1.0, 1.08, 1.04); tuft(-0.088, 0.122, 0.128, 0.98, 0.5, 0.72, 0.6, 0, mTip); tuft(0.088, 0.122, 0.128, 0.98, 0.5, 0.72, -0.6, 0, mTip); break;
-    case "curly":
-      cap.scale.set(1.02, 1.08, 1.05);
-      for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + (i % 2) * 0.2, up = (i % 3) * 0.05; tuft(Math.cos(a) * (0.165 - up * 0.6), 0.1 + up * 1.7, Math.sin(a) * (0.16 - up * 0.6) - 0.01, 0.62, 0.62, 0.62, 0, 0, i % 4 === 0 ? mTip : mHair); }
-      tuft(0, 0.25, 0, 0.8, 0.6, 0.8); tuft(-0.06, 0.15, 0.15, 0.6, 0.5, 0.5); tuft(0.07, 0.16, 0.14, 0.6, 0.5, 0.5);
-      break;
-    case "mushroom": cap.position.y = 0.0; cap.rotation.x = -0.06; cap.scale.set(1.1, 1.14, 1.1); back.scale.set(1.04, 1.08, 1.06); tuft(0, 0.08, 0.15, 1.9, 0.5, 0.6, 0, 0, mTip); break;
-    case "messy":
-      tuft(0.02, 0.13, 0.125, 1.7, 0.45, 0.8, 0.18, 0, mTip);
-      [[-0.12, 0.19, 0.04, 0.5, 0.9], [0.13, 0.19, 0.0, 0.2, -1.0], [-0.05, 0.23, -0.06, -0.6, 0.4], [0.07, 0.23, 0.05, 0.6, -0.4], [0.0, 0.2, -0.14, -1.0, 0], [-0.15, 0.13, -0.08, -0.4, 1.2], [0.15, 0.12, -0.09, -0.4, -1.2]].forEach(([x, y, z, rx, rz], i) => spike(x, y, z, rx, rz, 1.15, i % 3 === 0 ? mTip : mHair));
-      spike(0.02, 0.28, 0.0, 0.5, -0.35, 0.8, mTip);
-      break;
-    case "mohawk":
-      cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96);
-      for (let i = 0; i < 6; i++) { const t = i / 5, a = -0.9 + t * 2.4; spike(0, 0.215 * Math.cos(a) + 0.03, -0.2 * Math.sin(a) * 0.9, -a * 0.9, 0, 1.5 - Math.abs(t - 0.35) * 0.7, mTip); }
-      break;
-    case "slick": cap.rotation.x = -0.5; cap.scale.set(0.97, 1.04, 1.06); tuft(0, 0.2, 0.03, 1.6, 0.5, 1.35, 0, -0.25, mTip); break;
-    case "flat": {
-      cap.scale.set(0.93, 0.98, 0.98); back.scale.set(0.93, 0.96, 0.96);
-      const top = put(HAIR_FLAT || (HAIR_FLAT = new THREE.CylinderGeometry(0.14, 0.165, 0.06, 14)), mTip, 0, 0.205, -0.01, head); top.scale.set(1, 1, 1.08);
-      break;
-    }
-    case "wavy": tuft(0.0, 0.14, 0.12, 1.7, 0.5, 0.8, -0.2, 0, mTip); tuft(-0.17, 0.03, 0.03, 0.5, 0.9, 0.85); tuft(0.17, 0.03, 0.03, 0.5, 0.9, 0.85); tuft(0, 0.22, -0.02, 1.5, 0.5, 1.4); break;
-    case "long":
-      back.scale.set(1.0, 1.45, 1.0); back.position.y = -0.03; cap.scale.set(1.0, 1.08, 1.04);
-      tuft(-0.165, -0.1, 0.02, 0.5, 1.9, 0.7); tuft(0.165, -0.1, 0.02, 0.5, 1.9, 0.7);
-      tuft(-0.085, 0.125, 0.13, 0.95, 0.5, 0.7, 0.6); tuft(0.085, 0.125, 0.13, 0.95, 0.5, 0.7, -0.6);
-      break;
-    default: tuft(0, 0.14, 0.12, 1.75, 0.45, 0.85);
-  }
-}
 let HAIR_FLAT = null, LOOK_GEO = null;
 function applyLook(LK, C) {
   const { put, mk, head, torso, ud, def, mHair } = C;
@@ -907,7 +862,7 @@ function applyLook(LK, C) {
         else { const b = put(LG.strip, m, 0.11, -0.04, 0.16, head); b.rotation.set(0, 0.62, 0.35); b.scale.set(0.85, 1, 1); const b2 = put(LG.strip, m, 0.11, -0.04, 0.161, head); b2.rotation.set(0, 0.62, -0.35 + Math.PI / 2 - 1.2); b2.scale.set(0.85, 1, 1); }
         break;
       }
-      case "blush": for (const s of [-1, 1]) put(GEO.fringe, mk(0xf29a9a, 0.9, { transparent: true, opacity: 0.7 }), s * 0.115, -0.045, 0.148, head).scale.set(0.34, 0.2, 0.1); break;
+      case "blush": break; // 얼굴 그림에 그려요
       case "scarf": {
         const m = mk(p1 ?? 0xfff0c8, 0.95), r = put(LG.neckRing, m, 0, 0.6, 0.0, torso); r.rotation.x = Math.PI / 2; r.scale.set(1.15, 1.0, 1.2);
         const f = put(LG.flap, m, 0.06, 0.48, 0.105, torso); f.rotation.z = -0.12; put(LG.flap, m, -0.02, 0.5, -0.095, torso).scale.set(1, 0.8, 1);
@@ -972,7 +927,7 @@ function applyLook(LK, C) {
 function buildStudent(def, enemy) {
   const g = new THREE.Group(); g.rotation.order = "YXZ";
   const ud = g.userData; ud.mats = []; ud.walk = Math.random() * 6; ud.move = 0;
-  const mk = (hex, rough = 0.75, extra) => { const m = M(hex, rough, extra); ud.mats.push(m); return m; };
+  const mk = (hex, rough = 0.75, extra) => { const m = toonMat(hex, extra); ud.mats.push(m); return m; }; // 만화 음영 재질 (figure.js)
   const put = (geo, mat, x = 0, y = 0, z = 0, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
   const h = nameHash(def.n);
   const sporty = def.t.includes("운동광"), nerd = def.t.includes("공부는 잘함"), soccer = def.t.includes("축구부");
@@ -987,14 +942,14 @@ function buildStudent(def, enemy) {
   const sleeve = OF.sleeve || ({ jersey: "short", tshirt: "short", tank: "none" }[T] || "long");
   const shorts = ["jersey", "tank"].includes(T), barefoot = T === "dobok";
   const fab = (hex, r = 0.92) => mk(hex, r);
-  const mSkin = mk(skin, 0.62, { emissive: lin(0x2a0e06), emissiveIntensity: 0.35 });
+  const mSkin = mk(skin, 0.62);
   const mJacket = fab(OF.top, T === "padding" ? 0.55 : T === "track" ? 0.7 : 0.9), mPants = fab(OF.bottom ?? OF.top);
   const mAcc = fab(OF.accent ?? 0xffffff, 0.8);
   const mShirt = fab(0xf2f0ea, 0.8), mHair = mk(hairCol, 0.55);
   const mSleeve = T === "vest" ? mShirt : T === "varsity" ? mAcc : mJacket;
   const mShoe = barefoot ? mSkin : T === "robe" ? mk(0xd8a83a, 0.35, { metalness: 0.5 }) : formal ? mk(0x1d1814, 0.35) : mk(0xf2f2f2, 0.6);
   const mSole = mk(formal ? 0x0e0c0a : COST_HEX[def.c] || 0xcccccc, 0.8), mSock = fab(OF.socks ?? (formal ? 0x22252b : 0xf4f4f4));
-  const mDark = mk(0x1c1410, 0.3), mWhite = mk(0xffffff, 0.3, { emissive: lin(0x222222) });
+  const mDark = mk(0x1c1410, 0.3), mWhite = mk(0xffffff, 0.3);
   const mLip = mk(0xb5675e, 0.55), mBrow = mk(hairCol, 0.8), mIris = mk([0x3a2414, 0x2a1a10, 0x4a3020][h % 3], 0.2);
   const mStripe = fab(0xf4f4f4, 0.7), mCost = fab(COST_HEX[def.c] || 0xc9d1cc, 0.6);
   // 팀 표시 고리
@@ -1012,7 +967,7 @@ function buildStudent(def, enemy) {
     upper: new THREE.CylinderGeometry(0.056, 0.049, 0.3, 12), fore: new THREE.CylinderGeometry(0.049, 0.042, 0.26, 12), cuff: new THREE.CylinderGeometry(0.044, 0.044, 0.03, 12),
     palm: new THREE.SphereGeometry(0.042, 12, 10), thumb: new THREE.CylinderGeometry(0.012, 0.011, 0.05, 6),
     skull: (() => { // 아래로 갈수록 좁아지는 얼굴 (턱·광대)
-      const g2 = new THREE.SphereGeometry(0.2, 36, 28), p2 = g2.attributes.position;
+      const g2 = new THREE.SphereGeometry(0.2, 28, 20), p2 = g2.attributes.position;
       for (let i = 0; i < p2.count; i++) {
         const x = p2.getX(i), y = p2.getY(i), z = p2.getZ(i), lo = Math.max(0, -y / 0.2), front = Math.max(0, z / 0.2);
         p2.setX(i, x * (1 - 0.3 * lo * lo) * (1 - 0.06 * front));
@@ -1110,31 +1065,13 @@ function buildStudent(def, enemy) {
   // 머리 (머리 모양 데이터는 반지름 0.2 기준이라 0.6배로 줄여 써요)
   const head = new THREE.Group(); head.position.y = 0.735; head.scale.setScalar(0.6 * LK.head); torso.add(head); ud.head = head;
   put(HG.skull, mSkin, 0, 0.0, -0.005, head).scale.set(0.9, 1.04, 0.98);
-  for (const s of [-1, 1]) {
-    put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
-    const e1 = put(GEO.sclera, mWhite, s * 0.066, 0.018, 0.158, head); e1.scale.set(0.85 * LK.eye, 0.5 * LK.eye, 0.38);
-    const e2 = put(GEO.iris, mIris, s * 0.066, 0.017, 0.17, head); e2.scale.set(0.72 * LK.eye, 0.72 * LK.eye, 0.5);
-    const e3 = put(GEO.shine, mWhite, s * 0.066 + 0.006, 0.022, 0.178, head); e3.scale.setScalar(0.45);
-    for (const e of [e1, e2, e3]) { e.userData.sy = e.scale.y; (ud.eyes || (ud.eyes = [])).push(e); }
-    const lash = put(HG.lash, mDark, s * 0.066, 0.018, 0.168, head); lash.scale.set(0.95, 0.6, 1); // 위 속눈썹 선
-    lash.userData.sy = lash.scale.y; ud.eyes.push(lash);
-    const b = put(GEO.brow, mBrow, s * 0.068, 0.068 + (LK.eye - 1) * 0.03, 0.168, head); b.scale.set(1.15, 0.75 * LK.brow, 1);
-    b.rotation.z = fierce ? s * 0.22 : kind ? -s * 0.1 : -s * 0.04;
-  }
-  const nz = put(HG.nose, mSkin, 0, -0.01, 0.183, head); nz.rotation.x = 0.35; nz.scale.set(1, 1, 0.75); // 콧등
-  put(HG.noseTip, mSkin, 0, -0.042, 0.19, head).scale.set(1.05, 0.8, 0.85);
-  // 입: 표정마다 달라요
-  if (LK.mouth === "smile" || LK.mouth === "grin") {
-    const sm = put(GEO.mouth, mLip, 0, -0.082, 0.166, head); sm.rotation.z = Math.PI; sm.scale.set(LK.mouth === "grin" ? 1.5 : 1.15, LK.mouth === "grin" ? 1.5 : 1.0, 1.3);
-    if (LK.mouth === "grin") put(HG.lip, mWhite, 0, -0.1, 0.16, head).scale.set(1.15, 0.5, 0.3);
-  } else if (LK.mouth === "pout") { put(HG.lip, mLip, 0, -0.1, 0.163, head).scale.set(0.8, 0.3, 0.45); }
-  else if (LK.mouth === "flat") { put(HG.lip, mLip, 0, -0.1, 0.162, head).scale.set(1.2, 0.16, 0.4); }
-  else {
-    put(HG.lip, mLip, 0, -0.094, 0.162, head).scale.set(1.3, 0.26, 0.45);
-    put(HG.lip, mLip, 0, -0.106, 0.158, head).scale.set(1.05, 0.32, 0.45);
-  }
-  // 머리카락 (친구마다 다른 모양 — friends.js 의 LOOKS)
-  buildHair(LK.hair, put, head, mHair, LK.tip != null ? mk(LK.tip, 0.5) : mHair);
+  for (const s of [-1, 1]) put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
+  // 얼굴: 눈·눈썹·코·입은 그림으로 그려 씌워요 (figure.js). 눈 깜빡임은 그림 두 장을 바꿔 끼워요
+  const irisHex = [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
+  ud.faceTex = faceTexFor(def, LK, fierce, kind, hairCol, irisHex, skin);
+  ud.face = faceMesh(ud.faceTex); head.add(ud.face); ud.mats.push(ud.face.material);
+  // 머리카락 (friends.js 의 LOOKS.hair 모양대로, figure.js)
+  buildHair2(LK.hair, { put, head, mHair, mTip: LK.tip != null ? mk(LK.tip, 0.5) : mHair });
   if (def.t.includes("프로게이머")) {
     const hs = mk(0x26282c, 0.4, { metalness: 0.3 }), led = mk(0x7ff0ff, 0.3, { emissive: lin(0x3fd8ff) });
     put(new THREE.TorusGeometry(0.255, 0.022, 8, 24, Math.PI), hs, 0, 0.02, 0, head);
@@ -1200,13 +1137,11 @@ function buildStudent(def, enemy) {
       break;
     }
   }
+  bakeFigure(g, ud); // 작은 부품을 마디마다 한 덩어리로 합치고 외곽선을 붙여요 (figure.js)
   // 키·체격: 발밑 고리만 빼고 몸 전체를 한 묶음으로 늘리거나 줄여요
   const body = new THREE.Group(); body.scale.set(LK.wide, LK.tall, LK.wide);
   for (const ch of g.children.slice()) if (ch !== ring) body.add(ch);
   body.position.y = 0.2 * (1 - LK.tall); g.add(body);
-  // 그림자는 큰 부품만 만들어요 (작은 부품까지 그림자를 그리면 폰에서 많이 느려져요)
-  const BIG = new Set([HG.thigh, HG.shin, HG.pelvis, HG.chest, HG.upper, HG.fore, HG.skull, HG.shoe, GEO.hairCap, GEO.hairBack, HG.skirt, HG.hood]);
-  g.traverse((o) => { if (o.isMesh) o.castShadow = BIG.has(o.geometry); });
   return g;
 }
 function buildMonster(mon, enemy) {
@@ -1256,7 +1191,7 @@ function useMesh(key, make) {
 function sweep() {
   for (const [k, e] of pool) if (e.f !== frameId) {
     scene.remove(e.o);
-    e.o.traverse((m) => { if (m.material) [].concat(m.material).forEach((x) => x.dispose()); });
+    e.o.traverse((m) => { if (m.material) [].concat(m.material).forEach((x) => x.dispose()); if (m.geometry && m.geometry.userData.own) m.geometry.dispose(); });
     pool.delete(k);
   }
 }
@@ -1411,10 +1346,10 @@ function placeUnit(it, dt) {
     ud.head.rotation.z = Math.sin(clock3d * 1.1 + it.x * 3) * 0.05 + (win ? Math.sin(clock3d * 7) * 0.12 : 0);
     ud.head.rotation.x = hitK * -0.3 + (it.dead ? -0.4 : 0) + headX;
     if (ud.scarf) ud.scarf.rotation.x = 0.25 + ud.move * 0.9 + Math.sin(clock3d * 3 + it.x) * 0.12;
-    if (ud.eyes) { // 눈 깜빡임 (기절하거나 쓰러지면 감아요)
+    if (ud.face) { // 눈 깜빡임 (기절하거나 쓰러지면 감아요): 얼굴 그림을 바꿔 끼워요
       if ((ud.blinkT = (ud.blinkT ?? 1 + Math.random() * 3) - dt) < 0) ud.blinkT = 2 + Math.random() * 3.5;
-      const shut = ud.blinkT < 0.11 || it.dead || (f && f.stunT > 0), wide = hitK > 0 ? 1.25 : 1;
-      for (const e of ud.eyes) e.scale.y = e.userData.sy * (shut ? 0.12 : wide);
+      const shut = ud.blinkT < 0.11 || it.dead || (f && f.stunT > 0) ? 1 : 0;
+      if (ud.faceShut !== shut) { ud.faceShut = shut; ud.face.material.map = ud.faceTex[shut]; }
     }
     if (ud.ball) ud.ball.rotation.x += dt * 6 * ud.move;
   } else {
@@ -1423,8 +1358,8 @@ function placeUnit(it, dt) {
   }
   const a = it.alpha ?? 1;
   for (const m of ud.mats) {
-    const base = m.isMeshBasicMaterial ? 0.9 : 1;
-    m.transparent = a < 1 || m.isMeshBasicMaterial; m.opacity = a * base;
+    const base = m.isMeshBasicMaterial && !m.userData.opq ? 0.9 : 1;
+    m.transparent = a < 1 || m.userData.keepT || (m.isMeshBasicMaterial && !m.userData.opq); m.opacity = a * base;
     if (m.emissive && m.userData.e0 === undefined) m.userData.e0 = m.emissive.getHex();
     if (m.emissive) m.emissive.setHex(it.flash ? 0x3a3a3a : m.userData.e0);
   }

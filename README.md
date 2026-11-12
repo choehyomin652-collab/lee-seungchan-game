@@ -16,6 +16,7 @@
 | 전투 계산(공격력, 이동, 피해) | `js/battle.js` |
 | 상점 · 합성 · 라운드 진행 · 컴퓨터 반 | `js/game.js` |
 | 3D 경기장 · 친구 모양(머리, 옷) · 이펙트 | `js/render3d.js` |
+| 캐릭터 그리기 도구(만화 음영 · 외곽선 · 얼굴 그림 · 머리카락 · 부품 합치기) | `js/figure.js` |
 | 터치 · 정보창 · 설정 메뉴 | `js/ui.js` |
 | 레벨 확률 · 몬스터 · 기본 숫자 | `js/constants.js` |
 | 효과음 | `js/sound.js` |
@@ -57,7 +58,7 @@
 
 ## 파일 순서 (바꾸지 마세요)
 
-`index.html`이 `js/friends.js → skills → augments → constants → game → battle → robot → weapons → sound → online → photos → render3d → ui` 순서로 불러와요.
+`index.html`이 `js/friends.js → skills → augments → constants → game → battle → robot → weapons → sound → online → photos → figure → render3d → ui` 순서로 불러와요.
 "친구와 같이 하기"는 claude.ai 아티팩트로 올린 페이지에서만 켜져요 (`index.html`을 그냥 열면 "혼자 하기"만 돼요).
 같이 할 친구는 게임 주인이 아티팩트의 공유 메뉴에서 **이메일로 초대**해야 해요. "링크가 있는 누구나"로 연 사람은 실시간 방에 못 들어와요.
 새 파일을 만들면 `index.html`에 `<script>` 줄을 같은 방식으로 추가해야 해요.
