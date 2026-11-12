@@ -149,7 +149,9 @@ const TUNE = {
 const tuneOf = (def) => TUNE[def.n] || { hp: 1, ad: 1, sk: 1 };
 // 5코스트 ★3 = 전설. 만들기 아주 어려운 대신, 만들면 거의 무조건 이겨요 (체력·공격력·스킬에 곱하는 숫자)
 const LEGEND = { hp: 5, ad: 3, sk: 5 };
-const legendOf = (def, star) => (def.c === 5 && star >= 3 ? LEGEND : { hp: 1, ad: 1, sk: 1 });
+// 친구마다 따로 정한 전설 배율. 김예균 ★3 은 스킬이 아주 세서, 전설끼리 붙으면 정주환이 28%밖에 못 이겼어요 → 스킬 배율만 조금 낮춰서 정주환 약 55%
+const LEGEND_FOR = { "김예균": { hp: 5, ad: 3, sk: 4.5 } };
+const legendOf = (def, star) => (def.c === 5 && star >= 3 ? LEGEND_FOR[def.n] || LEGEND : { hp: 1, ad: 1, sk: 1 });
 const MAIN_TRAITS = ["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"];
 // rg = 육각 칸 사거리
 const CLASS = {
