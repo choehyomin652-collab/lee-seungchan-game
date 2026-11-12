@@ -807,7 +807,7 @@ const HAIR_STYLES = ["bowl", "spiky", "side", "buzz", "pomp", "curtain", "curly"
 function lookOf(def, h) {
   const L = (typeof LOOKS !== "undefined" && LOOKS[def.n]) || {};
   return { hair: L.hair || HAIR_STYLES[(h >> 7) % HAIR_STYLES.length], hc: L.hc ?? HAIRC[(h >> 3) % HAIRC.length], tip: L.tip, skin: SKINS[(L.skin ?? h) % SKINS.length],
-    tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: (L.head || 1.1) * 1.1, eye: (L.eye || 1) * 1.12, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [], eyes: L.eyes || "round", iris: L.iris };
+    tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: (L.head || 1.1) * 1.1, eye: (L.eye || 1) * 1.12, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [] };
 }
 let HAIR_FLAT = null, LOOK_GEO = null;
 function applyLook(LK, C) {
@@ -1199,7 +1199,7 @@ function buildStudent(def, enemy) {
   put(HG.skull, mSkin, 0, 0.0, -0.005, head).scale.set(SKULL_SX, SKULL_SY, SKULL_SZ);
   for (const s of [-1, 1]) put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
   // 얼굴: 눈·눈썹·코·입은 그림으로 그려 씌워요 (figure.js). 눈 깜빡임은 그림 두 장을 바꿔 끼워요
-  const irisHex = LK.iris ?? [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
+  const irisHex = [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
   ud.faceTex = faceTexFor(def, LK, fierce, kind, hairCol, irisHex, skin);
   ud.face = faceMesh(ud.faceTex); head.add(ud.face); ud.mats.push(ud.face.material);
   // 머리카락 (friends.js 의 LOOKS.hair 모양대로, figure.js)
