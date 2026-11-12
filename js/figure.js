@@ -8,6 +8,9 @@
 // ============================================================
 "use strict";
 
+// 얼굴(눈·눈썹·코·입)을 그릴지 여부. false 면 얼굴 없이 나와요 (되돌리려면 true)
+const SHOW_FACE = false;
+
 // ---------- 만화 음영 ----------
 let _TOON_GRAD = null;
 function toonGrad() {
