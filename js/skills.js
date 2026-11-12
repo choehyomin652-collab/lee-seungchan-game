@@ -13,13 +13,24 @@ const near = (list, c, d) => list.filter((o) => hexDist(o, c) <= d);
 const C = (k) => TOK[k];
 const SK = {
   "이승찬": { s: "다 같이 힘내자!", d: (P) => `체력이 낮은 아군 2명을 ${R0(170 * P)} 회복하고 보호막 ${R0(90 * P)}`,
-    run(B, u, P, t, al) { al.slice().sort(byHp).slice(0, 2).forEach((o) => { heal(B, o, 170 * P); o.shield += 90 * P; addFx(B, o.X, o.Y, 0.8, C("--c2")); addFx(B, o.X, o.Y, 1.2, "#ff9ac8", 0.7); addFloat(B, { X: o.X, Y: o.Y - 0.3 }, "♥", "#ff9ac8", true); }); } },
+    run(B, u, P, t, al) { al.slice().sort(byHp).slice(0, 2).forEach((o) => { heal(B, o, 170 * P); o.shield += 90 * P; addFx(B, o.X, o.Y, 0.8, C("--c2")); addFx(B, o.X, o.Y, 1.2, "#ff9ac8", 0.7); addFloat(B, { X: o.X, Y: o.Y - 0.3 }, "♥", "#ff9ac8", true); });
+      addHuge(B, u, "힘내자!", "#ffffff", "#ff9ac8", 2.2);
+      if (B.visual) B.zones.push({ kind: "hearts", step: stepTimer, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 0.9, targets: al.slice().sort(byHp).slice(0, 2) }); } },
   "이현": { s: "전력 질주", d: (P) => `4초 동안 공격 속도 +70%, 대상에게 공격력×1.2 + ${R0(90 * P)} 피해`,
-    run(B, u, P, t) { u.asBuff = 0.7; u.asBuffT = 4; if (t) { dealDamage(B, u, t, u.ad * 1.2 + 90 * P, "skill"); addFx(B, t.X, t.Y, 0.6, C("--danger"), 0.3); addFx(B, t.X, t.Y, 1.1, "#ffd36b", 0.4); } addFx(B, u.X, u.Y, 1.4, "#ffd36b", 0.5); addHuge(B, u, "질주!", "#ffffff", "#ffb43a", 2.2); } },
+    run(B, u, P, t) { u.asBuff = 0.7; u.asBuffT = 4; if (t) { dealDamage(B, u, t, u.ad * 1.2 + 90 * P, "skill"); addFx(B, t.X, t.Y, 0.6, C("--danger"), 0.3); addFx(B, t.X, t.Y, 1.1, "#ffd36b", 0.4); } addFx(B, u.X, u.Y, 1.4, "#ffd36b", 0.5); addHuge(B, u, "질주!", "#ffffff", "#ffb43a", 2.2);
+      if (B.visual && t) { // 잔상을 남기며 달려들어요
+        u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y;
+        const bx = u.X - (t.X - u.X) * 1.6, by = u.Y - (t.Y - u.Y) * 1.6;
+        B.zones.push({ kind: "tackle", step: stepTimer, team: u.team, owner: u, ax: bx, ay: by, X: t.X, Y: t.Y, t: 0, dur: 0.5, col: "#ffb43a" });
+        for (let i = 0; i < 3; i++) B.fx.push({ kind: "puff", X: bx + (u.X - bx) * i / 3, Y: by + (u.Y - by) * i / 3, t: 0.3 + i * 0.07, t0: 0.3 + i * 0.07 });
+        sfx("kick");
+      } } },
   "최효민": { s: "만능 플레이", d: (P) => `가까운 적 3명에게 동시에 공격력 + ${R0(80 * P)} 피해`,
-    run(B, u, P, t, al, fo) { fo.slice().sort((a, b) => hexDist(a, u) - hexDist(b, u)).slice(0, 3).forEach((o) => B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 14, col: C("--accent"), sz: 0.14, trail: 1, hit: () => { dealDamage(B, u, o, u.ad + 80 * P, "skill"); addFx(B, o.X, o.Y, 0.9, "#ffe66b", 0.35); } })); } },
+    run(B, u, P, t, al, fo) { fo.slice().sort((a, b) => hexDist(a, u) - hexDist(b, u)).slice(0, 3).forEach((o) => B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 14, col: C("--accent"), sz: 0.14, trail: 1, hit: () => { dealDamage(B, u, o, u.ad + 80 * P, "skill"); addFx(B, o.X, o.Y, 0.9, "#ffe66b", 0.35); addFx(B, o.X, o.Y, 1.4, "#ffffff", 0.3); } }));
+      addHuge(B, u, "스매시!", "#ffffff", "#7fc4ff", 2.2); if (B.visual) sfx("kick"); } },
   "전하율": { s: "약점 공략", d: (P) => `대상에게 ${R0(140 * P)} 피해, 4초 동안 받는 피해 +25%`,
-    run(B, u, P, t) { if (!t) return; dealDamage(B, u, t, 140 * P, "skill"); t.vuln = 0.25; t.vulnT = 4; addHuge(B, t, "약점!", "#ffffff", "#c86bff", 2.2); addFx(B, t.X, t.Y, 0.7, C("--c4")); addFx(B, t.X, t.Y, 1.3, "#ff5a4a", 0.6); } },
+    run(B, u, P, t) { if (!t) return; dealDamage(B, u, t, 140 * P, "skill"); t.vuln = 0.25; t.vulnT = 4; addHuge(B, t, "약점!", "#ffffff", "#c86bff", 2.2); addFx(B, t.X, t.Y, 0.7, C("--c4")); addFx(B, t.X, t.Y, 1.3, "#ff5a4a", 0.6);
+      if (B.visual) B.zones.push({ kind: "mark", step: stepMark, team: u.team, owner: u, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 4 }); } },
   "이준희": { s: "덩크슛", d: (P) => `대상 머리 위에 골대가 나타나고, 뛰어올라 내리꽂아요. 공격력×1.8 + ${R0(140 * P)} 피해 + 1초 기절, 주변 적 ${R0(60 * P)}`,
     run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "dunk", step: stepDunk, team: u.team, owner: u, P, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 0.9 }); } },
   "김현우": { s: "공식 대입", d: (P) => `대상 머리 위에 공식을 쓰고 값을 대입해 ${R0(200 * P)} 피해, 대상 체력이 절반 아래면 2배`,
@@ -147,6 +158,8 @@ function stepLegion(B, z, dt) {
 // ---------- 2코스트 스킬 연출 ----------
 // 시간만 흐르는 장판 (자리는 고정)
 function stepTimer(B, z, dt) { z.t += dt; if (z.t >= z.dur) z.done = 1; }
+// 전하율 "약점 공략": 약점이 남아 있는 동안 대상 위에 과녁이 따라다녀요
+function stepMark(B, z, dt) { z.t += dt; z.X = z.tgt.X; z.Y = z.tgt.Y; if (z.t >= z.dur || !z.tgt.alive || !(z.tgt.vulnT > 0)) z.done = 1; }
 // 이준희 "덩크슛": 골대가 나타나고(0.3초) 내리꽂기
 const DUNK_AT = 0.3;
 function stepDunk(B, z, dt) {

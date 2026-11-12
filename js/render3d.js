@@ -1282,7 +1282,10 @@ function fitCamera() {
   }
   camBase = { pos: camera.position.clone() };
 }
+// 작은 화면(폰)에서는 친구들을 조금 크게 그려요
+let UNIT_K = 1;
 function resize() {
+  UNIT_K = Math.min(window.innerWidth, window.innerHeight) < 520 ? 1.25 : 1;
   W = window.innerWidth; H = window.innerHeight; H3 = H;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
@@ -1355,7 +1358,7 @@ function collect(dt) {
 }
 function placeUnit(it, dt) {
   const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
-  const sc = (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.6 : 1)) * (it.bench ? 0.8 : 1);
+  const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.6 : 1)) * (it.bench ? 0.8 : 1);
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
   const pv = ud.prev || { x: it.x, z: it.z };
@@ -1671,7 +1674,7 @@ function drawFormula(z, dt) {
 function drawTackle(z, dt) {
   const g = useMesh(z, () => {
     const grp = new THREE.Group();
-    grp.userData.bars = [-0.22, 0, 0.22].map((o, i) => { const m = new THREE.Mesh(zgeo().bar, additive(i === 1 ? "#ffffff" : "#7fe0a0")); m.userData.o = o; grp.add(m); return m; });
+    grp.userData.bars = [-0.22, 0, 0.22].map((o, i) => { const m = new THREE.Mesh(zgeo().bar, additive(i === 1 ? "#ffffff" : z.col || "#7fe0a0")); m.userData.o = o; grp.add(m); return m; });
     return grp;
   });
   const x0 = worldX(z.ax), y0 = worldZ(z.ay), x1 = worldX(z.X), y1 = worldZ(z.Y), dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
@@ -1877,7 +1880,37 @@ function drawLegion(z, dt) {
     mk.position.set(fx, 0.28, fy); mk.scale.setScalar((f.mon.giant ? 1.8 : 0.9) * (f.landed ? 1 + (t - f.dropAt) * 4 : 1.3 - 0.3 * pre)); mk.material.opacity = (f.landed ? on : 0.9) * fade;
   });
 }
-const ZDRAW = { legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
+// ----- 1코스트 스킬 3D 연출 -----
+// 이승찬: 하트가 포물선으로 날아가 아군에게 닿아요
+function drawHearts(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group();
+    grp.userData.sp = z.targets.map(() => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex("♥", "heart", "rgba(255,154,200,.95)", "rgba(255,110,170,0)", "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
+    return grp;
+  });
+  const ux = worldX(z.owner.X), uy = worldZ(z.owner.Y);
+  g.position.set(0, 0, 0);
+  g.userData.sp.forEach((sp, i) => {
+    const o = z.targets[i], a = Math.min(1, z.t / 0.45), tx = worldX(o.X), ty = worldZ(o.Y), after = Math.max(0, z.t - 0.45);
+    sp.position.set(ux + (tx - ux) * a, 1.5 + Math.sin(a * Math.PI) * 1.6 + after * 1.2, uy + (ty - uy) * a);
+    sp.scale.setScalar(1.1 + Math.sin(z.t * 14 + i) * 0.12 + after * 1.5); sp.material.opacity = Math.max(0, 1 - after / 0.45);
+  });
+}
+// 전하율: 약점이 잡힌 적 위에서 도는 과녁
+function drawMark(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.rings = [1.0, 0.6].map((s, i) => { const m = new THREE.Mesh(GEO.ringFx, additive(i ? "#ffffff" : "#ff5a4a")); m.rotation.x = -Math.PI / 2; m.scale.setScalar(s); grp.add(m); return m; });
+    ud.cross = new THREE.Group(); grp.add(ud.cross);
+    for (let i = 0; i < 2; i++) { const b = new THREE.Mesh(zgeo().bar, additive("#c86bff")); b.scale.set(2.3, 1, 0.07); b.rotation.y = i * Math.PI / 2; ud.cross.add(b); }
+    return grp;
+  });
+  const ud = g.userData, t = z.t, pop = Math.min(1, t / 0.15), fade = Math.max(0, Math.min(1, (z.dur - t) / 0.4));
+  g.position.set(worldX(z.X), 0.29, worldZ(z.Y)); g.scale.setScalar(0.4 + 0.6 * pop + (1 - pop) * 1.2);
+  ud.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -3 : 2); r.material.opacity = (0.55 + Math.sin(t * 6) * 0.2) * fade; });
+  ud.cross.rotation.y += dt * 1.5; ud.cross.children.forEach((b) => (b.material.opacity = 0.6 * fade));
+}
+const ZDRAW = { hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();

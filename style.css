@@ -68,7 +68,8 @@ button:disabled { opacity: .45; }
 }
 .odds i { display: inline-block; width: var(--u); height: var(--u); border-radius: 50%; margin-right: calc(var(--u) * .4); }
 /* 왼쪽 시너지 */
-.traits { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 5); left: max(calc(var(--u) * 1.2), env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: calc(var(--u) * .6); max-height: 40vh; overflow: hidden; }
+.traits { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 5); left: max(calc(var(--u) * 1.2), env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: calc(var(--u) * .6); max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-mask-image: linear-gradient(#000 calc(100% - var(--u) * 3), transparent); mask-image: linear-gradient(#000 calc(100% - var(--u) * 3), transparent); padding-bottom: calc(var(--u) * 2); } /* 시너지가 많으면 밀어서 봐요 */
+.traits::-webkit-scrollbar { display: none; }
 .trait { display: flex; align-items: center; gap: var(--u); background: none; border: 0; padding: 0; color: #d4e2e6; font-family: var(--body); font-size: calc(var(--u) * 1.7); text-align: left; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
 .trait > span:last-child { background: rgba(6, 16, 20, .62); border-radius: calc(var(--u) * .6); padding: calc(var(--u) * .2) calc(var(--u) * .8); }
 .trait .hx { width: calc(var(--u) * 4.4); height: calc(var(--u) * 5); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: grid; place-items: center; background: #17323c; color: #86a6ae; font-family: var(--display); font-size: calc(var(--u) * 2); flex: none; }
