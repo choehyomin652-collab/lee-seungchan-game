@@ -72,13 +72,13 @@ const SK = {
       addFx(B, u.X, u.Y, 1.6, C("--c3")); addFx(B, u.X, u.Y, 2.3, "#ffffff", 0.7); addHuge(B, u, "철벽!", "#ffffff", "#4fa8ff", 2.4);
       if (B.visual) { B.zones.push({ kind: "goal", step: stepShow, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 1.4 }); S.shake = Math.max(S.shake || 0, 0.15); sfx("boom"); }
     } },
-  "김예균": { s: "이다연 군단", d: (P) => `하늘에 소환문을 열어 이다연을 최대 5명까지 떨어뜨려요 (각각 체력 ${R0(260 * P)}, 공격력 ${R0(28 * P)}). 떨어진 자리 옆 적에게 ${R0(60 * P)} 피해 + 0.5초 기절. 이미 있던 이다연은 체력을 채우고 4초 동안 공격 속도 +50%. 자신에게 보호막 ${R0(200 * P)}. ★3이 되면 이다연 6명과 함께 거대 이다연(체력 4배·공격력 3배)이 내려와요`,
+  "김예균": { s: "이다연 군단", d: (P, star) => `하늘에 소환문을 열어 이다연을 최대 5명까지 떨어뜨려요 (각각 체력 ${R0(260 * legionP(P, star))}, 공격력 ${R0(28 * legionP(P, star))}). 떨어진 자리 옆 적에게 ${R0(60 * P)} 피해 + 0.5초 기절. 이미 있던 이다연은 체력을 채우고 4초 동안 공격 속도 +50%. 자신에게 보호막 ${R0(200 * P)}. ★3이 되면 이다연 6명과 함께 거대 이다연(체력 4배·공격력 3배)이 내려와요`,
     run(B, u, P) {
       // 이미 있던 이다연: 체력 가득 + 공격 속도
       B.f.filter((o) => o.alive && o.owner === u).forEach((o) => { heal(B, o, o.maxHp); o.asBuff = Math.max(o.asBuff || 0, 0.5); o.asBuffT = 4; addFx(B, o.X, o.Y, 0.9, "#7ff0e0", 0.5); });
-      const legend = u.star >= 3;
-      const news = summon(B, u, P, legend ? 6 : 5);
-      if (legend) { const gi = summon(B, u, P, 99, { giant: 1, n: 1 }); news.push(...gi); }
+      const legend = u.star >= 3, Ps = legionP(P, u.star);
+      const news = summon(B, u, Ps, legend ? 6 : 5);
+      if (legend) { const gi = summon(B, u, Ps, 99, { giant: 1, n: 1 }); news.push(...gi); }
       news.forEach((f, i) => { f.dropAt = LEGION_AT + i * 0.08; f.dropT = 1; f.stunT = f.dropAt + 0.1; }); // 하늘에서 떨어지는 동안은 못 움직여요
       u.shield += 200 * P;
       B.zones.push({ kind: "legion", step: stepLegion, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, news, legend, dur: LEGION_AT + news.length * 0.08 + 0.7 });
@@ -118,6 +118,10 @@ const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", 
 const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아일체", "도(道)", "호접지몽", "지행합일"];
 const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5] };
 // 소환수 이다연: 김예균 주변 빈칸에 나타나요
+// ★3(전설)은 스킬 세기가 ×5 인데, 소환수는 체력과 공격력에 둘 다 곱해져서 실제 힘은 ×25 가 돼요.
+// 그래서 소환수 능력치에는 전설 배율을 LEGION_LEGEND_K 만큼만 곱해요 (전설끼리 붙어도 정주환과 비슷하게 싸우도록 맞춘 값)
+const LEGION_LEGEND_K = 0.5;
+const legionP = (P, star) => (star >= 3 ? P * LEGION_LEGEND_K : P);
 const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
 function summon(B, u, P, max, opt = {}) {
   const made = [];
