@@ -149,7 +149,7 @@ function toast(msg) {
 }
 function skillText(def, star) {
   const cf = 1 + (def.c - 1) * 0.22, P = cf * STARM[star] * tuneOf(def).sk * legendOf(def, star).sk;
-  if (SK[def.n]) return SK[def.n].d(P, star);
+  if (SK[def.n]) return SK[def.n].d(P);
   return {
     "수호자": `자신에게 보호막 ${Math.round(260 * P)}`,
     "돌격대": `대상에게 공격력×2 + ${Math.round(130 * P)} 피해`,

@@ -123,7 +123,7 @@ const CHAMPS = {
   "박준서": { title: "별자리 점성술사", kit: "mage", top: 0x6a2038, bottom: 0x2a2030, accent: 0xffd86b, metal: "gold", hair: "bowl", hc: 0x1c1612, skin: 0, head: "hood", weapon: "astrolabe", coat: 1 },
   "손태민": { title: "심연 마도사", kit: "mage", top: 0x1e1838, bottom: 0x14121e, accent: 0xb06aff, metal: "dark", hair: "slick", hc: 0x16110e, skin: 2, head: "crown", weapon: "abyssorb", coat: 1 },
   "정주환": { title: "천벌의 심판자", kit: "god", top: 0xf4ecd8, bottom: 0xe8e0c8, accent: 0xffd86b, metal: "gold", hair: "slick", hc: 0xe8c25a, tip: 0xfff0b0, skin: 0, head: "crown", weapon: "spear", acc: [["wings"]] },
-  "김예균": { title: "조류의 소환기사", kit: "guard", top: 0x1f7a78, bottom: 0x1e2a30, accent: 0x7ff0e0, metal: "steel", hair: "messy", hc: 0x1a1a1a, tip: 0x3fd8c8, skin: 0, head: "circlet", weapon: "crystalstaff" },
+  "김예균": { title: "심연의 마왕", kit: "guard", top: 0x3a0c16, bottom: 0x180a10, accent: 0xff3a4a, metal: "dark", hair: "messy", hc: 0x141014, tip: 0xc8202a, skin: 0, head: "circlet", weapon: "crystalstaff" },
 };
 // ---------- 밸런스 표 ----------
 // 친구마다 체력(hp) · 공격력(ad) · 스킬 세기(sk)에 곱하는 숫자예요. 1 = 그대로, 1.1 = 10% 강하게, 0.9 = 10% 약하게.

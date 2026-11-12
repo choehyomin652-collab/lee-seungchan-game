@@ -72,18 +72,14 @@ const SK = {
       addFx(B, u.X, u.Y, 1.6, C("--c3")); addFx(B, u.X, u.Y, 2.3, "#ffffff", 0.7); addHuge(B, u, "철벽!", "#ffffff", "#4fa8ff", 2.4);
       if (B.visual) { B.zones.push({ kind: "goal", step: stepShow, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 1.4 }); S.shake = Math.max(S.shake || 0, 0.15); sfx("boom"); }
     } },
-  "김예균": { s: "이다연 군단", d: (P, star) => `하늘에 소환문을 열어 이다연을 최대 5명까지 떨어뜨려요 (각각 체력 ${R0(260 * legionP(P, star))}, 공격력 ${R0(28 * legionP(P, star))}). 떨어진 자리 옆 적에게 ${R0(60 * P)} 피해 + 0.5초 기절. 이미 있던 이다연은 체력을 채우고 4초 동안 공격 속도 +50%. 자신에게 보호막 ${R0(200 * P)}. ★3이 되면 이다연 6명과 함께 거대 이다연(체력 4배·공격력 3배)이 내려와요`,
-    run(B, u, P) {
-      // 이미 있던 이다연: 체력 가득 + 공격 속도
-      B.f.filter((o) => o.alive && o.owner === u).forEach((o) => { heal(B, o, o.maxHp); o.asBuff = Math.max(o.asBuff || 0, 0.5); o.asBuffT = 4; addFx(B, o.X, o.Y, 0.9, "#7ff0e0", 0.5); });
-      const legend = u.star >= 3, Ps = legionP(P, u.star);
-      const news = summon(B, u, Ps, legend ? 6 : 5);
-      if (legend) { const gi = summon(B, u, Ps, 99, { giant: 1, n: 1 }); news.push(...gi); }
-      news.forEach((f, i) => { f.dropAt = LEGION_AT + i * 0.08; f.dropT = 1; f.stunT = f.dropAt + 0.1; }); // 하늘에서 떨어지는 동안은 못 움직여요
+  "김예균": { s: "심연 참격", d: (P) => `마왕의 홀을 휘둘러 핏빛 참격 8개를 연달아 날려요. 가까운 적부터 번갈아 베며 한 번에 ${R0(75 * P)} 피해. 마지막엔 적이 가장 많이 모인 곳을 십자·격자로 난도질해 둘레 1칸 적에게 0.12초마다 ${R0(30 * P)}씩 8번 피해. 자신에게 보호막 ${R0(200 * P)}. ★3이 되면 참격 14개, 난도질은 둘레 2칸에 12번`,
+    run(B, u, P, t, al, fo) {
+      if (!fo.some((o) => o.alive)) return;
+      const legend = u.star >= 3, n = legend ? 14 : 8;
       u.shield += 200 * P;
-      B.zones.push({ kind: "legion", step: stepLegion, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, news, legend, dur: LEGION_AT + news.length * 0.08 + 0.7 });
-      addHuge(B, u, legend ? "거대 이다연 강림!" : "이다연 군단!", "#ffffff", "#2fd0c0", legend ? 3.4 : 2.8);
-      if (B.visual) { sfx("charge"); S.shake = Math.max(S.shake || 0, 0.15); }
+      B.zones.push({ kind: "rend", step: stepRend, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, n, fired: 0, legend, cuts: 0, nCut: legend ? 12 : 8, rad: legend ? 2 : 1, gridAt: REND_AT + n * REND_GAP + 0.2, dur: REND_AT + n * REND_GAP + 0.2 + (legend ? 12 : 8) * 0.12 + 0.5 });
+      addHuge(B, u, "심연 참격!", "#ffffff", "#ff2a3a", legend ? 3.4 : 2.8);
+      if (B.visual) { sfx("charge"); S.shake = Math.max(S.shake || 0, 0.12); }
     } },
   "박현호": { s: "응원가", d: (P) => `무대 조명 아래서 응원가를 불러요. 아군 전체 5초 동안 공격 속도 +25%, ${R0(70 * P)} 회복`,
     run(B, u, P, t, al) {
@@ -118,10 +114,6 @@ const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", 
 const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아일체", "도(道)", "호접지몽", "지행합일"];
 const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5] };
 // 소환수 이다연: 김예균 주변 빈칸에 나타나요
-// ★3(전설)은 스킬 세기가 ×5 인데, 소환수는 체력과 공격력에 둘 다 곱해져서 실제 힘은 ×25 가 돼요.
-// 그래서 소환수 능력치에는 전설 배율을 LEGION_LEGEND_K 만큼만 곱해요 (전설끼리 붙어도 정주환과 비슷하게 싸우도록 맞춘 값)
-const LEGION_LEGEND_K = 0.5;
-const legionP = (P, star) => (star >= 3 ? P * LEGION_LEGEND_K : P);
 const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
 function summon(B, u, P, max, opt = {}) {
   const made = [];
@@ -140,6 +132,38 @@ function summon(B, u, P, max, opt = {}) {
     }
   }
   return made;
+}
+// 김예균 "심연 참격": 참격을 하나씩 날리고(REND_GAP초 간격), 마지막에 적이 몰린 곳을 격자로 난도질해요
+const REND_AT = 0.3, REND_GAP = 0.07;
+function stepRend(B, z, dt) {
+  z.t += dt;
+  const u = z.owner, foes = () => B.f.filter((o) => o.alive && o.team !== z.team);
+  z.X = u.X; z.Y = u.Y;
+  while (z.fired < z.n && z.t >= REND_AT + z.fired * REND_GAP) { // 참격 발사: 가까운 적부터 번갈아
+    const i = z.fired++; if (!u.alive) continue;
+    const live = foes().sort((a, b) => hexDist(a, u) - hexDist(b, u) || a.r - b.r || a.c - b.c); if (!live.length) continue;
+    const o = live[i % Math.min(live.length, 4)], P = z.P;
+    B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 15, col: "#ff2a3a", sz: 0.1, ck: "rend", ccol: i % 3 === 2 ? "#ff8a5a" : "#ff2a3a", tilt: (i % 2 ? 1 : -1) * (0.35 + (i % 3) * 0.25),
+      hit: () => { dealDamage(B, u, o, 75 * P, "skill"); addFx(B, o.X, o.Y, 0.7, "#ff2a3a", 0.25); } });
+    if (B.visual) sfx("kick");
+  }
+  if (z.t >= z.gridAt && !z.grid) { // 난도질 자리: 둘레에 적이 가장 많은 적
+    const live = foes();
+    if (live.length) {
+      const score = (c) => near(live, c, z.rad).length;
+      const c = live.slice().sort((a, b) => score(b) - score(a) || a.r - b.r || a.c - b.c)[0];
+      z.grid = { r: c.r, c: c.c, X: c.X, Y: c.Y };
+      addHuge(B, c, "난도질!", "#ffffff", "#ff2a3a", z.legend ? 3.2 : 2.6);
+      if (B.visual) { S.shake = Math.max(S.shake || 0, z.legend ? 0.45 : 0.25); sfx("boom"); }
+    } else z.grid = { none: 1 };
+  }
+  if (z.grid && !z.grid.none) while (z.cuts < z.nCut && z.t >= z.gridAt + z.cuts * 0.12) {
+    z.cuts++;
+    near(foes(), z.grid, z.rad).forEach((o) => dealDamage(B, u, o, 30 * z.P, "skill"));
+    addFx(B, z.grid.X, z.grid.Y, 0.6 + z.rad * 0.6, z.cuts % 2 ? "#ff2a3a" : "#ffffff", 0.2);
+    if (B.visual && z.cuts % 2) sfx("kick");
+  }
+  if (z.t >= z.dur) z.done = 1;
 }
 // 김예균 "이다연 군단": 소환문이 열리고(LEGION_AT초) 이다연이 하나씩 떨어져 쿵!
 const LEGION_AT = 0.6;

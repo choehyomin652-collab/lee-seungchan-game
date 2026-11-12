@@ -131,11 +131,11 @@ function attack(B, u, t) {
   u.atkT = ATK_T;
   if (u.rg > 1) {
     const wp = u.d >= 0 && WEAPONS[DEFS[u.d].n], pr = wp && wp.pr, who = u.d >= 0 && DEFS[u.d].n;
-    B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: who === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : pr && pr.col ? pr.col : u.team ? TOK["--danger"] : TOK["--chalk"], shape: pr && pr.shape, trail: pr && pr.shape === "plane" ? 1 : 0, sz: 0.1, hit: () => onHit(B, u, t) });
+    B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: who === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : pr && pr.col ? pr.col : u.team ? TOK["--danger"] : TOK["--chalk"], shape: pr && pr.shape, trail: pr && pr.shape === "plane" ? 1 : 0, sz: 0.1, who: who || null, hit: () => onHit(B, u, t) });
   }
   else {
     u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y;
-    if (B.visual) B.fx.push({ kind: "slash", X: t.X, Y: t.Y, ax: u.X, ay: u.Y, col: u.team ? "#ffb0a0" : "#fff6d0", t: 0.2, t0: 0.2, flip: (B.sn = (B.sn || 0) + 1) % 2 });
+    if (B.visual) B.fx.push({ kind: "slash", X: t.X, Y: t.Y, ax: u.X, ay: u.Y, col: u.team ? "#ffb0a0" : "#fff6d0", t: 0.26, t0: 0.26, flip: (B.sn = (B.sn || 0) + 1) % 2, who: !u.robot && u.d >= 0 ? DEFS[u.d].n : null });
     onHit(B, u, t);
   }
   gainMana(B, u, 10 + u.manaOnHit);
