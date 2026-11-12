@@ -73,31 +73,57 @@ const OUTFITS = {
 // hair: bowl(바가지) spiky(뾰족) side(옆으로 넘김) buzz(반삭) pomp(올림머리) curtain(가르마) curly(곱슬) mushroom(버섯)
 //       messy(부스스) mohawk(모히칸) slick(올백) flat(각진 스포츠) wavy(웨이브) long(긴 머리)
 // hc: 머리 색, tip: 포인트 염색 색, skin: 0~3(피부 톤), tall·wide: 키·체격 배율, head: 머리 크기 배율
-// eyes: 눈 모양(round 둥근·bright 반짝·sharp 날카로운·droopy 처진·almond 길쭉·sleepy 졸린·dot 점·fox 여우), iris: 눈동자 색, eye: 눈 크기 배율, mouth: smile(미소) grin(활짝) flat(무표정) pout(꾹 다문 입), brow: 눈썹 굵기 배율
+// eye: 눈 크기 배율, mouth: smile(미소) grin(활짝) flat(무표정) pout(꾹 다문 입), brow: 눈썹 굵기 배율
 // acc: 장식 목록 — [종류, 색 또는 옵션...]
 //   headband(머리띠, "tails"=뒤로 날리는 끈) sweatband(땀 밴드) cap(야구 모자, "back"=거꾸로) beanie(비니) beret(베레모)
 //   glasses(안경: round·square·rimless·tint·sport) pencil(귀에 꽂은 연필) bandage(반창고: cheek·nose) blush(볼 터치)
 //   scarf(목도리) towel(목 수건) whistle(호루라기) armband(완장) wristband(손목 밴드) sleeve(한쪽 팔 토시)
 //   backpack(책가방) pendant(빛나는 목걸이) bowtie(나비넥타이) badge(가슴 배지 글자) backprint(등 글자) laurel(월계관) wings(날개)
 const LOOKS = {
-  "이승찬": { hair: "curly", eyes: "droopy", iris: 0x8a5a2a, hc: 0x6b4226, skin: 2, tall: 0.96, wide: 1.04, eye: 1.12, mouth: "grin", acc: [["scarf", 0xfff0c8], ["headband", 0xffd24a], ["backprint", "♥", 0xffffff]] },
-  "이현": { hair: "spiky", eyes: "round", iris: 0x3a2414, hc: 0x16110e, tip: 0xc8323a, skin: 1, tall: 1.0, wide: 1.02, mouth: "pout", brow: 1.35, acc: [["headband", 0xe8402e, "tails"], ["bandage", "cheek"], ["wristband", 0xffffff]] },
-  "최효민": { hair: "side", eyes: "almond", iris: 0x6a4a28, hc: 0x2a1d15, skin: 0, tall: 0.97, wide: 0.95, acc: [["cap", 0x2f5fa8, "back"], ["glasses", "sport", 0x2f5fa8], ["wristband", 0x2f5fa8]] },
-  "전하율": { hair: "curtain", eyes: "sleepy", iris: 0x1c1c24, hc: 0x121212, skin: 2, tall: 1.02, wide: 0.96, mouth: "flat", brow: 1.2, acc: [["beanie", 0xc8323a], ["bandage", "nose"]] },
-  "이준희": { hair: "flat", eyes: "bright", iris: 0x4a3020, hc: 0x1c1612, skin: 3, tall: 1.09, wide: 1.03, mouth: "grin", acc: [["sweatband", 0x5a2a8a], ["sleeve", 0x1a1a1e], ["wristband", 0x5a2a8a]] },
-  "김현우": { hair: "curtain", eyes: "dot", iris: 0x24304a, hc: 0x4a3324, skin: 0, tall: 0.99, wide: 0.93, mouth: "flat", brow: 1.15, acc: [["glasses", "round", 0x1d1d1d], ["pencil"], ["backpack", 0x2a3550]] },
-  "이보경": { hair: "buzz", eyes: "sharp", iris: 0x4a5a2a, hc: 0x1c1612, skin: 3, tall: 1.02, wide: 1.14, mouth: "pout", acc: [["armband", 0xffd24a], ["sweatband", 0xf4f4f4]] },
-  "윤동욱": { hair: "mohawk", eyes: "fox", iris: 0x1a1a1a, hc: 0x141414, skin: 1, tall: 1.0, wide: 1.06, mouth: "pout", brow: 1.3, acc: [["headband", 0xf6f4ee, "tails"], ["bandage", "cheek"]] },
-  "김민기": { hair: "mushroom", eyes: "droopy", iris: 0x5a3a8a, hc: 0x3a291c, skin: 2, tall: 0.95, wide: 0.97, eye: 1.1, mouth: "smile", acc: [["beret", 0x7a5cd0], ["glasses", "round", 0x7a5cd0], ["pencil"], ["backpack", 0x7a5cd0]] },
-  "임시온": { hair: "side", eyes: "round", iris: 0x7a5a22, hc: 0x2a1d15, skin: 1, tall: 1.06, wide: 1.12, mouth: "smile", acc: [["cap", 0x2b303b, "", 0xd8e83a]] },
-  "김예균": { hair: "messy", eyes: "round", iris: 0x2a8a80, hc: 0x1a1a1a, tip: 0x3fd8c8, skin: 0, tall: 1.03, wide: 1.08, mouth: "smile", acc: [["sweatband", 0x7ff0e0], ["pendant", 0x7ff0e0], ["wristband", 0x7ff0e0], ["backprint", "✦", 0x7ff0e0]] },
-  "박현호": { hair: "side", eyes: "bright", iris: 0x9a6a30, hc: 0x3a291c, skin: 2, tall: 0.98, wide: 1.0, eye: 1.08, mouth: "grin", acc: [["whistle"]] },
-  "조하윤": { hair: "bowl", eyes: "fox", iris: 0x2a7a9a, hc: 0x101014, tip: 0x3fd8ff, skin: 0, tall: 0.97, wide: 0.92, mouth: "flat", acc: [["glasses", "tint", 0x3fd8ff], ["backprint", "GG", 0x3fd8ff]] },
-  "박희찬": { hair: "wavy", eyes: "almond", iris: 0x2a1a10, hc: 0x2a1d15, skin: 1, tall: 1.03, wide: 0.99, mouth: "smile", acc: [["headband", 0x101010], ["glasses", "rimless", 0xcfd8e0], ["armband", 0xf4f4f4]] },
-  "진성욱": { hair: "buzz", eyes: "sharp", iris: 0x5a2a1a, hc: 0x141414, skin: 3, tall: 1.07, wide: 1.24, mouth: "pout", brow: 1.4, acc: [["towel", 0xf4f4f4], ["wristband", 0xe8402e], ["bandage", "nose"]] },
-  "박준서": { hair: "bowl", eyes: "dot", iris: 0x1c2a4a, hc: 0x1c1612, skin: 0, tall: 0.94, wide: 0.95, eye: 1.05, mouth: "smile", acc: [["glasses", "square", 0x1d1d1d], ["bowtie", 0xffcf4a], ["badge", "π", "#ffffff", "#7a2a3a"], ["pencil"], ["backpack", 0x7a2a3a]] },
-  "손태민": { hair: "slick", eyes: "sleepy", iris: 0x3a4a5a, hc: 0x16110e, skin: 2, tall: 1.01, wide: 0.96, mouth: "flat", acc: [["glasses", "rimless", 0xd8b45a], ["armband", 0xc8323a], ["backpack", 0x1f2a44]] },
-  "정주환": { hair: "slick", eyes: "sharp", iris: 0xe0b030, hc: 0xe8c25a, tip: 0xfff0b0, skin: 0, tall: 1.1, wide: 1.1, head: 1.0, mouth: "flat", brow: 1.2, acc: [["laurel"], ["wings"]] },
+  "이승찬": { hair: "curly", hc: 0x6b4226, skin: 2, tall: 0.96, wide: 1.04, eye: 1.12, mouth: "grin", acc: [["scarf", 0xfff0c8], ["headband", 0xffd24a], ["backprint", "♥", 0xffffff]] },
+  "이현": { hair: "spiky", hc: 0x16110e, tip: 0xc8323a, skin: 1, tall: 1.0, wide: 1.02, mouth: "pout", brow: 1.35, acc: [["headband", 0xe8402e, "tails"], ["bandage", "cheek"], ["wristband", 0xffffff]] },
+  "최효민": { hair: "side", hc: 0x2a1d15, skin: 0, tall: 0.97, wide: 0.95, acc: [["cap", 0x2f5fa8, "back"], ["glasses", "sport", 0x2f5fa8], ["wristband", 0x2f5fa8]] },
+  "전하율": { hair: "curtain", hc: 0x121212, skin: 2, tall: 1.02, wide: 0.96, mouth: "flat", brow: 1.2, acc: [["beanie", 0xc8323a], ["bandage", "nose"]] },
+  "이준희": { hair: "flat", hc: 0x1c1612, skin: 3, tall: 1.09, wide: 1.03, mouth: "grin", acc: [["sweatband", 0x5a2a8a], ["sleeve", 0x1a1a1e], ["wristband", 0x5a2a8a]] },
+  "김현우": { hair: "curtain", hc: 0x4a3324, skin: 0, tall: 0.99, wide: 0.93, mouth: "flat", brow: 1.15, acc: [["glasses", "round", 0x1d1d1d], ["pencil"], ["backpack", 0x2a3550]] },
+  "이보경": { hair: "buzz", hc: 0x1c1612, skin: 3, tall: 1.02, wide: 1.14, mouth: "pout", acc: [["armband", 0xffd24a], ["sweatband", 0xf4f4f4]] },
+  "윤동욱": { hair: "mohawk", hc: 0x141414, skin: 1, tall: 1.0, wide: 1.06, mouth: "pout", brow: 1.3, acc: [["headband", 0xf6f4ee, "tails"], ["bandage", "cheek"]] },
+  "김민기": { hair: "mushroom", hc: 0x3a291c, skin: 2, tall: 0.95, wide: 0.97, eye: 1.1, mouth: "smile", acc: [["beret", 0x7a5cd0], ["glasses", "round", 0x7a5cd0], ["pencil"], ["backpack", 0x7a5cd0]] },
+  "임시온": { hair: "side", hc: 0x2a1d15, skin: 1, tall: 1.06, wide: 1.12, mouth: "smile", acc: [["cap", 0x2b303b, "", 0xd8e83a]] },
+  "김예균": { hair: "messy", hc: 0x1a1a1a, tip: 0x3fd8c8, skin: 0, tall: 1.03, wide: 1.08, mouth: "smile", acc: [["sweatband", 0x7ff0e0], ["pendant", 0x7ff0e0], ["wristband", 0x7ff0e0], ["backprint", "✦", 0x7ff0e0]] },
+  "박현호": { hair: "side", hc: 0x3a291c, skin: 2, tall: 0.98, wide: 1.0, eye: 1.08, mouth: "grin", acc: [["whistle"]] },
+  "조하윤": { hair: "bowl", hc: 0x101014, tip: 0x3fd8ff, skin: 0, tall: 0.97, wide: 0.92, mouth: "flat", acc: [["glasses", "tint", 0x3fd8ff], ["backprint", "GG", 0x3fd8ff]] },
+  "박희찬": { hair: "wavy", hc: 0x2a1d15, skin: 1, tall: 1.03, wide: 0.99, mouth: "smile", acc: [["headband", 0x101010], ["glasses", "rimless", 0xcfd8e0], ["armband", 0xf4f4f4]] },
+  "진성욱": { hair: "buzz", hc: 0x141414, skin: 3, tall: 1.07, wide: 1.24, mouth: "pout", brow: 1.4, acc: [["towel", 0xf4f4f4], ["wristband", 0xe8402e], ["bandage", "nose"]] },
+  "박준서": { hair: "bowl", hc: 0x1c1612, skin: 0, tall: 0.94, wide: 0.95, eye: 1.05, mouth: "smile", acc: [["glasses", "square", 0x1d1d1d], ["bowtie", 0xffcf4a], ["badge", "π", "#ffffff", "#7a2a3a"], ["pencil"], ["backpack", 0x7a2a3a]] },
+  "손태민": { hair: "slick", hc: 0x16110e, skin: 2, tall: 1.01, wide: 0.96, mouth: "flat", acc: [["glasses", "rimless", 0xd8b45a], ["armband", 0xc8323a], ["backpack", 0x1f2a44]] },
+  "정주환": { hair: "slick", hc: 0xe8c25a, tip: 0xfff0b0, skin: 0, tall: 1.1, wide: 1.1, head: 1.0, mouth: "flat", brow: 1.2, acc: [["laurel"], ["wings"]] },
+};
+// ---------- 판타지 영웅 모습 (CHAMPS) ----------
+// 학교 옷 대신 각자 스킬에 어울리는 판타지 영웅 차림이에요. 표에 있는 친구는 이 모습이 OUTFITS·LOOKS 보다 먼저 쓰여요.
+// kit: guard(판금 기사) warrior(전사) ranger(사냥꾼) mage(마법사) bard(음유시인) god(신) monk(무도가) assassin(암살자) juggernaut(중갑 전사)
+// head: helm(투구) horned(뿔 투구) hood(두건) circlet(머리띠 관) mask(복면) visor(빛나는 눈가리개) crown(왕관) band(머리 끈) none
+// weapon: sword blades greataxe hammer bow crossbow rifle tome shield bo quill gauntlets horn astrolabe abyssorb spear crystalstaff sunstaff
+// metal: steel gold dark bronze, scar: 1 이면 볼에 흉터, paint: 얼굴 문양 색
+const CHAMPS = {
+  "이승찬": { title: "새벽빛 사제", kit: "bard", top: 0xd88a34, bottom: 0x5a3e26, accent: 0xfff0c0, metal: "gold", hair: "curly", hc: 0x6b4226, skin: 2, head: "circlet", weapon: "sunstaff", coat: 1 },
+  "이현": { title: "진홍 질주검", kit: "warrior", top: 0xa82830, bottom: 0x2a1a1c, accent: 0xff6a3a, metal: "dark", hair: "spiky", hc: 0x16110e, tip: 0xc8323a, skin: 1, head: "band", weapon: "blades", paint: 0xc8323a },
+  "최효민": { title: "폭풍 궁수", kit: "ranger", top: 0x2f5f98, bottom: 0x3a3a44, accent: 0xbfe0ff, metal: "steel", hair: "side", hc: 0x2a1d15, skin: 0, head: "hood", weapon: "bow" },
+  "전하율": { title: "그림자 저격자", kit: "assassin", top: 0x1e2028, bottom: 0x1a1a20, accent: 0xe8402e, metal: "dark", hair: "curtain", hc: 0x121212, skin: 2, head: "mask", weapon: "crossbow", scar: 1 },
+  "이준희": { title: "천둥 강타자", kit: "warrior", top: 0x5a2a8a, bottom: 0x2a2030, accent: 0xf0a020, metal: "bronze", hair: "flat", hc: 0x1c1612, skin: 3, head: "none", weapon: "hammer", paint: 0xf0a020 },
+  "김현우": { title: "비전 학자", kit: "mage", top: 0x23305a, bottom: 0x2a2e3a, accent: 0x7fd0ff, metal: "steel", hair: "curtain", hc: 0x4a3324, skin: 0, head: "circlet", weapon: "tome", coat: 1 },
+  "이보경": { title: "에메랄드 방패기사", kit: "guard", top: 0x2a7a4a, bottom: 0x2a3a30, accent: 0xe8c25a, metal: "steel", hair: "buzz", hc: 0x1c1612, skin: 3, head: "helm", weapon: "shield" },
+  "윤동욱": { title: "음양 무도가", kit: "monk", top: 0xf0ece0, bottom: 0x1a1a1e, accent: 0x111111, metal: "bronze", hair: "mohawk", hc: 0x141414, skin: 1, head: "band", weapon: "bo" },
+  "김민기": { title: "룬 필경사", kit: "mage", top: 0x5a3c9a, bottom: 0x2e2840, accent: 0xd8b0ff, metal: "gold", hair: "mushroom", hc: 0x3a291c, skin: 2, head: "hood", weapon: "quill", coat: 1 },
+  "임시온": { title: "철문 수문장", kit: "juggernaut", top: 0x8a7a1a, bottom: 0x1e2126, accent: 0xf0e040, metal: "dark", hair: "side", hc: 0x2a1d15, skin: 1, head: "horned", weapon: "gauntlets" },
+  "박현호": { title: "전장 음유시인", kit: "bard", top: 0x9a2a30, bottom: 0x2a3550, accent: 0xf2e6c8, metal: "gold", hair: "side", hc: 0x3a291c, skin: 2, head: "none", weapon: "horn", coat: 1 },
+  "조하윤": { title: "심연의 사수", kit: "assassin", top: 0x16161e, bottom: 0x101016, accent: 0x3fd8ff, metal: "dark", hair: "bowl", hc: 0x101014, tip: 0x3fd8ff, skin: 0, head: "visor", weapon: "rifle", coat: 1 },
+  "박희찬": { title: "불꽃 창기병", kit: "ranger", top: 0x2a4ab0, bottom: 0xe8e8f0, accent: 0xff8a2a, metal: "steel", hair: "wavy", hc: 0x2a1d15, skin: 1, head: "circlet", weapon: "spear" },
+  "진성욱": { title: "강철 파괴자", kit: "juggernaut", top: 0x4a4e56, bottom: 0x1e2126, accent: 0xe8402e, metal: "dark", hair: "buzz", hc: 0x141414, skin: 3, head: "helm", weapon: "greataxe", scar: 1 },
+  "박준서": { title: "별자리 점성술사", kit: "mage", top: 0x6a2038, bottom: 0x2a2030, accent: 0xffd86b, metal: "gold", hair: "bowl", hc: 0x1c1612, skin: 0, head: "hood", weapon: "astrolabe", coat: 1 },
+  "손태민": { title: "심연 마도사", kit: "mage", top: 0x1e1838, bottom: 0x14121e, accent: 0xb06aff, metal: "dark", hair: "slick", hc: 0x16110e, skin: 2, head: "crown", weapon: "abyssorb", coat: 1 },
+  "정주환": { title: "천벌의 심판자", kit: "god", top: 0xf4ecd8, bottom: 0xe8e0c8, accent: 0xffd86b, metal: "gold", hair: "slick", hc: 0xe8c25a, tip: 0xfff0b0, skin: 0, head: "crown", weapon: "spear", acc: [["wings"]] },
+  "김예균": { title: "조류의 소환기사", kit: "guard", top: 0x1f7a78, bottom: 0x1e2a30, accent: 0x7ff0e0, metal: "steel", hair: "messy", hc: 0x1a1a1a, tip: 0x3fd8c8, skin: 0, head: "circlet", weapon: "crystalstaff" },
 };
 // ---------- 밸런스 표 ----------
 // 친구마다 체력(hp) · 공격력(ad) · 스킬 세기(sk)에 곱하는 숫자예요. 1 = 그대로, 1.1 = 10% 강하게, 0.9 = 10% 약하게.

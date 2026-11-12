@@ -805,9 +805,12 @@ function chestTex(text, col = "#ffffff", bg = null) {
 // ----- 생김새(스킨): 머리 모양 · 표정 · 장식 (표는 friends.js 의 LOOKS) -----
 const HAIR_STYLES = ["bowl", "spiky", "side", "buzz", "pomp", "curtain", "curly", "mushroom", "messy", "wavy"];
 function lookOf(def, h) {
+  const CH = champOf(def);
+  if (CH) return { hair: CH.hair, hc: CH.hc, tip: CH.tip, skin: SKINS[(CH.skin ?? h) % SKINS.length], tall: CH.tall || 1.03, wide: CH.wide || (CH.kit === "juggernaut" ? 1.16 : CH.kit === "guard" || CH.kit === "warrior" ? 1.08 : 1.0),
+    head: 1.0, eye: 1.0, mouth: CH.mouth || "flat", brow: 1.5, acc: CH.acc || [], hero: 1 };
   const L = (typeof LOOKS !== "undefined" && LOOKS[def.n]) || {};
   return { hair: L.hair || HAIR_STYLES[(h >> 7) % HAIR_STYLES.length], hc: L.hc ?? HAIRC[(h >> 3) % HAIRC.length], tip: L.tip, skin: SKINS[(L.skin ?? h) % SKINS.length],
-    tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: (L.head || 1.1) * 1.1, eye: (L.eye || 1) * 1.12, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [], eyes: L.eyes || "round", iris: L.iris };
+    tall: L.tall || 0.97 + ((h >> 11) % 9) * 0.012, wide: L.wide || 0.95 + ((h >> 15) % 9) * 0.015, head: (L.head || 1.1) * 1.1, eye: (L.eye || 1) * 1.12, mouth: L.mouth || "", brow: L.brow || 1, acc: L.acc || [] };
 }
 let HAIR_FLAT = null, LOOK_GEO = null;
 function applyLook(LK, C) {
@@ -958,11 +961,108 @@ function armorGeo() {
   });
 }
 const ROLE_KIT = { "수호자": "guard", "돌격대": "warrior", "저격수": "ranger", "천재": "mage", "응원단": "bard", "신": "god" };
+// ----- 판타지 영웅: 투구·두건 등 머리 장비와 무기 (표는 friends.js 의 CHAMPS) -----
+const champOf = (def) => (!def.plain && typeof CHAMPS !== "undefined" && CHAMPS[def.n]) || null;
+let CHG = null;
+function champGeo() {
+  if (CHG) return CHG;
+  return (CHG = {
+    hood: new THREE.SphereGeometry(0.265, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.6), mask: new THREE.SphereGeometry(0.212, 18, 10, Math.PI / 2 - 1.05, 2.1, Math.PI * 0.53, Math.PI * 0.3),
+    rim: new THREE.TorusGeometry(0.228, 0.022, 6, 26), band: new THREE.TorusGeometry(0.212, 0.016, 6, 26), visor: new THREE.TorusGeometry(0.205, 0.028, 6, 20, Math.PI),
+    noseGuard: new THREE.BoxGeometry(0.035, 0.13, 0.03), cheek: new THREE.BoxGeometry(0.05, 0.12, 0.09), horn: new THREE.ConeGeometry(0.055, 0.26, 10), spike: new THREE.ConeGeometry(0.03, 0.13, 6),
+    gem: new THREE.OctahedronGeometry ? new THREE.OctahedronGeometry(0.03) : new THREE.SphereGeometry(0.03, 6, 4), scar: new THREE.BoxGeometry(0.008, 0.07, 0.006), paint: new THREE.BoxGeometry(0.012, 0.075, 0.006),
+    grip: new THREE.CylinderGeometry(0.02, 0.02, 0.16, 8), guard: new THREE.BoxGeometry(0.18, 0.03, 0.04), blade: new THREE.BoxGeometry(0.055, 0.6, 0.014), tip: new THREE.ConeGeometry(0.039, 0.1, 4),
+    pommel: new THREE.SphereGeometry(0.03, 8, 6), haft: new THREE.CylinderGeometry(0.022, 0.022, 1, 8), axe: new THREE.CylinderGeometry(0.22, 0.22, 0.024, 18, 1, false, 0, Math.PI),
+    hammer: new THREE.BoxGeometry(0.17, 0.17, 0.32), bow: new THREE.TorusGeometry(0.42, 0.018, 6, 26, Math.PI * 0.9), string: new THREE.BoxGeometry(0.004, 0.8, 0.004),
+    stock: new THREE.BoxGeometry(0.06, 0.38, 0.07), barrel: new THREE.CylinderGeometry(0.025, 0.03, 0.75, 10), scope: new THREE.CylinderGeometry(0.025, 0.025, 0.2, 10),
+    book: new THREE.BoxGeometry(0.24, 0.3, 0.06), page: new THREE.BoxGeometry(0.22, 0.28, 0.05), tower: new THREE.BoxGeometry(0.38, 0.56, 0.045), emblem: new THREE.CylinderGeometry(0.09, 0.09, 0.02, 6),
+    vane: new THREE.SphereGeometry(0.1, 12, 8), fist: new THREE.SphereGeometry(0.1, 14, 10), hornCone: new THREE.ConeGeometry(0.075, 0.38, 14, 1, true), ringA: new THREE.TorusGeometry(0.13, 0.01, 6, 28),
+    orb: new THREE.SphereGeometry(0.075, 16, 12), spearHead: new THREE.OctahedronGeometry ? new THREE.OctahedronGeometry(0.075) : new THREE.SphereGeometry(0.07, 6, 4), ray: new THREE.ConeGeometry(0.022, 0.12, 5),
+    crownBand: new THREE.TorusGeometry(0.215, 0.028, 6, 26), tabardLong: new THREE.BoxGeometry(0.17, 0.62, 0.02),
+  });
+}
+function champMetal(mk, kind) {
+  return kind === "gold" ? mk(0xd8b45a, 0.28, { metalness: 0.9 }) : kind === "dark" ? mk(0x3a3e48, 0.35, { metalness: 0.85 }) : kind === "bronze" ? mk(0xa8723a, 0.32, { metalness: 0.85 }) : mk(0x9aa4b4, 0.3, { metalness: 0.88 });
+}
+function buildChampHead(CH, C) {
+  const { put, mk, head, mHair } = C, G = champGeo(), metal = champMetal(mk, CH.metal), trim = mk(0xd8b45a, 0.28, { metalness: 0.9 });
+  const cloth = mk(CH.top, 0.9, { side: THREE.DoubleSide }), glowM = (hex) => mk(hex, 0.2, { emissive: lin(hex), emissiveIntensity: 1.4 });
+  switch (CH.head) {
+    case "helm": case "horned": {
+      const cap = put(GEO.hairCap, metal, 0, 0.045, -0.004, head); cap.scale.set(1.1, 1.12, 1.12); cap.rotation.x = -0.12;
+      const rim = put(G.rim, trim, 0, 0.06, 0.0, head); rim.rotation.x = Math.PI / 2 - 0.12; rim.scale.set(1.0, 1.04, 1.4);
+      put(G.noseGuard, metal, 0, 0.0, 0.215, head);
+      for (const s of [-1, 1]) { const ck = put(G.cheek, metal, s * 0.17, -0.04, 0.09, head); ck.rotation.y = s * 0.55; }
+      if (CH.head === "horned") for (const s of [-1, 1]) { const h1 = put(G.horn, mk(0xe8e0c8, 0.6), s * 0.2, 0.2, 0.0, head); h1.rotation.z = -s * 0.9; const h2 = put(G.horn, mk(0xe8e0c8, 0.6), s * 0.31, 0.33, 0.0, head); h2.scale.set(0.6, 0.8, 0.6); h2.rotation.z = -s * 0.25; }
+      else put(G.spike, trim, 0, 0.29, -0.02, head).scale.set(1.2, 1.4, 1.2);
+      break;
+    }
+    case "hood": {
+      const hd = put(G.hood, cloth, 0, 0.03, -0.025, head); hd.rotation.x = -0.32; hd.scale.set(1.0, 1.08, 1.06);
+      const inner = put(G.band, mk(0x0e0e14, 0.9), 0, 0.02, 0.12, head); inner.rotation.x = -0.32 + Math.PI / 2 - 0.7; inner.scale.set(1.0, 1.0, 2.2);
+      break;
+    }
+    case "mask": {
+      put(G.mask, mk(0x14141a, 0.85, { side: THREE.DoubleSide }), 0, 0.0, 0.004, head).scale.set(1.04, 1.04, 1.06);
+      const b = put(G.band, mk(CH.accent, 0.8), 0, 0.1, -0.005, head); b.rotation.x = Math.PI / 2 - 0.1; b.scale.set(0.98, 1.04, 1.6);
+      break;
+    }
+    case "visor": { const v = put(G.visor, glowM(CH.accent), 0, 0.022, 0.0, head); v.rotation.x = Math.PI / 2; v.scale.set(1.0, 1.0, 1.4); put(G.band, metal, 0, 0.022, -0.01, head).rotation.x = Math.PI / 2; break; }
+    case "circlet": { const c = put(G.band, trim, 0, 0.075, -0.005, head); c.rotation.x = Math.PI / 2 - 0.16; put(G.gem, glowM(CH.accent), 0, 0.105, 0.205, head).scale.set(1.1, 1.5, 0.8); break; }
+    case "crown": {
+      const c = put(G.crownBand, trim, 0, 0.13, -0.01, head); c.rotation.x = Math.PI / 2 - 0.1;
+      for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + Math.PI / 2; const sp = put(G.spike, trim, Math.cos(a) * 0.21, 0.2, Math.sin(a) * 0.21 - 0.01, head); sp.scale.set(1, i === 0 ? 1.6 : 1.1, 1); }
+      put(G.gem, glowM(CH.accent), 0, 0.15, 0.23, head).scale.setScalar(1.4);
+      break;
+    }
+    case "band": { const b = put(G.band, mk(CH.accent === 0x111111 ? 0xf0ece0 : CH.accent, 0.85), 0, 0.1, -0.005, head); b.rotation.x = Math.PI / 2 - 0.1; b.scale.set(1.0, 1.04, 2.2); for (const s of [-1, 1]) { const t = put(G.paint, b.material, s * 0.03, 0.0, -0.23, head); t.scale.set(3, 2.2, 1); t.rotation.set(0.4, 0, s * 0.3); } break; }
+  }
+  if (CH.scar) { const sc = put(G.scar, mk(0x8a4a44, 0.8), 0.1, -0.02, 0.165, head); sc.rotation.set(0, 0.55, 0.35); }
+  if (CH.paint != null) for (const s of [-1, 1]) for (let i = 0; i < 2; i++) { const p = put(G.paint, mk(CH.paint, 0.8), s * (0.1 + i * 0.022), -0.035, 0.16 - i * 0.012, head); p.rotation.set(0, s * 0.5, s * 0.15); }
+}
+function buildChampWeapon(CH, C) {
+  const { L, R, mk } = C, G = champGeo(), metal = champMetal(mk, CH.metal), trim = mk(0xd8b45a, 0.28, { metalness: 0.9 });
+  const wood = mk(0x4a3222, 0.7), leatherW = mk(0x3a2a20, 0.8), glowM = (hex, k = 1.5) => mk(hex, 0.2, { emissive: lin(hex), emissiveIntensity: k });
+  const holder = (hand, rx = Math.PI / 2 - 0.4) => { const w = new THREE.Group(); w.position.set(0, -0.4, 0.04); w.rotation.x = rx; hand.add(w); return w; };
+  const add = (w, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; w.add(m); return m; };
+  const sword = (w, s = 1, bladeM = metal) => {
+    add(w, G.grip, leatherW, 0, 0, 0).scale.setScalar(s); add(w, G.pommel, trim, 0, -0.09 * s, 0).scale.setScalar(s);
+    add(w, G.guard, trim, 0, 0.085 * s, 0).scale.setScalar(s); const b = add(w, G.blade, bladeM, 0, 0.4 * s, 0); b.scale.setScalar(s);
+    add(w, G.tip, bladeM, 0, 0.75 * s, 0).scale.set(s, s, s * 0.36);
+  };
+  const staff = (w, len = 1.25) => { const h = add(w, G.haft, wood, 0, len * 0.25, 0); h.scale.y = len; return len * 0.75; };
+  switch (CH.weapon) {
+    case "sword": sword(holder(R)); break;
+    case "blades": sword(holder(R), 0.75, mk(0xd8dee8, 0.2, { metalness: 0.9 })); sword(holder(L), 0.75, mk(0xd8dee8, 0.2, { metalness: 0.9 })); break;
+    case "greataxe": { const w = holder(R, Math.PI / 2 - 0.6); add(w, G.haft, wood, 0, 0.3, 0).scale.y = 1.05; for (const s of [-1, 1]) { const a = add(w, G.axe, metal, s * 0.0, 0.72, 0); a.rotation.set(Math.PI / 2, 0, s > 0 ? -Math.PI / 2 : Math.PI / 2); a.scale.set(1, 1, 1.1); } add(w, G.spike, trim, 0, 0.92, 0); break; }
+    case "hammer": { const w = holder(R, Math.PI / 2 - 0.6); add(w, G.haft, wood, 0, 0.3, 0).scale.y = 0.95; add(w, G.hammer, metal, 0, 0.78, 0); for (const s of [-1, 1]) add(w, G.emblem, glowM(CH.accent, 1.2), 0, 0.78, s * 0.165).rotation.x = Math.PI / 2; break; }
+    case "bow": { const w = holder(L, 0.15); const b = add(w, G.bow, wood, 0, 0.0, 0); b.rotation.z = Math.PI / 2 + Math.PI * 0.05; b.position.x = -0.02; add(w, G.string, mk(0xe8e8e8, 0.6), 0.37, 0, 0); for (const s of [-1, 1]) add(w, G.gem, trim, -0.05, s * 0.38, 0); break; }
+    case "crossbow": { const w = holder(R, Math.PI / 2 - 0.2); add(w, G.stock, wood, 0, 0.12, 0); const b = add(w, G.bow, metal, 0, 0.3, 0); b.rotation.set(Math.PI / 2, 0, Math.PI * 0.05); b.scale.set(0.55, 0.55, 0.55); add(w, G.gem, glowM(CH.accent), 0, 0.33, 0.04); break; }
+    case "rifle": { const w = holder(R, Math.PI / 2 - 0.15); add(w, G.stock, mk(0x22242c, 0.5), 0, -0.05, 0); add(w, G.barrel, metal, 0, 0.45, 0.02); const sc = add(w, G.scope, metal, 0, 0.25, 0.08); add(w, G.orb, glowM(CH.accent), 0, 0.35, 0.08).scale.setScalar(0.35); add(w, G.gem, glowM(CH.accent), 0, 0.84, 0.02); break; }
+    case "tome": { const w = holder(L, 0.2); const bk = add(w, G.book, mk(CH.top, 0.6), 0, 0.02, 0.06); bk.rotation.x = -0.3; add(w, G.page, mk(0xf2ead8, 0.8), 0.006, 0.02, 0.07).rotation.x = -0.3; add(w, G.emblem, glowM(CH.accent), 0, 0.03, 0.1).rotation.x = Math.PI / 2 - 0.3; break; }
+    case "shield": {
+      sword(holder(R), 0.85);
+      const w = holder(L, 0.05); const sh = add(w, G.tower, mk(CH.top, 0.6), -0.08, 0.05, 0.08); sh.rotation.y = Math.PI / 2 - 0.2;
+      const tr = add(w, G.tower, metal, -0.09, 0.05, 0.08); tr.rotation.y = Math.PI / 2 - 0.2; tr.scale.set(1.08, 1.06, 0.6);
+      const em = add(w, G.emblem, trim, -0.115, 0.08, 0.075); em.rotation.set(0, 0, Math.PI / 2); add(w, G.gem, glowM(CH.accent), -0.13, 0.08, 0.072).scale.setScalar(1.3);
+      break;
+    }
+    case "bo": { const w = holder(R, Math.PI / 2 - 0.9); const h = add(w, G.haft, mk(0x6a4a2a, 0.6), 0, 0.15, 0); h.scale.y = 1.5; for (const y of [-0.55, 0.85]) add(w, G.emblem, metal, 0, y, 0).scale.set(0.3, 3, 0.3); break; }
+    case "quill": { const w = holder(R); add(w, G.haft, mk(0xf2ead8, 0.6), 0, 0.3, 0).scale.set(0.7, 0.9, 0.7); const v = add(w, G.vane, mk(CH.accent, 0.7), 0.03, 0.62, 0); v.scale.set(0.9, 3.2, 0.25); add(w, G.tip, glowM(0xe8d0ff), 0, -0.18, 0).rotation.x = Math.PI; break; }
+    case "gauntlets": for (const hand of [L, R]) { const w = holder(hand, 0); add(w, G.fist, metal, 0, 0.02, 0).scale.set(1.1, 1.0, 1.2); for (let i = 0; i < 3; i++) { const sp = add(w, G.spike, trim, (i - 1) * 0.06, 0.02, 0.1); sp.rotation.x = Math.PI / 2; } add(w, G.gem, glowM(CH.accent), 0, 0.09, 0.0); } break;
+    case "horn": { const w = holder(L, 0.6); const hc = add(w, G.hornCone, mk(0xe8dcc0, 0.6, { side: THREE.DoubleSide }), 0, 0.12, 0.05); hc.rotation.z = Math.PI; for (const y of [0.0, 0.2]) add(w, G.ringA, trim, 0, y, 0.05).scale.setScalar(0.45 + y); sword(holder(R), 0.7); break; }
+    case "astrolabe": { const w = holder(R, Math.PI / 2 - 0.85); const top = staff(w, 1.3); const r1 = add(w, G.ringA, trim, 0, top + 0.05, 0); const r2 = add(w, G.ringA, trim, 0, top + 0.05, 0); r2.rotation.y = Math.PI / 2; r1.scale.setScalar(1.0); add(w, G.orb, glowM(CH.accent), 0, top + 0.05, 0).scale.setScalar(0.8); r1.userData.keep = r2.userData.keep = true; C.ud.spin = [r1, r2]; break; }
+    case "abyssorb": { const w = holder(R, 0); const o = add(w, G.orb, mk(0x1a0a2a, 0.2, { emissive: lin(0x4a1a8a), emissiveIntensity: 1.2 }), 0, 0.1, 0.12); o.scale.setScalar(1.4); const r = add(w, G.ringA, glowM(CH.accent), 0, 0.1, 0.12); r.rotation.x = 1.2; r.userData.keep = true; C.ud.spin = [r]; break; }
+    case "spear": { const w = holder(R, Math.PI / 2 - 0.85); const top = staff(w, 1.45); add(w, G.spearHead, CH.metal === "gold" ? trim : metal, 0, top + 0.1, 0).scale.set(0.7, 2.2, 0.35); add(w, G.gem, glowM(CH.accent), 0, top - 0.05, 0).scale.setScalar(1.4); break; }
+    case "crystalstaff": { const w = holder(R, Math.PI / 2 - 0.85); const top = staff(w, 1.3); for (let i = 0; i < 3; i++) { const t = add(w, G.spike, trim, Math.cos(i * 2.1) * 0.05, top - 0.02, Math.sin(i * 2.1) * 0.05); t.rotation.set(Math.sin(i * 2.1) * 0.5, 0, -Math.cos(i * 2.1) * 0.5); } add(w, G.spearHead, glowM(CH.accent, 1.3), 0, top + 0.12, 0).scale.set(0.9, 1.6, 0.9); break; }
+    case "sunstaff": { const w = holder(R, Math.PI / 2 - 0.85); const top = staff(w, 1.25); const disc = add(w, G.ringA, trim, 0, top + 0.08, 0); disc.scale.setScalar(0.9); for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const r = add(w, G.ray, trim, Math.cos(a) * 0.15, top + 0.08 + Math.sin(a) * 0.15, 0); r.rotation.z = a - Math.PI / 2; } add(w, G.orb, glowM(0xffe08a), 0, top + 0.08, 0); break; }
+  }
+}
 function applyArmor(def, C) {
-  const { put, mk, head, torso, ud, OF } = C, A = armorGeo(), kit = ROLE_KIT[def.k] || "warrior";
+  const { put, mk, head, torso, ud, OF } = C, A = armorGeo(), kit = (champOf(def) && champOf(def).kit) || ROLE_KIT[def.k] || "warrior";
   const main = OF.top ?? 0x445566, acc = OF.accent ?? 0xffffff;
   const dark = (hex, k = 0.55) => { const r = ((hex >> 16) & 255) * k, g = ((hex >> 8) & 255) * k, b = (hex & 255) * k; return (r << 16) | (g << 8) | b; };
-  const steel = mk(0x8f99a8, 0.3, { metalness: 0.85 }), darkSteel = mk(0x3e434e, 0.38, { metalness: 0.8 }), gold = mk(0xd8b45a, 0.28, { metalness: 0.9 });
+  const CHm = champOf(def), steel = CHm && CHm.kit === "guard" ? champMetal(mk, CHm.metal) : mk(0x8f99a8, 0.3, { metalness: 0.85 }), darkSteel = mk(0x3e434e, 0.38, { metalness: 0.8 }), gold = mk(0xd8b45a, 0.28, { metalness: 0.9 });
   const leather = mk(0x5e4030, 0.75), leatherDark = mk(0x3a2a20, 0.8);
   const cloth = mk(dark(main, 0.8), 0.9), clothSide = { side: THREE.DoubleSide };
   const glow = (hex) => mk(hex, 0.2, { emissive: lin(hex), emissiveIntensity: 1.3 });
@@ -1020,7 +1120,7 @@ function applyArmor(def, C) {
     }
     case "mage": {
       const m = put(A.mantle, mk(dark(main, 0.9), 0.85, clothSide), 0, 0.5, 0, torso); m.scale.set(1.12, 1, 0.78);
-      const trim = put(A.ring, gold, 0, 0.405, 0, torso); trim.rotation.x = Math.PI / 2; trim.scale.set(4.6, 3.35, 1.4);
+      // (망토 아랫단 금테는 빼요: 멀리서 보면 원반처럼 떠 보여서)
       const col = put(GEO.human.tallCollar, mk(dark(main, 0.7), 0.85, clothSide), 0, 0.6, -0.02, torso); col.scale.set(1.25, 1.6, 1.1);
       for (const s of [-1, 1]) put(A.gem, glow(acc === 0xf2f0ea || acc === 0xffffff ? 0xb48aff : acc), s * 0.085, 0.53, 0.1, torso);
       capeOn(mk(dark(main, 0.6), 0.85, clothSide)); ud.cape.scale.set(1.0, 0.95, 1);
@@ -1039,6 +1139,29 @@ function applyArmor(def, C) {
       const fl = new THREE.Mesh(A.banner, mk(main, 0.8, clothSide)); fl.position.set(0.14, 0.28, 0); p.add(fl); ud.banner = fl;
       for (const sh of [shL, shR]) { const pp = put(A.pauldron, mk(dark(main, 0.8), 0.7), 0, 0.03, 0, sh); pp.scale.set(1.15, 0.65, 1.05); const rr = put(A.pauldronRim, gold, 0, 0.03, 0, sh); rr.rotation.x = Math.PI / 2; rr.scale.set(1.15, 1.05, 1); }
       bracers(leather, gold);
+      break;
+    }
+    case "monk": {
+      const sash = put(A.sash, mk(acc === 0x111111 ? 0x1a1a1e : acc, 0.85), 0, 0.36, 0.0, torso); sash.rotation.z = 0.7; sash.scale.set(1.2, 1, 9.5);
+      const beads = mk(0x6a3a22, 0.5); for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; const b = put(A.gem, beads, Math.sin(a) * 0.1, 0.5 - (1 - Math.cos(a)) * 0.07, 0.1 + Math.cos(a) * 0.02, torso); b.scale.setScalar(0.8); }
+      for (const el of [elL, elR]) for (let i = 0; i < 5; i++) { const w = put(A.wrap, mk(0xe8dcc0, 0.9), 0, -0.26 + i * 0.024, 0, el); w.rotation.x = Math.PI / 2; }
+      for (const sh of [shL, shR]) { const p = put(A.pauldron, mk(0xa8723a, 0.35, { metalness: 0.8 }), 0, 0.03, 0, sh); p.scale.set(0.95, 0.5, 0.95); }
+      break;
+    }
+    case "assassin": {
+      for (const sh of [shL, shR]) { const p = put(A.pauldron, leatherDark, 0, 0.03, 0, sh); p.scale.set(1.05, 0.6, 1.0); }
+      bracers(leatherDark, mk(acc, 0.4, { emissive: lin(acc), emissiveIntensity: 0.6 }));
+      for (let i = 0; i < 4; i++) { const k = put(A.spike, mk(0xc8ccd4, 0.2, { metalness: 0.9 }), -0.14 + i * 0.035, 0.08, 0.1, torso); k.rotation.x = Math.PI; k.scale.set(0.6, 0.9, 0.6); }
+      const strap = put(A.sash, leatherDark, 0, 0.36, 0.0, torso); strap.rotation.z = -0.65; strap.scale.set(0.6, 1, 9.5);
+      capeOn(mk(dark(main, 0.8), 0.9, clothSide)); ud.cape.scale.set(0.9, 0.85, 1);
+      break;
+    }
+    case "juggernaut": {
+      const hm = champMetal(mk, (champOf(def) || {}).metal);
+      pauldron(shL, hm, mk(acc, 0.4, { metalness: 0.5 }), 1.45, 3); pauldron(shR, hm, mk(acc, 0.4, { metalness: 0.5 }), 1.45, 3);
+      chestPlate(hm, mk(acc, 0.4, { metalness: 0.5 })); bracers(hm, mk(acc, 0.4)); greaves(hm, mk(acc, 0.4, { metalness: 0.5 }));
+      for (let i = 0; i < 3; i++) { const k = put(A.spike, mk(acc, 0.4, { metalness: 0.5 }), (i - 1) * 0.06, 0.48, 0.15, torso); k.rotation.x = 0.5; }
+      beltBuckle(hm);
       break;
     }
     case "god": {
@@ -1065,7 +1188,8 @@ function buildStudent(def, enemy) {
   // ----- 사람 비율(약 7등신) 캐릭터 -----
   // 발바닥 y=0.2, 엉덩이 관절 y=1.0, 어깨 y≈1.52, 머리 꼭대기 y≈1.86
   // 옷: friends.js 의 OUTFITS 표 (없으면 운동광은 체육복, 나머지는 교복)
-  const OF = OUTFITS[def.n] || (sporty ? { type: "track", top: TRACK[(h >> 5) % TRACK.length], accent: 0xffffff } : { type: "uniform", top: 0x1f2a44, bottom: 0x343a44 });
+  const CH = champOf(def);
+  const OF = (CH && { type: "tunic", top: CH.top, bottom: CH.bottom, accent: CH.accent }) || OUTFITS[def.n] || (sporty ? { type: "track", top: TRACK[(h >> 5) % TRACK.length], accent: 0xffffff } : { type: "uniform", top: 0x1f2a44, bottom: 0x343a44 });
   const T = OF.type, formal = ["uniform", "cardigan", "vest"].includes(T);
   const sleeve = OF.sleeve || ({ jersey: "short", tshirt: "short", tank: "none" }[T] || "long");
   const hero = !def.plain, shorts = !hero && ["jersey", "tank"].includes(T), barefoot = T === "dobok";
@@ -1187,20 +1311,27 @@ function buildStudent(def, enemy) {
     put(HG.belt, mAcc, 0, 0.16, 0, torso).scale.set(1.04, 1.4, 0.73);
     for (const s of [-1, 1]) { const tl = put(HG.beltTail, mAcc, s * 0.03, 0.08, 0.112, torso); tl.rotation.z = s * 0.25; }
     put(HG.collar, mJacket, 0, 0.585, 0.004, torso).rotation.x = Math.PI / 2;
+  } else if (T === "tunic") { // 영웅 튜닉: 겹친 깃, 가죽 허리띠, 금 버클 (긴 코트면 뒤로 갈라진 자락)
+    const mLap = mk(((OF.top >> 16 & 255) * 0.6) << 16 | ((OF.top >> 8 & 255) * 0.6) << 8 | (OF.top & 255) * 0.6, 0.85);
+    for (const s of [-1, 1]) { const l = put(HG.lapel, mLap, s * 0.042, 0.47, 0.113, torso); l.rotation.set(-0.12, 0, s * 0.5); l.scale.set(0.9, 1.0, 1); }
+    put(HG.belt, mk(0x3a2a20, 0.6), 0, 0.12, 0, torso).scale.set(1.06, 1.6, 0.76);
+    put(HG.buckle, mk(0xd8b45a, 0.28, { metalness: 0.9 }), 0, 0.12, 0.118, torso).scale.set(1.2, 1.4, 1);
+    const nk = put(HG.collar, mJacket, 0, 0.585, 0.004, torso); nk.rotation.x = Math.PI / 2; nk.scale.set(1.1, 1.1, 1.4);
+    if (CH && CH.coat) for (const s of [-1, 1]) { const c = put(champGeo().tabardLong, mJacket, s * 0.075, -0.17, -0.05, torso); c.rotation.set(-0.08, s * 0.3, s * 0.06); c.scale.set(1, 1, 1); const c2 = put(champGeo().tabardLong, mJacket, s * 0.13, -0.15, 0.06, torso); c2.rotation.set(0.05, s * 1.0, s * 0.05); c2.scale.set(0.8, 0.95, 1); }
   } else if (T === "robe") { // 신의 로브: 긴 치마, 금빛 띠와 테두리
     const sash = put(HG.sash, mAcc, 0, 0.32, 0, torso); sash.rotation.z = 0.75; sash.scale.z = 0.68;
     put(HG.belt, mAcc, 0, 0.13, 0, torso).scale.set(1.05, 1.2, 0.74);
     const tr = put(HG.collar, mAcc, 0, 0.585, 0.004, torso); tr.rotation.x = Math.PI / 2; tr.scale.set(1.15, 1.15, 0.8);
   }
-  if (kind) put(GEO.pin, mk(0xff7aa8, 0.4), 0.085, 0.45, 0.108, torso).scale.setScalar(0.7);
+  if (kind && !CH) put(GEO.pin, mk(0xff7aa8, 0.4), 0.085, 0.45, 0.108, torso).scale.setScalar(0.7);
   put(HG.neck, mSkin, 0, 0.615, 0, torso);
   // 머리 (머리 모양 데이터는 반지름 0.2 기준이라 0.6배로 줄여 써요)
   const head = new THREE.Group(); head.position.y = 0.735; head.scale.setScalar(0.6 * LK.head); torso.add(head); ud.head = head;
   put(HG.skull, mSkin, 0, 0.0, -0.005, head).scale.set(SKULL_SX, SKULL_SY, SKULL_SZ);
   for (const s of [-1, 1]) put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
   // 얼굴: 눈·눈썹·코·입은 그림으로 그려 씌워요 (figure.js). 눈 깜빡임은 그림 두 장을 바꿔 끼워요
-  const irisHex = LK.iris ?? [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
-  ud.faceTex = faceTexFor(def, LK, fierce, kind, hairCol, irisHex, skin);
+  const irisHex = [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
+  ud.faceTex = faceTexFor(def, LK, LK.hero ? true : fierce, LK.hero ? false : kind, hairCol, irisHex, skin);
   ud.face = faceMesh(ud.faceTex); head.add(ud.face); ud.mats.push(ud.face.material);
   // 머리카락 (friends.js 의 LOOKS.hair 모양대로, figure.js)
   buildHair2(LK.hair, { put, head, mHair, mTip: LK.tip != null ? mk(LK.tip, 0.5) : mHair });
@@ -1234,12 +1365,14 @@ function buildStudent(def, enemy) {
     ud.arms.push(sh); ud.elbows.push(el);
   }
   applyLook(LK, { put, mk, head, torso, ud, def, mHair });
+  if (CH) buildChampHead(CH, { put, mk, head, mHair });
   if (!def.plain) applyArmor(def, { put, mk, head, torso, ud, OF });
   ud.restZ = [-0.07, 0.07];
   const [L, R] = grip;
   const WP = WEAPONS[def.n];
-  if (WP) WP.build({ put, mk, L, R, torso, ud, g, def });
-  if (!WP || def.k === "신") switch (def.k) {
+  if (CH && CH.weapon) buildChampWeapon(CH, { L, R, mk, ud });
+  else if (WP) WP.build({ put, mk, L, R, torso, ud, g, def });
+  if ((!WP && !(CH && CH.weapon)) || def.k === "신") switch (def.k) {
     case "수호자": {
       const sd = put(GEO.shield, mk(0xb8c4bc, 0.35, { metalness: 0.7 }), -0.1, -0.3, 0.06, L); sd.rotation.z = Math.PI / 2;
       put(GEO.boss, mk(COST_HEX[def.c], 0.4, { metalness: 0.5 }), -0.14, -0.3, 0.06, L);
@@ -1531,6 +1664,7 @@ function placeUnit(it, dt) {
     ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.018;
     ud.torso.rotation.x += (lean - ud.torso.rotation.x) * Math.min(1, dt * 18);
     if (ud.cape) ud.cape.rotation.x = 0.12 + ud.move * 0.55 + Math.sin(clock3d * 2.1 + it.x) * 0.04;
+    if (ud.spin) ud.spin.forEach((r, i) => (r.rotation.y += dt * (1.2 + i)));
     if (ud.orb) { ud.orb.position.y = 0.78 + Math.sin(clock3d * 2.4 + it.z) * 0.04; ud.orb.rotation.y += dt * 1.5; }
     if (ud.banner) ud.banner.rotation.y = Math.sin(clock3d * 3 + it.x) * 0.35;
     if (spin != null) ud.torso.rotation.y = spin; else { if (ud.torso.rotation.y > Math.PI) ud.torso.rotation.y -= Math.PI * 2; ud.torso.rotation.y += (twist - ud.torso.rotation.y) * Math.min(1, dt * 18); }

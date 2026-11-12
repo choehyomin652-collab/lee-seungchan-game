@@ -85,19 +85,6 @@ function bakeFigure(g, ud) {
 }
 
 // ---------- 얼굴 그림 ----------
-// 눈 모양 8가지 (친구마다 friends.js 의 LOOKS.eyes 로 골라요)
-// w·h: 가로·세로 배율, tilt: 눈꼬리 기울기(+ 올라감, − 처짐), up·lo: 윗·아랫 곡선 높이, iris·irisH: 눈동자 크기,
-// lash: 윗선 굵기, wing: 눈꼬리 올림 길이, hl: 반짝이 개수, lid: 졸린 눈꺼풀, dot: 점 눈
-const EYE_SHAPES = {
-  round:  { w: 1.0,  h: 1.0,  tilt: 0.0,   up: 1.35, lo: 1.05, iris: 0.72, irisH: 1.0,  lash: 1.0, wing: 0.9, hl: 2 },
-  bright: { w: 1.05, h: 1.25, tilt: 0.05,  up: 1.45, lo: 1.15, iris: 0.82, irisH: 1.05, lash: 1.1, wing: 0.9, hl: 3 },
-  sharp:  { w: 1.1,  h: 0.72, tilt: 0.45,  up: 1.0,  lo: 0.8,  iris: 0.62, irisH: 1.0,  lash: 1.5, wing: 1.6, hl: 1 },
-  droopy: { w: 1.05, h: 1.0,  tilt: -0.4,  up: 1.2,  lo: 1.1,  iris: 0.74, irisH: 1.0,  lash: 0.9, wing: 0.0, hl: 2 },
-  almond: { w: 1.15, h: 0.84, tilt: 0.22,  up: 1.15, lo: 0.95, iris: 0.62, irisH: 1.0,  lash: 1.1, wing: 1.1, hl: 2 },
-  sleepy: { w: 1.05, h: 0.85, tilt: -0.05, up: 0.9,  lo: 0.85, iris: 0.7,  irisH: 0.9,  lash: 1.2, wing: 0.5, hl: 1, lid: 0.4 },
-  dot:    { w: 0.55, h: 0.6,  tilt: 0.0,   up: 1.2,  lo: 1.2,  iris: 1.0,  irisH: 1.0,  lash: 0.0, wing: 0.0, hl: 1, dot: true },
-  fox:    { w: 1.2,  h: 0.62, tilt: 0.6,   up: 0.9,  lo: 0.7,  iris: 0.58, irisH: 1.0,  lash: 1.6, wing: 2.0, hl: 1 },
-};
 const FACE_CACHE = {};
 const hexCss = (n) => "#" + n.toString(16).padStart(6, "0");
 const shadeCss = (n, k) => `rgb(${Math.min(255, ((n >> 16) & 255) * k) | 0},${Math.min(255, ((n >> 8) & 255) * k) | 0},${Math.min(255, (n & 255) * k) | 0})`;
@@ -114,45 +101,24 @@ function paintFace(g, W, H, o) {
   g.strokeStyle = shadeCss(o.skin, 0.7); g.lineWidth = 0.0038 * S;
   for (const s of [-1, 1]) { g.beginPath(); g.moveTo(X(s * 0.011), Y(-0.01)); g.quadraticCurveTo(X(s * 0.017), Y(-0.034), X(s * 0.01), Y(-0.046)); g.stroke(); }
   g.fillStyle = shadeCss(o.skin, 1.12); ell(X(0), Y(-0.034), 0.006 * S, 0.01 * S); g.fill();
-  const sh = EYE_SHAPES[o.eyes] || EYE_SHAPES.round;
   for (const s of [-1, 1]) {
-    const cx = X(s * 0.066), cy = Y(0.014), ew = 0.04 * o.eye * sh.w * S, eh = 0.037 * o.eye * sh.h * S; // 눈 크기 × 눈 모양
-    // 눈 모양: 안쪽 끝(ix,iy) → 바깥 끝(ox,oy). tilt>0 이면 눈꼬리가 올라가고, <0 이면 처져요
-    const ix = cx - s * ew, ox = cx + s * ew, iy = cy + sh.tilt * eh * 0.3, oy = cy - sh.tilt * eh, my = (iy + oy) / 2;
-    const upC = my - eh * sh.up * 2, loC = my + eh * sh.lo * 2;
-    const eyePath = () => { g.beginPath(); g.moveTo(ix, iy); g.quadraticCurveTo(cx, upC, ox, oy); g.quadraticCurveTo(cx, loC, ix, iy); g.closePath(); };
-    const topLine = () => { g.beginPath(); g.moveTo(ix, iy); g.quadraticCurveTo(cx, upC, ox, oy); };
+    const cx = X(s * 0.066), cy = Y(0.014), ew = 0.04 * o.eye * S, eh = 0.037 * o.eye * S; // 만화처럼 큼직하게
     if (!o.closed) {
-      g.fillStyle = shadeCss(o.skin, 0.9); ell(cx, my - eh * sh.up * 0.95, ew * 1.05, eh * sh.up * 0.5); g.fill(); // 눈두덩 그늘
-      if (sh.dot) { // 점 눈: 흰자 없이 반짝이는 검은 점
-        g.fillStyle = shadeCss(o.iris, 0.4); ell(cx, my, ew * 0.95, eh * 1.15); g.fill();
-        g.fillStyle = "rgba(255,255,255,.95)"; ell(cx - ew * 0.25, my - eh * 0.4, ew * 0.28, ew * 0.28); g.fill();
-      } else {
-        g.fillStyle = "#f8f6f2"; eyePath(); g.fill();
-        g.save(); eyePath(); g.clip();
-        const open = eh * (sh.up + sh.lo), icy = my - eh * (sh.up - sh.lo) * 0.5 + open * 0.04, irx = ew * sh.iris, iry = open * 0.53 * sh.irisH, ix2 = cx - s * ew * 0.03;
-        const gr = g.createLinearGradient(0, icy - iry, 0, icy + iry);
-        gr.addColorStop(0, shadeCss(o.iris, 0.5)); gr.addColorStop(0.55, hexCss(o.iris)); gr.addColorStop(1, shadeCss(o.iris, 1.7));
-        g.fillStyle = gr; ell(ix2, icy, irx, iry); g.fill();
-        g.fillStyle = "#120c0a"; ell(ix2, icy, irx * 0.5, iry * 0.56); g.fill();
-        g.fillStyle = "rgba(255,255,255,.96)"; ell(ix2 - irx * 0.4, icy - iry * 0.42, irx * 0.3, irx * 0.3); g.fill();
-        if (sh.hl >= 2) { g.fillStyle = "rgba(255,255,255,.8)"; ell(ix2 + irx * 0.34, icy + iry * 0.4, irx * 0.13, irx * 0.13); g.fill(); }
-        if (sh.hl >= 3) { g.fillStyle = "rgba(255,255,255,.7)"; ell(ix2 + irx * 0.45, icy - iry * 0.2, irx * 0.09, irx * 0.09); g.fill(); ell(ix2 - irx * 0.1, icy + iry * 0.62, irx * 0.07, irx * 0.07); g.fill(); }
-        if (sh.lid) { // 졸린 눈: 위 눈꺼풀이 눈동자를 덮어요
-          const ly = my - eh * sh.up + open * sh.lid; g.fillStyle = shadeCss(o.skin, 0.9); g.fillRect(ix - ew * 0.2, my - eh * (sh.up + 1), ew * 2.6, ly - (my - eh * (sh.up + 1)));
-          g.strokeStyle = "rgba(70,34,24,.5)"; g.lineWidth = 0.004 * S; g.beginPath(); g.moveTo(ix, ly); g.lineTo(ox, ly - eh * 0.05); g.stroke();
-        }
-        g.restore();
-        g.strokeStyle = "rgba(70,34,24,.35)"; g.lineWidth = 0.003 * S; g.beginPath(); g.moveTo(ix, iy); g.quadraticCurveTo(cx, loC, ox, oy); g.stroke(); // 아랫선(옅게)
-        g.strokeStyle = "#1a110c"; g.lineWidth = 0.0095 * sh.lash * S; topLine(); g.stroke(); // 윗 속눈썹선
-        g.lineWidth = 0.0055 * S;
-        if (sh.wing > 0) { g.beginPath(); g.moveTo(ox, oy); g.lineTo(ox + s * ew * 0.38 * sh.wing, oy - eh * 0.5 * sh.wing); g.stroke(); } // 눈꼬리 올림
-        else if (sh.tilt < 0) { g.beginPath(); g.moveTo(ox, oy); g.lineTo(ox + s * ew * 0.2, oy + eh * 0.55); g.stroke(); } // 처진 눈꼬리
-      }
+      g.fillStyle = shadeCss(o.skin, 0.84); ell(cx, cy - eh * 0.3, ew * 1.1, eh * 1.2); g.fill(); // 눈두덩 그늘
+      g.fillStyle = "#f8f6f2"; ell(cx, cy, ew, eh); g.fill();
+      g.save(); ell(cx, cy, ew, eh); g.clip();
+      const ix = cx - s * ew * 0.04, iy = cy + eh * 0.05, irx = ew * 0.68, iry = eh * 1.04, gr = g.createLinearGradient(0, iy - iry, 0, iy + iry);
+      gr.addColorStop(0, shadeCss(o.iris, 0.5)); gr.addColorStop(0.55, hexCss(o.iris)); gr.addColorStop(1, shadeCss(o.iris, 1.7));
+      g.fillStyle = gr; ell(ix, iy, irx, iry); g.fill();
+      g.fillStyle = "#120c0a"; ell(ix, iy, irx * 0.5, iry * 0.56); g.fill();
+      g.fillStyle = "rgba(255,255,255,.96)"; ell(ix - irx * 0.4, iy - iry * 0.42, irx * 0.3, irx * 0.3); g.fill();
+      g.fillStyle = "rgba(255,255,255,.8)"; ell(ix + irx * 0.34, iy + iry * 0.4, irx * 0.13, irx * 0.13); g.fill();
+      g.restore();
+      g.strokeStyle = "#1a110c"; g.lineWidth = 0.0095 * S; ell(cx, cy, ew * 1.04, eh * 1.06, Math.PI * 1.03, Math.PI * 1.97); g.stroke(); // 윗 속눈썹선
+      g.lineWidth = 0.0055 * S; g.beginPath(); g.moveTo(cx + s * ew * 1.0, cy - eh * 0.15); g.lineTo(cx + s * ew * 1.34, cy - eh * 0.52); g.stroke(); // 눈꼬리
+      g.strokeStyle = "rgba(70,34,24,.35)"; g.lineWidth = 0.003 * S; ell(cx, cy, ew, eh, Math.PI * 0.1, Math.PI * 0.9); g.stroke();
     } else {
-      g.strokeStyle = "#1a110c"; g.lineWidth = 0.0078 * S;
-      if (sh.lid || sh.dot) { g.beginPath(); g.moveTo(ix + s * ew * 0.1, my); g.lineTo(ox, oy + eh * 0.1); g.stroke(); } // 졸린·점 눈은 가는 줄
-      else { g.beginPath(); g.moveTo(ix, my - eh * 0.4); g.quadraticCurveTo(cx, my + eh * (sh.lo + 0.4), ox, oy - eh * 0.4 + (sh.tilt < 0 ? eh * 0.3 : 0)); g.stroke(); } // 감은 눈 ‿
+      g.strokeStyle = "#1a110c"; g.lineWidth = 0.0078 * S; ell(cx, cy - eh * 0.5, ew * 1.02, eh * 0.9, Math.PI * 0.08, Math.PI * 0.92); g.stroke(); // 감은 눈 ‿
     }
     // 눈썹: 화난/착한/보통
     const inY = o.fierce ? 0.059 : o.kind ? 0.075 : 0.066, outY = o.fierce ? 0.083 : o.kind ? 0.064 : 0.071, midY = o.fierce ? 0.074 : 0.078;
@@ -185,7 +151,7 @@ function paintFace(g, W, H, o) {
 function faceTexFor(def, LK, fierce, kind, hairHex, irisHex, skinHex) {
   if (FACE_CACHE[def.n]) return FACE_CACHE[def.n];
   const blush = LK.acc.some((a) => a[0] === "blush");
-  const base = { skin: skinHex, hair: hairHex, iris: irisHex, eyes: LK.eyes, eye: LK.eye, mouth: LK.mouth, brow: LK.brow, fierce, kind, blush };
+  const base = { skin: skinHex, hair: hairHex, iris: irisHex, eye: LK.eye, mouth: LK.mouth, brow: LK.brow, fierce, kind, blush };
   return (FACE_CACHE[def.n] = [false, true].map((closed) => canvasTex(256, 256, (g, w, h) => paintFace(g, w, h, { ...base, closed }))));
 }
 // 얼굴 앞쪽만 오려 낸 껍데기 (두개골을 아주 조금 부풀린 모양, 얼굴 그림이 평평하게 투영돼요)
