@@ -1330,9 +1330,11 @@ function buildStudent(def, enemy) {
   put(HG.skull, mSkin, 0, 0.0, -0.005, head).scale.set(SKULL_SX, SKULL_SY, SKULL_SZ);
   for (const s of [-1, 1]) put(GEO.ear, mSkin, s * 0.178, -0.005, -0.01, head).scale.set(0.45, 0.85, 0.75);
   // 얼굴: 눈·눈썹·코·입은 그림으로 그려 씌워요 (figure.js). 눈 깜빡임은 그림 두 장을 바꿔 끼워요
-  const irisHex = [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
-  ud.faceTex = faceTexFor(def, LK, LK.hero ? true : fierce, LK.hero ? false : kind, hairCol, irisHex, skin);
-  ud.face = faceMesh(ud.faceTex); head.add(ud.face); ud.mats.push(ud.face.material);
+  if (SHOW_FACE) { // figure.js 의 SHOW_FACE 를 false 로 두면 얼굴 없이 나와요
+    const irisHex = [0x3a2414, 0x2a1a10, 0x4a3020][h % 3];
+    ud.faceTex = faceTexFor(def, LK, LK.hero ? true : fierce, LK.hero ? false : kind, hairCol, irisHex, skin);
+    ud.face = faceMesh(ud.faceTex); head.add(ud.face); ud.mats.push(ud.face.material);
+  }
   // 머리카락 (friends.js 의 LOOKS.hair 모양대로, figure.js)
   buildHair2(LK.hair, { put, head, mHair, mTip: LK.tip != null ? mk(LK.tip, 0.5) : mHair });
   if (def.t.includes("프로게이머")) {
@@ -1473,13 +1475,15 @@ function buildJelly(giant, enemy) {
   // 얼굴
   const mWhite = mk(0xffffff, 0.25), mDark = mk(0x0e2a2a, 0.3);
   ud.eyes = [];
-  for (const s of [-1, 1]) {
-    const e = put(J.eye, mWhite, s * 0.13, 0.42, 0.385); e.scale.set(1, 1.15, 0.5);
-    const p = put(J.pupil, mDark, s * 0.13, 0.41, 0.415); p.scale.set(1, 1.2, 0.45);
-    const sh = put(J.shine, mWhite, s * 0.13 + 0.018, 0.44, 0.432);
-    for (const o of [e, p, sh]) { o.userData.sy = o.scale.y; ud.eyes.push(o); }
+  if (SHOW_FACE) {
+    for (const s of [-1, 1]) {
+      const e = put(J.eye, mWhite, s * 0.13, 0.42, 0.385); e.scale.set(1, 1.15, 0.5);
+      const p = put(J.pupil, mDark, s * 0.13, 0.41, 0.415); p.scale.set(1, 1.2, 0.45);
+      const sh = put(J.shine, mWhite, s * 0.13 + 0.018, 0.44, 0.432);
+      for (const o of [e, p, sh]) { o.userData.sy = o.scale.y; ud.eyes.push(o); }
+    }
+    const mo = put(J.mouth, mDark, 0, 0.29, 0.415); mo.rotation.z = Math.PI; mo.scale.set(1, 0.8, 1);
   }
-  const mo = put(J.mouth, mDark, 0, 0.29, 0.415); mo.rotation.z = Math.PI; mo.scale.set(1, 0.8, 1);
   if (giant) { // 거대 이다연: 수정 왕관
     const gold = mk(0xe8c25a, 0.25, { metalness: 0.85 }), crys = mk(0x9ffff0, 0.15, { emissive: lin(0x5fe8d8), emissiveIntensity: 1.3 });
     const cr = put(J.crown, gold, 0, 0.68, 0); cr.rotation.x = Math.PI / 2;
