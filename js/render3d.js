@@ -1668,7 +1668,8 @@ function placeUnit(it, dt) {
     if (f && f.atkT > 0) { // 무기마다 다른 공격 동작 (weapons.js 의 ATK_ANIM)
       const p = Math.min(1, 1 - f.atkT / ATK_T), k = Math.sin(p * Math.PI);
       const wp = !f.robot && f.d >= 0 && WEAPONS[DEFS[f.d].n], CHa = champOfUnit(f);
-      const A = (CHa && CHa.weapon && CANIM[CH_ANIM[CHa.weapon]]) ? CANIM[CH_ANIM[CHa.weapon]](p) : ((wp && ATK_ANIM[wp.anim]) || ATK_ANIM[f.rg > 1 ? "cast" : "swing"])(p, k);
+      const akey = CHa && (DIV_ANIM[DEFS[f.d].n] || CH_ANIM[CHa.weapon]);
+      const A = (akey && CANIM[akey]) ? CANIM[akey](p) : ((wp && ATK_ANIM[wp.anim]) || ATK_ANIM[f.rg > 1 ? "cast" : "swing"])(p, k);
       elbL = A.le || 0; elbR = A.re || 0;
       if (A.la != null) la = A.la; if (A.ra != null) ra = A.ra;
       if (A.lz != null) lz += A.lz; if (A.rz != null) rz += A.rz;
@@ -1804,6 +1805,7 @@ const CANIM = {
   horn: (p) => ({ la: hold(p, -2.1, 0.15, 0.7), lz: hold(p, -0.55), le: hold(p, -1.7), head: hold(p, -0.28), lean: hold(p, -0.22), ra: hold(p, 0.45), rz: hold(p, 0.35) }),
   smite: (p) => ({ ra: ph3(p, -3.1, -1.35, 0.3, 0.44), re: ph3(p, -0.6, -0.05, 0.3, 0.44), la: hold(p, 0.4), lz: hold(p, -0.6), hop: ph3(p, 0.18, 0.02, 0.3, 0.44), lean: ph3(p, -0.2, 0.3, 0.3, 0.44), head: ph3(p, -0.3, 0.1, 0.3, 0.44) }),
 };
+const DIV_ANIM = { "김예균": "slash" }; // 김예균은 홀의 낫날로 크게 베어요
 const CH_ANIM = { sword: "slash", blades: "twin", greataxe: "cleave", hammer: "cleave", bow: "bow", crossbow: "aim", rifle: "aim", tome: "tome", shield: "bash", bo: "bo", quill: "quill", gauntlets: "punch", horn: "horn", astrolabe: "cast", abyssorb: "orb", spear: "thrust", crystalstaff: "cast", sunstaff: "cast" };
 // 무기 종류별 공격 효과 색·모양
 const champOfUnit = (f) => (f && !f.robot && !f.mon && f.d >= 0 && typeof CHAMPS !== "undefined" && CHAMPS[DEFS[f.d].n]) || null;
@@ -1874,7 +1876,19 @@ function fxTex() {
     g.putImageData(img, 0, 0);
   });
   const streak = canvasTex(64, 16, (g, w, h) => { g.clearRect(0, 0, w, h); const lg = g.createLinearGradient(0, 0, w, 0); lg.addColorStop(0, "rgba(255,255,255,0)"); lg.addColorStop(0.75, "rgba(255,255,255,.9)"); lg.addColorStop(1, "rgba(255,255,255,1)"); g.fillStyle = lg; g.beginPath(); g.ellipse(w / 2, h / 2, w / 2, h / 2.4, 0, 0, Math.PI * 2); g.fill(); });
-  return (FXT = { star, crescent, streak });
+  const sharp = canvasTex(256, 256, (g, w, h) => { // 날카로운 참격: 아주 얇은 호, 양 끝이 바늘처럼 뾰족, 가운데 하얀 심
+    g.clearRect(0, 0, w, h);
+    const img = g.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const dx = (x - w / 2) / (w / 2), dy = (y - h / 2) / (h / 2), r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+      const s2 = Math.max(0, Math.min(1, (a + 1.3) / 2.6)), thick = 0.075 * Math.pow(Math.sin(Math.PI * s2), 1.4) + 0.002, d = Math.abs(r - 0.88);
+      const core = d < thick ? 1 - d / thick : 0, glow = Math.max(0, 1 - d / (thick * 2.6)) * 0.35;
+      const v = Math.min(1, core * 1.4 + glow), i = (y * w + x) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = v * 255;
+    }
+    g.putImageData(img, 0, 0);
+  });
+  const needle = canvasTex(128, 16, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = "#fff"; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w / 2, h / 2 - 3); g.lineTo(w, h / 2); g.lineTo(w / 2, h / 2 + 3); g.closePath(); g.fill(); }); // 양 끝이 뾰족한 가는 선
+  return (FXT = { star, crescent, streak, sharp, needle });
 }
 const addTex = (tex, col, op = 1) => new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(col), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
 const spriteFx = (tex, col) => new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(col), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -1908,17 +1922,24 @@ function drawFx(list, dt) {
     else if (g.kind === "slash") { // 근접 공격: 빛나는 초승달 베기 두 겹 + 맞은 자리 폭발
       const CHs = g.who && typeof CHAMPS !== "undefined" && CHAMPS[g.who], col = CHs ? "#" + CHs.accent.toString(16).padStart(6, "0") : g.col;
       const heavy = CHs && (CHs.weapon === "greataxe" || CHs.weapon === "hammer" || CHs.weapon === "gauntlets");
-      if (!g.boom) { g.boom = 1; list.push({ kind: "impact", X: g.X, Y: g.Y, col, heavy, t: heavy ? 0.42 : 0.3, t0: heavy ? 0.42 : 0.3 }); if (heavy) S.shake = Math.max(S.shake || 0, 0.06); }
+      const demon = g.who && typeof HERO !== "undefined" && HERO.DIVINE[g.who] && HERO.DIVINE[g.who].theme === "demon"; // 김예균: 크고 붉은 X자 참격
+      if (!g.boom) { g.boom = 1; list.push({ kind: "impact", X: g.X, Y: g.Y, col, heavy: heavy || demon, t: heavy || demon ? 0.42 : 0.3, t0: heavy || demon ? 0.42 : 0.3 }); if (heavy || demon) S.shake = Math.max(S.shake || 0, demon ? 0.09 : 0.06); }
       const grp = useMesh(g, () => {
         const T = fxTex(), gg = new THREE.Group(), geo = GEO.slash2 || (GEO.slash2 = new THREE.RingGeometry(0.0, 0.85, 40, 1));
         const a = new THREE.Mesh(geo, addTex(T.crescent, col)), b = new THREE.Mesh(geo, addTex(T.crescent, "#ffffff")); b.scale.setScalar(0.94);
-        gg.add(a, b); gg.userData.l = [a, b]; return gg;
+        gg.add(a, b); gg.userData.l = [a, b];
+        if (demon) { // 엇갈린 두 번째 참격 + 검붉은 바깥 테
+          const c2 = new THREE.Mesh(geo, addTex(T.crescent, "#5a0010")); c2.scale.setScalar(1.25); gg.add(c2);
+          const x1 = new THREE.Mesh(geo, addTex(T.crescent, col)), x2 = new THREE.Mesh(geo, addTex(T.crescent, "#ffffff")); x2.scale.setScalar(0.94);
+          const xg = new THREE.Group(); xg.rotation.z = Math.PI * 0.55; xg.add(x1, x2); gg.add(xg); gg.userData.l.push(c2, x1, x2);
+        }
+        return gg;
       });
-      const ang = Math.atan2(z - worldZ(g.ay), x - worldX(g.ax)), sw = heavy ? 1.35 : 1.0;
+      const ang = Math.atan2(z - worldZ(g.ay), x - worldX(g.ax)), sw = demon ? 2.1 : heavy ? 1.35 : 1.0;
       grp.position.set(x - Math.cos(ang) * 0.3, heavy ? 0.7 : 1.0, z - Math.sin(ang) * 0.3);
       grp.rotation.set(0, 0, 0); grp.rotateY(-ang); grp.rotateX(heavy ? -Math.PI / 2 + 1.25 : (g.flip ? 1 : -1) * 0.55 - Math.PI / 2); grp.rotateZ((g.flip ? -1 : 1) * (k * 2.0 - 1.0) * (heavy ? 0.6 : 1));
       grp.scale.setScalar((1.0 + k * 0.7) * sw);
-      const op = Math.max(0, 1 - k * k); grp.userData.l[0].material.opacity = op; grp.userData.l[1].material.opacity = op * 0.85;
+      const op = Math.max(0, 1 - k * k); grp.userData.l.forEach((m, i) => (m.material.opacity = op * (i % 3 === 1 ? 0.85 : 1)));
     } else if (g.kind === "puff") { // 쓰러질 때 연기
       const grp = useMesh(g, () => {
         const gg = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: 0xf2f2f2, transparent: true, depthWrite: false });
@@ -2323,47 +2344,73 @@ function drawLegion(z, dt) {
     mk.position.set(fx, 0.28, fy); mk.scale.setScalar((f.mon.giant ? 1.8 : 0.9) * (f.landed ? 1 + (t - f.dropAt) * 4 : 1.3 - 0.3 * pre)); mk.material.opacity = (f.landed ? on : 0.9) * fade;
   });
 }
-// 김예균 "심연 참격": 발밑 핏빛 문양 → 참격 발사 → 적이 몰린 곳에 허공을 가르는 베기 선이 겹겹이
+// 김예균 "세계를 가르는 참격": 몸에서 핏빛 고리가 솟고, 하늘에 붉은 고리 → 참격이 하늘에서 내리꽂힘 → 전장을 가로지르는 거대한 참격
 function drawRend(z, dt) {
-  const t = z.t, x = worldX(z.X), y = worldZ(z.Y), fade = Math.max(0, Math.min(1, (z.dur - t) / 0.4)), grow = Math.min(1, t / 0.25);
+  const t = z.t, x = worldX(z.X), y = worldZ(z.Y), end = Math.max(0, Math.min(1, (z.dur - t) / 0.5)), ck = Math.min(1, t / REND_AT);
+  const T = fxTex(), Q = GEO.fxQuad || (GEO.fxQuad = new THREE.PlaneGeometry(1, 1));
   const g = useMesh(z, () => {
     const grp = new THREE.Group(), ud = grp.userData;
-    const flat = (geo, col, sc, parent) => { const m = new THREE.Mesh(geo, additive(col)); m.rotation.x = -Math.PI / 2; m.scale.setScalar(sc); parent.add(m); return m; };
-    ud.sig = new THREE.Group(); grp.add(ud.sig);
-    for (const [sc, c] of [[1.9, "#ff2a3a"], [1.5, "#ff9a6a"], [1.1, "#8a0018"]]) flat(GEO.ringFx, c, sc, ud.sig);
-    ud.tri = [flat(zgeo().tri, "#ff2a3a", 1.45, ud.sig), flat(zgeo().tri, "#ff2a3a", 1.45, ud.sig)]; ud.tri[1].rotation.z = Math.PI;
-    ud.area = new THREE.Group(); grp.add(ud.area);
-    ud.areaRing = flat(GEO.ringFx, "#ff2a3a", 1, ud.area); ud.areaRing2 = flat(GEO.ringFx, "#ffffff", 1, ud.area);
-    ud.cuts = []; const T = fxTex();
-    for (let k = 0; k < z.nCut; k++) { // 베기 선: 가늘고 긴 빛 + 흰 심
-      const c = new THREE.Group(); ud.area.add(c);
-      const a = new THREE.Mesh(GEO.fxQuad || (GEO.fxQuad = new THREE.PlaneGeometry(1, 1)), addTex(T.streak, "#ff2a3a")); a.scale.set(1, 0.3, 1); c.add(a);
-      const b = new THREE.Mesh(GEO.fxQuad, addTex(T.streak, "#ffffff")); b.scale.set(1, 0.08, 1); b.position.z = 0.01; c.add(b);
-      ud.cuts.push(c);
-    }
+    const flat = (col, sc, parent, op = 1) => { const m = new THREE.Mesh(GEO.ringFx, additive(col)); m.rotation.x = -Math.PI / 2; m.scale.setScalar(sc); m.userData.op = op; parent.add(m); return m; };
+    ud.me = new THREE.Group(); grp.add(ud.me); // 시전자 둘레
+    ud.rings = ["#ff2a3a", "#ffffff", "#8a0018"].map((c, i) => { const m = flat(c, 1, ud.me); m.position.y = 0.3 + i * 0.5; return m; });
+    ud.sig = new THREE.Group(); ud.me.add(ud.sig);
+    for (const [sc, c] of [[2.4, "#ff2a3a"], [1.9, "#ff9a6a"], [1.4, "#8a0018"]]) flat(c, sc, ud.sig);
+    ud.tri = [new THREE.Mesh(zgeo().tri, additive("#ff2a3a")), new THREE.Mesh(zgeo().tri, additive("#ff2a3a"))];
+    ud.tri.forEach((m, i) => { m.rotation.x = -Math.PI / 2; m.rotation.z = i * Math.PI; m.scale.setScalar(1.85); ud.sig.add(m); });
+    ud.sig.position.y = 0.27;
+    ud.sky = new THREE.Group(); ud.sky.position.set(0, 8.5, 0); grp.add(ud.sky); // 하늘의 붉은 고리 (전장 가운데 위)
+    for (let i = 0; i < 4; i++) flat(i === 1 ? "#ffffff" : i === 3 ? "#5a0010" : "#ff2a3a", 2.5 + i * 2.2, ud.sky);
+    ud.world = new THREE.Group(); grp.add(ud.world); // 거대한 참격
+    for (const [h, c, op, tx] of [[1.4, "#5a0010", 0.7, T.streak], [0.6, "#ff2a3a", 1, T.needle], [0.2, "#ffffff", 1, T.needle]]) { const m = new THREE.Mesh(Q, addTex(tx, c, op)); m.scale.set(40, h, 1); m.userData.h = h; ud.world.add(m); }
+    const cr = new THREE.Mesh(Q, addTex(T.crescent, "#ff2a3a")); cr.rotation.set(-Math.PI / 2, 0, 0); cr.scale.setScalar(5); ud.world.add(cr); ud.worldCres = cr;
+    ud.rift = new THREE.Mesh(Q, addTex(T.streak, "#ff2a3a", 0.8)); ud.rift.rotation.x = -Math.PI / 2; grp.add(ud.rift); // 땅에 남는 갈라진 자국
     return grp;
   });
   const ud = g.userData; g.position.set(0, 0, 0);
-  ud.sig.position.set(x, 0.27, y); ud.sig.scale.setScalar(Math.max(0.01, grow)); ud.sig.rotation.y -= dt * 2.2; ud.tri[1].rotation.z += dt * 4;
-  const sigOn = Math.max(0, Math.min(1, (z.gridAt - t) / 0.3)) * fade;
-  ud.sig.children.forEach((m) => (m.material.opacity = 0.8 * sigOn));
-  const G = z.grid && !z.grid.none ? z.grid : null;
-  ud.area.visible = !!G;
-  if (G) {
-    const gx = worldX(G.X), gy = worldZ(G.Y), R = (z.rad + 0.6) * SQ3, lt = t - z.gridAt;
-    ud.area.position.set(gx, 0, gy);
-    ud.areaRing.position.y = ud.areaRing2.position.y = 0.28;
-    ud.areaRing.scale.setScalar(R * Math.min(1, lt / 0.15)); ud.areaRing.material.opacity = 0.7 * fade;
-    ud.areaRing2.scale.setScalar(R * 0.92 * Math.min(1, lt / 0.15)); ud.areaRing2.material.opacity = 0.35 * fade;
-    ud.cuts.forEach((c, k) => {
-      const age = lt - k * 0.12, on = age >= 0 ? Math.max(0, 1 - age / 0.45) : 0;
-      c.visible = on > 0; if (!on) return;
-      const ang = k * 2.39 + (k % 2) * 0.6, h = 0.5 + ((k * 0.37) % 1) * 1.1, len = R * 2.4;
-      c.position.set(Math.cos(ang + 1.3) * R * 0.15, h, Math.sin(ang + 1.3) * R * 0.15);
-      c.rotation.set(0, ang, (k % 2 ? 1 : -1) * (0.25 + (k % 3) * 0.2));
-      const grow2 = Math.min(1, age / 0.06); c.scale.set(len * grow2, 1 + (1 - on) * 0.6, 1);
-      c.children[0].material.opacity = on; c.children[1].material.opacity = on;
+  ud.me.position.set(x, 0, y);
+  ud.rings.forEach((r, i) => { r.rotation.z += dt * (6 + i * 3) * (i % 2 ? -1 : 1); r.scale.setScalar(0.5 + (1 - ck) * 1.6 + Math.sin(t * 30 + i) * 0.06); r.material.opacity = (t < REND_AT + 0.2 ? 0.85 : 0) * ck; });
+  ud.sig.scale.setScalar(Math.max(0.01, ck)); ud.sig.rotation.y -= dt * 2.4; ud.tri[1].rotation.z += dt * 4;
+  ud.sig.children.forEach((m) => (m.material.opacity = 0.8 * end));
+  ud.sky.position.x = worldX(3.5); ud.sky.position.z = worldZ(3.5);
+  ud.sky.rotation.y += dt * 1.8; ud.sky.scale.setScalar(0.3 + 0.7 * ck);
+  ud.sky.children.forEach((m, i) => (m.material.opacity = (i === 3 ? 0.5 : 0.4) * ck * end));
+  // 하늘에서 쏟아지는 참격
+  for (const d of z.drops) {
+    const k = t - d.at, pre = REND_FALL; if (k < -pre || k > 0.5) { const o = pool.get(d); if (o) o.o.visible = false; continue; }
+    const m = useMesh(d, () => {
+      const grp = new THREE.Group(), u2 = grp.userData;
+      u2.blade = new THREE.Group(); grp.add(u2.blade);
+      for (const [sc, c, op] of [[3.2, "#5a0010", 0.7], [2.6, "#ff2a3a", 1], [2.0, "#ffffff", 0.9]]) { const c2 = new THREE.Mesh(Q, addTex(T.crescent, c, op)); c2.rotation.z = -Math.PI / 2; c2.scale.setScalar(sc); u2.blade.add(c2); }
+      u2.trail = new THREE.Mesh(Q, addTex(T.streak, "#ff2a3a", 0.9)); u2.trail.rotation.z = Math.PI / 2; u2.trail.scale.set(5, 0.5, 1); u2.trail.position.y = 2.6; grp.add(u2.trail);
+      u2.mark = new THREE.Mesh(GEO.ringFx, additive("#ff2a3a")); u2.mark.rotation.x = -Math.PI / 2; u2.mark.position.y = 0.27; grp.add(u2.mark);
+      return grp;
     });
+    m.visible = true;
+    const u2 = m.userData; m.position.set(worldX(d.X), 0, worldZ(d.Y)); m.rotation.y = d.yaw;
+    if (k < 0) { // 떨어지는 중: 위에서 아래로 내리꽂혀요
+      const q = 1 + k / pre; u2.blade.visible = u2.trail.visible = true;
+      u2.blade.position.y = 9 * (1 - q) + 1.0; u2.blade.rotation.z = d.tilt;
+      u2.trail.position.y = u2.blade.position.y + 2.6; u2.trail.material.opacity = 0.9 * q;
+      u2.blade.children.forEach((c) => (c.material.opacity = Math.min(1, q * 1.5) * (c.userData.op || 1)));
+      u2.mark.scale.setScalar(1.6 - q * 0.8); u2.mark.material.opacity = q;
+    } else { // 땅에 닿은 뒤: 참격이 옆으로 퍼지며 사라지고 자국 고리가 커져요
+      if (!d.boom) { d.boom = 1; WFX.push({ kind: "impact", X: d.X, Y: d.Y, col: "#ff2a3a", heavy: 1, t: 0.4, t0: 0.4 }); }
+      const q = Math.max(0, 1 - k / 0.5);
+      u2.blade.position.y = 1.0; u2.blade.scale.set(1 + k * 3, 1 + k * 1.5, 1); u2.blade.children.forEach((c) => (c.material.opacity = q));
+      u2.trail.visible = false;
+      u2.mark.scale.setScalar(0.8 + k * 6); u2.mark.material.opacity = q;
+    }
+  }
+  // 거대한 참격: 줄을 따라 왼쪽에서 오른쪽으로 순식간에 갈라요
+  const W = z.world;
+  ud.world.visible = ud.rift.visible = !!W && t >= z.wAt - 0.12;
+  if (W) {
+    const k = t - z.wAt, zz = worldZ(W.Y), cx = worldX(3.5);
+    ud.world.position.set(cx, 1.1, zz); ud.world.rotation.set(0, 0, 0);
+    const grow = Math.min(1, (k + 0.12) / 0.12), q = k < 0 ? 1 : Math.max(0, 1 - k / 0.7);
+    ud.world.children.forEach((m) => { if (m === ud.worldCres) return; m.scale.set(40 * grow, m.userData.h * (1 + Math.max(0, k) * 2.5), 1); m.material.opacity = q; m.position.x = (grow - 1) * 20; });
+    ud.worldCres.position.x = -20 + grow * 40; ud.worldCres.material.opacity = grow < 1 ? 1 : q;
+    ud.rift.position.set(cx, 0.28, zz); ud.rift.scale.set(36 * grow, 0.5 + Math.max(0, k) * 0.4, 1); ud.rift.material.opacity = Math.max(0, Math.min(1, (z.dur - t) / 0.6)) * 0.85;
   }
 }
 // ----- 1코스트 스킬 3D 연출 -----
@@ -2636,6 +2683,29 @@ function drawOverlay(dt, R) {
       const [tx, ty] = proj(crb2.combo.cx, 3.0, crb2.combo.cz);
       ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = "#cff8ff"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
       ctx.fillText("합체 준비…", tx, ty); ctx.globalAlpha = 1;
+    }
+  }
+  // 김예균 "세계를 가르는 참격": 하늘이 핏빛으로 어두워지고, 참격마다 붉게 번쩍, 마지막엔 화면 전체를 가르는 선
+  const rz = S.battle && S.battle.zones.find((z) => z.kind === "rend");
+  if (rz) {
+    const t = rz.t, fade = Math.max(0, Math.min(1, (rz.dur - t) / 0.5)), dark = Math.min(1, t / 0.5) * fade;
+    ctx.fillStyle = `rgba(40,0,8,${0.42 * dark})`; ctx.fillRect(0, 0, W, H);
+    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, `rgba(20,0,4,${0.6 * dark})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    let fl = 0; for (const d of rz.drops) { const k = t - d.at; if (k >= 0 && k < 0.1) fl = Math.max(fl, (1 - k / 0.1) * 0.22); }
+    if (fl > 0) { ctx.fillStyle = `rgba(255,60,70,${fl})`; ctx.fillRect(0, 0, W, H); }
+    if (rz.world) {
+      const k = t - rz.wAt;
+      if (k > -0.45 && k < 0) { ctx.fillStyle = `rgba(10,0,2,${0.35 * (1 + k / 0.45)})`; ctx.fillRect(0, 0, W, H); } // 가르기 직전 더 어둡게
+      if (k >= 0 && k < 0.9) {
+        const [ax, ay] = proj(worldX(-1.5), 1.1, worldZ(rz.world.Y)), [bx, by] = proj(worldX(8.5), 1.1, worldZ(rz.world.Y)), q = 1 - k / 0.9;
+        const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1, ex = dx / L, ey = dy / L, x0 = ax - ex * W, y0 = ay - ey * W, x1 = bx + ex * W, y1 = by + ey * W;
+        if (k < 0.18) { ctx.fillStyle = `rgba(255,235,235,${(1 - k / 0.18) * 0.85})`; ctx.fillRect(0, 0, W, H); } // 번쩍
+        ctx.save(); ctx.lineCap = "round"; ctx.globalAlpha = q;
+        for (const [lw, col, blur] of [[u0 * 5 * (1 + k * 2), "rgba(120,0,16,.6)", 40], [u0 * 2.2, "#ff2a3a", 24], [u0 * 0.7, "#ffffff", 8]]) { ctx.shadowColor = "#ff2a3a"; ctx.shadowBlur = blur; ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x0, y0 - ex * 0); ctx.lineTo(x1, y1); ctx.stroke(); }
+        ctx.restore();
+        for (let i = 0; i < 14; i++) { const s2 = ((i * 0.618) % 1), px = ax + dx * s2, py = ay + dy * s2, sp = u0 * (2 + k * 18) * (0.5 + (i % 3) * 0.3); ctx.fillStyle = `rgba(255,${120 + (i % 3) * 50},${100 + (i % 2) * 80},${q})`; ctx.fillRect(px + (i % 2 ? 1 : -1) * sp * 0.3, py + (i % 2 ? -1 : 1) * sp, u0 * 0.5, u0 * 0.5); }
+      }
     }
   }
   // 정주환 "천벌": 하늘이 어두워지고, 번개가 칠 때마다 화면이 번쩍

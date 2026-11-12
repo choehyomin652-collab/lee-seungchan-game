@@ -72,14 +72,14 @@ const SK = {
       addFx(B, u.X, u.Y, 1.6, C("--c3")); addFx(B, u.X, u.Y, 2.3, "#ffffff", 0.7); addHuge(B, u, "철벽!", "#ffffff", "#4fa8ff", 2.4);
       if (B.visual) { B.zones.push({ kind: "goal", step: stepShow, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 1.4 }); S.shake = Math.max(S.shake || 0, 0.15); sfx("boom"); }
     } },
-  "김예균": { s: "심연 참격", d: (P) => `마왕의 홀을 휘둘러 핏빛 참격 8개를 연달아 날려요. 가까운 적부터 번갈아 베며 한 번에 ${R0(75 * P)} 피해. 마지막엔 적이 가장 많이 모인 곳을 십자·격자로 난도질해 둘레 1칸 적에게 0.12초마다 ${R0(30 * P)}씩 8번 피해. 자신에게 보호막 ${R0(200 * P)}. ★3이 되면 참격 14개, 난도질은 둘레 2칸에 12번`,
+  "김예균": { s: "세계를 가르는 참격", d: (P) => `하늘이 핏빛으로 물들고, 하늘에서 참격 12개가 쏟아져 적을 번갈아 베어요 (하나에 ${R0(55 * P)} 피해). 마지막엔 전장 전체를 가로로 가르는 거대한 참격! 적 모두에게 ${R0(80 * P)} 피해, 갈라진 줄 위아래 1칸 적은 ${R0(110 * P)} 더 받고 0.6초 기절. 자신에게 보호막 ${R0(200 * P)}. 기본 공격도 핏빛 참격이에요. ★3이 되면 참격 20개, 갈라진 줄 피해 ${R0(170 * P)}`,
     run(B, u, P, t, al, fo) {
       if (!fo.some((o) => o.alive)) return;
-      const legend = u.star >= 3, n = legend ? 14 : 8;
+      const legend = u.star >= 3, n = legend ? 20 : 12, wAt = REND_AT + n * REND_GAP + 0.5;
       u.shield += 200 * P;
-      B.zones.push({ kind: "rend", step: stepRend, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, n, fired: 0, legend, cuts: 0, nCut: legend ? 12 : 8, rad: legend ? 2 : 1, gridAt: REND_AT + n * REND_GAP + 0.2, dur: REND_AT + n * REND_GAP + 0.2 + (legend ? 12 : 8) * 0.12 + 0.5 });
-      addHuge(B, u, "심연 참격!", "#ffffff", "#ff2a3a", legend ? 3.4 : 2.8);
-      if (B.visual) { sfx("charge"); S.shake = Math.max(S.shake || 0, 0.12); }
+      B.zones.push({ kind: "rend", step: stepRend, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, n, legend, drops: [], world: null, wAt, dur: wAt + 1.3 });
+      addHuge(B, u, "捌", "#ffffff", "#ff2a3a", legend ? 5.2 : 4.6); // 하치: 가르다·베다
+      if (B.visual) { sfx("charge"); S.shake = Math.max(S.shake || 0, 0.15); }
     } },
   "박현호": { s: "응원가", d: (P) => `무대 조명 아래서 응원가를 불러요. 아군 전체 5초 동안 공격 속도 +25%, ${R0(70 * P)} 회복`,
     run(B, u, P, t, al) {
@@ -133,35 +133,41 @@ function summon(B, u, P, max, opt = {}) {
   }
   return made;
 }
-// 김예균 "심연 참격": 참격을 하나씩 날리고(REND_GAP초 간격), 마지막에 적이 몰린 곳을 격자로 난도질해요
-const REND_AT = 0.3, REND_GAP = 0.07;
+// 김예균 "세계를 가르는 참격": 하늘이 물들고(REND_AT초) → 참격이 하나씩 쏟아지고(REND_GAP초 간격) → 전장을 가로로 가르는 거대한 참격
+const REND_AT = 0.7, REND_GAP = 0.09, REND_FALL = 0.22;
 function stepRend(B, z, dt) {
   z.t += dt;
   const u = z.owner, foes = () => B.f.filter((o) => o.alive && o.team !== z.team);
   z.X = u.X; z.Y = u.Y;
-  while (z.fired < z.n && z.t >= REND_AT + z.fired * REND_GAP) { // 참격 발사: 가까운 적부터 번갈아
-    const i = z.fired++; if (!u.alive) continue;
-    const live = foes().sort((a, b) => hexDist(a, u) - hexDist(b, u) || a.r - b.r || a.c - b.c); if (!live.length) continue;
-    const o = live[i % Math.min(live.length, 4)], P = z.P;
-    B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 15, col: "#ff2a3a", sz: 0.1, ck: "rend", ccol: i % 3 === 2 ? "#ff8a5a" : "#ff2a3a", tilt: (i % 2 ? 1 : -1) * (0.35 + (i % 3) * 0.25),
-      hit: () => { dealDamage(B, u, o, 75 * P, "skill"); addFx(B, o.X, o.Y, 0.7, "#ff2a3a", 0.25); } });
-    if (B.visual) sfx("kick");
+  while (z.drops.length < z.n && z.t >= REND_AT + z.drops.length * REND_GAP - REND_FALL) { // 떨어질 자리를 미리 정해요 (가까운 적부터 5명을 번갈아)
+    const i = z.drops.length, live = foes().sort((a, b) => hexDist(a, u) - hexDist(b, u) || a.r - b.r || a.c - b.c);
+    const o = live.length ? live[i % Math.min(live.length, 5)] : null;
+    z.drops.push({ o, at: REND_AT + i * REND_GAP, X: o ? o.X : u.X, Y: o ? o.Y : u.Y, tilt: (i % 2 ? 1 : -1) * (0.3 + (i % 3) * 0.22), yaw: (i % 2 ? 1 : -1) * (0.15 + (i % 3) * 0.12), hit: 0 });
   }
-  if (z.t >= z.gridAt && !z.grid) { // 난도질 자리: 둘레에 적이 가장 많은 적
-    const live = foes();
-    if (live.length) {
-      const score = (c) => near(live, c, z.rad).length;
-      const c = live.slice().sort((a, b) => score(b) - score(a) || a.r - b.r || a.c - b.c)[0];
-      z.grid = { r: c.r, c: c.c, X: c.X, Y: c.Y };
-      addHuge(B, c, "난도질!", "#ffffff", "#ff2a3a", z.legend ? 3.2 : 2.6);
-      if (B.visual) { S.shake = Math.max(S.shake || 0, z.legend ? 0.45 : 0.25); sfx("boom"); }
-    } else z.grid = { none: 1 };
+  for (const d of z.drops) {
+    if (d.hit) continue;
+    if (d.o && d.o.alive) { d.X = d.o.X; d.Y = d.o.Y; }
+    if (z.t < d.at) continue;
+    d.hit = 1;
+    if (d.o && d.o.alive && u.alive) { dealDamage(B, u, d.o, 55 * z.P, "skill"); addFx(B, d.X, d.Y, 1.1, "#ff2a3a", 0.3); }
+    if (B.visual) { S.shake = Math.max(S.shake || 0, 0.1); sfx("kick"); }
   }
-  if (z.grid && !z.grid.none) while (z.cuts < z.nCut && z.t >= z.gridAt + z.cuts * 0.12) {
-    z.cuts++;
-    near(foes(), z.grid, z.rad).forEach((o) => dealDamage(B, u, o, 30 * z.P, "skill"));
-    addFx(B, z.grid.X, z.grid.Y, 0.6 + z.rad * 0.6, z.cuts % 2 ? "#ff2a3a" : "#ffffff", 0.2);
-    if (B.visual && z.cuts % 2) sfx("kick");
+  if (!z.world && z.t >= z.wAt - 0.45) { // 가를 줄: 적이 가장 많이 선 줄
+    const live = foes(), cnt = {};
+    live.forEach((o) => { for (const r of [o.r - 1, o.r, o.r + 1]) cnt[r] = (cnt[r] || 0) + 1; });
+    let row = live.length ? live[0].r : 3, best = -1;
+    for (let r = 0; r < 8; r++) if ((cnt[r] || 0) > best) { best = cnt[r] || 0; row = r; }
+    z.world = { r: row, Y: row, at: z.wAt, hit: 0 };
+  }
+  if (z.world && !z.world.hit && z.t >= z.wAt) {
+    z.world.hit = 1;
+    if (u.alive) foes().forEach((o) => {
+      const on = Math.abs(o.r - z.world.r) <= 1;
+      dealDamage(B, u, o, (80 + (on ? (z.legend ? 170 : 110) : 0)) * z.P, "skill");
+      if (on && o.alive) o.stunT = Math.max(o.stunT || 0, 0.6);
+    });
+    addHuge(B, { X: 3, Y: z.world.Y }, "解", "#ffffff", "#ff2a3a", z.legend ? 5.2 : 4.6);
+    if (B.visual) { S.shake = Math.max(S.shake || 0, z.legend ? 0.9 : 0.7); sfx("boom"); }
   }
   if (z.t >= z.dur) z.done = 1;
 }
