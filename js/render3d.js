@@ -2155,24 +2155,6 @@ function drawDunk(z, dt) {
   ud.ball.position.set(0, 4.2 - bp * 3.9 + (bp >= 1 ? Math.abs(Math.sin((t - DUNK_AT) * 12)) * 0.6 * fade : 0), 0); ud.ball.rotation.x += dt * 14; ud.ball.material.opacity = fade; ud.ball.visible = t > 0.1;
   ud.ring.scale.setScalar(1.5 - 0.9 * Math.min(1, t / DUNK_AT)); ud.ring.material.opacity = t < DUNK_AT ? 0.9 : 0;
 }
-// 김현우: 머리 위에 써지는 공식, 바닥에서 도는 삼각자, 대입 순간의 파란 빛기둥
-function drawFormula(z, dt) {
-  const g = useMesh(z, () => {
-    const grp = new THREE.Group(), ud = grp.userData;
-    const mk = (txt, a, b) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: symTex(txt, a, b), transparent: true, depthWrite: false })); grp.add(sp); return sp; };
-    ud.f1 = mk("y = f(x)", "90,170,255", "40,90,220"); ud.f2 = mk("y = 2·f(x) !", "255,200,80", "230,120,30");
-    ud.tri = [0, 1].map((i) => { const m = new THREE.Mesh(zgeo().tri, additive(i ? "#ffffff" : "#7fc4ff")); m.rotation.x = -Math.PI / 2; m.position.y = 0.27; grp.add(m); return m; });
-    ud.beam = new THREE.Mesh(zgeo().tube, additive("#7fc4ff")); ud.beam.position.y = 1.5; grp.add(ud.beam);
-    return grp;
-  });
-  const ud = g.userData, t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.25)), pop = Math.min(1, t / 0.15);
-  g.position.set(worldX(z.X), 0, worldZ(z.Y));
-  const dbl = t >= FORMULA_AT ? !!z.dbl : z.tgt.alive && z.tgt.hp < z.tgt.maxHp * 0.5;
-  for (const [sp, on] of [[ud.f1, !dbl], [ud.f2, dbl]]) { sp.visible = on; sp.position.y = 3.0 + Math.sin(t * 6) * 0.06; const s = 1.15 * (0.4 + 0.6 * pop) * (dbl ? 1.2 : 1); sp.scale.set(s * 4, s, 1); sp.material.opacity = fade; }
-  ud.tri.forEach((m, i) => { m.rotation.z += dt * (i ? -7 : 5); m.scale.setScalar((1.5 - i * 0.45) * (1.3 - 0.4 * Math.min(1, t / FORMULA_AT))); m.material.opacity = 0.9 * fade; });
-  const k = t - FORMULA_AT, q = k >= 0 ? Math.max(0, 1 - k / 0.35) : 0;
-  ud.beam.scale.set(0.12 + 0.5 * q, 3, 0.12 + 0.5 * q); ud.beam.material.opacity = q * 0.9; ud.beam.material.color.set(dbl ? "#ffd36b" : "#7fc4ff");
-}
 // 이보경: 슬라이딩 자국 (속도선 세 줄)
 function drawTackle(z, dt) {
   const g = useMesh(z, () => {
@@ -2549,7 +2531,7 @@ function drawMark(z, dt) {
   ud.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -3 : 2); r.material.opacity = (0.55 + Math.sin(t * 6) * 0.2) * fade; });
   ud.cross.rotation.y += dt * 1.5; ud.cross.children.forEach((b) => (b.material.opacity = 0.6 * fade));
 }
-const ZDRAW = { net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
+const ZDRAW = { net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();

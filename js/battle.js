@@ -85,9 +85,13 @@ function dealDamage(B, src, t, amt, kind) {
   if (!t.alive) return 0;
   let crit = false;
   if (kind === "skill") amt *= src.amp;
-  if ((kind === "atk" || (kind === "skill" && src.skillCrit)) && Math.random() < src.crit) { amt *= 1.5; crit = true; }
-  amt = Math.max(1, Math.round(amt * (1 - t.ar) * (t.vulnT > 0 ? 1 + t.vuln : 1)));
-  const abs = Math.min(t.shield, amt); t.shield -= abs; t.hp -= amt - abs; t.flash = 0.12;
+  if (kind === "exec") { amt = Math.ceil(t.hp + t.shield); t.shield = 0; t.hp = 0; } // 처형: 보호막·방어 무시하고 바로 쓰러뜨려요
+  else {
+    if ((kind === "atk" || (kind === "skill" && src.skillCrit)) && Math.random() < src.crit) { amt *= 1.5; crit = true; }
+    amt = Math.max(1, Math.round(amt * (1 - t.ar) * (t.vulnT > 0 ? 1 + t.vuln : 1)));
+    const abs = Math.min(t.shield, amt); t.shield -= abs; t.hp -= amt - abs;
+  }
+  t.flash = 0.12;
   if (src && !src.mon) src.dmg = (src.dmg || 0) + amt;
   if (t.mm !== Infinity && kind !== "thorn") t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
   if (t.lowShield && !t.lsUsed && t.hp > 0 && t.hp < t.maxHp * 0.4) { t.lsUsed = 1; t.shield += t.lowShield; addFx(B, t.X, t.Y, 0.7, TOK["--c3"]); }
