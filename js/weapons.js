@@ -108,6 +108,14 @@ const WEAPONS = {
     e.put(wg("orb", () => sphG(0.085)), e.mk(0x7ff0e0, 0.2, { emissive: lin(0x2fd0c0), emissiveIntensity: 1.1 }), tx, ty + dy * 0.06, tz + dz * 0.06, e.R);
     const t = e.put(wg("orbr", () => new THREE.TorusGeometry(0.11, 0.012, 6, 20)), e.mk(0xd8b45a, 0.3, { metalness: 0.8 }), tx, ty + dy * 0.06, tz + dz * 0.06, e.R); t.rotation.x = Math.PI / 2 + 0.4;
   } },
+  "최윤서": { n: "투망", anim: "toss", build(e) {
+    const [tx, ty, tz] = wStick(e, e.mk(0x6a4a2a, 0.6), 0.7, 0.02, 0, -0.43, 0.1, 0.5);
+    const h = e.put(wg("nh", () => new THREE.TorusGeometry(0.1, 0.012, 6, 18)), e.mk(0x2fd0a0, 0.4), tx, ty + 0.05, tz, e.R); h.rotation.x = 0.5;
+  } },
+  "은혜린": { n: "댄스 리본", anim: "wave", pr: { col: "#ff7ab0", shape: "orb" }, build(e) {
+    const [tx, ty, tz] = wStick(e, e.mk(0xf2e6d0, 0.5), 0.4, 0.016, 0, -0.43, 0.1, 0.6);
+    const r = e.put(wg("rb", () => new THREE.BoxGeometry(0.03, 0.3, 0.004)), e.mk(0xff7ab0, 0.5), tx, ty - 0.12, tz, e.R); r.rotation.x = 0.3;
+  } },
   "박현호": { n: "마이크", anim: "shout", pr: { col: "#ffd36b", shape: "orb" }, build(e) {
     const [tx, ty, tz] = wStick(e, e.mk(0x2b2f33, 0.4), 0.3, 0.028, 0, -0.43, 0.1, 0.9);
     e.put(wg("mich", () => sphG(0.075)), e.mk(0xc9d1cc, 0.3, { metalness: 0.6 }), tx, ty + Math.cos(0.9) * 0.06, tz + Math.sin(0.9) * 0.06, e.R);

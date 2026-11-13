@@ -1068,6 +1068,20 @@ function buildChampWeapon(CH, C) {
     case "abyssorb": { const w = holder(R, 0); const o = add(w, G.orb, mk(0x1a0a2a, 0.2, { emissive: lin(0x4a1a8a), emissiveIntensity: 1.2 }), 0, 0.1, 0.12); o.scale.setScalar(1.4); const r = add(w, G.ringA, glowM(CH.accent), 0, 0.1, 0.12); r.rotation.x = 1.2; r.userData.keep = true; C.ud.spin = [r]; break; }
     case "spear": { const w = holder(R, Math.PI / 2 - 0.85, "up", "fwd"); const top = staff(w, 1.45); add(w, G.spearHead, CH.metal === "gold" ? trim : metal, 0, top + 0.1, 0).scale.set(0.7, 2.2, 0.35); add(w, G.gem, glowM(CH.accent), 0, top - 0.05, 0).scale.setScalar(1.4); break; }
     case "crystalstaff": { const w = holder(R, Math.PI / 2 - 0.85, "up", "up"); const top = staff(w, 1.3); for (let i = 0; i < 3; i++) { const t = add(w, G.spike, trim, Math.cos(i * 2.1) * 0.05, top - 0.02, Math.sin(i * 2.1) * 0.05); t.rotation.set(Math.sin(i * 2.1) * 0.5, 0, -Math.cos(i * 2.1) * 0.5); } add(w, G.spearHead, glowM(CH.accent, 1.3), 0, top + 0.12, 0).scale.set(0.9, 1.6, 0.9); break; }
+    case "net": { // 투망: 긴 막대 끝의 둥근 테에 그물주머니
+      const w = holder(R, Math.PI / 2 - 0.6), top = staff(w, 1.1);
+      add(w, G.netHoop || (G.netHoop = new THREE.TorusGeometry(0.21, 0.017, 6, 26)), trim, 0, top + 0.21, 0);
+      const bag = add(w, G.netBag || (G.netBag = new THREE.SphereGeometry(0.21, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2)), new THREE.MeshBasicMaterial({ color: lin(CH.accent), wireframe: true }), 0, top + 0.21, 0);
+      bag.rotation.x = Math.PI / 2; bag.castShadow = false;
+      break;
+    }
+    case "ribbon": { // 댄스 리본: 짧은 막대 끝에서 길게 늘어진 리본
+      const w = holder(R, Math.PI / 2 - 0.7), top = staff(w, 0.5);
+      add(w, G.gem, glowM(CH.accent, 1.2), 0, top + 0.03, 0).scale.setScalar(1.4);
+      const rb = add(w, G.ribbon || (G.ribbon = new THREE.PlaneGeometry(0.09, 0.75, 1, 6)), mk(CH.top, 0.6, { side: THREE.DoubleSide }), 0, top - 0.3, -0.08);
+      rb.rotation.x = 0.25; rb.castShadow = false;
+      break;
+    }
     case "sunstaff": { const w = holder(R, Math.PI / 2 - 0.85, "up", "up"); const top = staff(w, 1.25); const disc = add(w, G.ringA, trim, 0, top + 0.08, 0); disc.scale.setScalar(0.9); for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const r = add(w, G.ray, trim, Math.cos(a) * 0.15, top + 0.08 + Math.sin(a) * 0.15, 0); r.rotation.z = a - Math.PI / 2; } add(w, G.orb, glowM(0xffe08a), 0, top + 0.08, 0); break; }
   }
 }
@@ -1806,7 +1820,7 @@ const CANIM = {
   smite: (p) => ({ ra: ph3(p, -3.1, -1.35, 0.3, 0.44), re: ph3(p, -0.6, -0.05, 0.3, 0.44), la: hold(p, 0.4), lz: hold(p, -0.6), hop: ph3(p, 0.18, 0.02, 0.3, 0.44), lean: ph3(p, -0.2, 0.3, 0.3, 0.44), head: ph3(p, -0.3, 0.1, 0.3, 0.44) }),
 };
 const DIV_ANIM = { "김예균": "slash" }; // 김예균은 홀의 낫날로 크게 베어요
-const CH_ANIM = { sword: "slash", blades: "twin", greataxe: "cleave", hammer: "cleave", bow: "bow", crossbow: "aim", rifle: "aim", tome: "tome", shield: "bash", bo: "bo", quill: "quill", gauntlets: "punch", horn: "horn", astrolabe: "cast", abyssorb: "orb", spear: "thrust", crystalstaff: "cast", sunstaff: "cast" };
+const CH_ANIM = { sword: "slash", blades: "twin", greataxe: "cleave", hammer: "cleave", bow: "bow", crossbow: "aim", rifle: "aim", tome: "tome", shield: "bash", bo: "bo", quill: "quill", gauntlets: "punch", horn: "horn", astrolabe: "cast", abyssorb: "orb", spear: "thrust", crystalstaff: "cast", sunstaff: "cast", net: "cleave", ribbon: "cast" };
 // 무기 종류별 공격 효과 색·모양
 const champOfUnit = (f) => (f && !f.robot && !f.mon && f.d >= 0 && typeof CHAMPS !== "undefined" && CHAMPS[DEFS[f.d].n]) || null;
 function projKind(CH) {
@@ -2302,6 +2316,50 @@ function drawSlam(z, dt) {
   ud.rings.forEach((r, i) => { r.scale.setScalar(0.4 + k * (5.5 - i * 1.3)); r.material.opacity = q * (i ? 0.7 : 1); });
   ud.dome.scale.set(1 + grow * 12, Math.max(0.01, (1 - Math.min(1, k / 0.3)) * 8), 1 + grow * 12); ud.dome.material.opacity = Math.max(0, 0.5 - k * 1.8);
 }
+// 최윤서 그물: 날아가서 펼쳐진 뒤, 묶는 동안 바닥에 깔려 있어요
+const netTex = () => textTex("net", 256, 256, (g, w, h) => {
+  g.clearRect(0, 0, w, h); g.strokeStyle = "#ffffff"; g.lineWidth = 5; g.lineCap = "round";
+  const cx = w / 2, R = w * 0.47;
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.beginPath(); g.moveTo(cx, cx); g.lineTo(cx + Math.cos(a) * R, cx + Math.sin(a) * R); g.stroke(); }
+  for (let k = 1; k <= 4; k++) { g.beginPath(); g.arc(cx, cx, (R * k) / 4, 0, 7); g.stroke(); }
+  g.lineWidth = 9; g.beginPath(); g.arc(cx, cx, R, 0, 7); g.stroke();
+});
+function drawNet(z, dt) {
+  const k = z.t - z.hitAt, fade = Math.max(0, Math.min(1, (z.dur - z.t) / 0.4));
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.net = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: netTex(), color: new THREE.Color("#19c98a"), transparent: true, depthWrite: false, side: THREE.DoubleSide })); ud.net.rotation.x = -Math.PI / 2; grp.add(ud.net);
+    ud.ring = new THREE.Mesh(GEO.ringFx, additive("#2fd0a0")); ud.ring.rotation.x = -Math.PI / 2; ud.ring.position.y = 0.05; grp.add(ud.ring);
+    return grp;
+  });
+  const ud = g.userData, d = z.rad * 2 + 1.2;
+  if (k < 0) { // 날아가는 동안: 작은 그물이 포물선을 그리며 커져요
+    const q = 1 + k / z.hitAt, ex = worldX(z.X), ez = worldZ(z.Y), sx = worldX(z.ox), sz = worldZ(z.oy);
+    g.position.set(sx + (ex - sx) * q, 0.6 + Math.sin(q * Math.PI) * 2.2, sz + (ez - sz) * q);
+    ud.net.rotation.z += dt * 8; ud.net.scale.setScalar(0.5 + q * 1.2); ud.net.material.opacity = 0.9;
+    ud.ring.scale.setScalar(z.rad + 0.6 - q * 0.4); ud.ring.material.opacity = 0.35 + q * 0.5; ud.ring.position.set(ex - g.position.x, 0.05 - g.position.y, ez - g.position.z);
+    return;
+  }
+  g.position.set(worldX(z.X), 0.12, worldZ(z.Y)); ud.ring.position.set(0, 0, 0);
+  const open = Math.min(1, k / 0.12);
+  ud.net.rotation.z = 0.3; ud.net.scale.setScalar(d * (0.8 + 0.2 * open)); ud.net.material.opacity = (0.95 + Math.sin(z.t * 14) * 0.05) * fade;
+  ud.ring.scale.setScalar(d * 0.45 + k * 3); ud.ring.material.opacity = Math.max(0, 0.7 - k * 2.2);
+}
+// 은혜린 춤추기: 반짝이는 무대 + 떠오르는 음표
+function drawDance(z, dt) {
+  const t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.4)), x = worldX(z.X), y = worldZ(z.Y), R = Math.min(z.rad, 4.5);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.rings = ["#ff7ab0", "#ffe66b", "#7fc4ff"].map((c) => { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2; m.position.y = 0.08; grp.add(m); return m; });
+    ud.spot = new THREE.Mesh(zgeo().cone, additive("#ffb0d8")); ud.spot.position.y = 4; grp.add(ud.spot);
+    ud.notes = [0, 1, 2, 3, 4, 5].map((i) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(i % 2 ? "♪" : "♫", "note", "rgba(255,122,176,.95)", "rgba(255,160,60,0)", "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
+    return grp;
+  });
+  const ud = g.userData; g.position.set(x, 0, y);
+  ud.rings.forEach((r, i) => { r.rotation.z += dt * (2 + i) * (i % 2 ? -1 : 1); r.scale.setScalar(R * (0.55 + 0.45 * Math.min(1, t / 0.25)) * (1 - i * 0.12) + Math.sin(t * 8 + i) * 0.05); r.material.opacity = (0.55 - i * 0.12) * fade; });
+  ud.spot.rotation.y += dt; ud.spot.material.opacity = 0.16 * fade;
+  ud.notes.forEach((sp, i) => { const a = t * 2.4 + i * 1.05, rr = Math.min(R, 2.4) * (0.5 + 0.5 * Math.abs(Math.sin(i * 1.7))); sp.position.set(Math.cos(a) * rr, 1.0 + ((t * 1.2 + i * 0.4) % 1.8), Math.sin(a) * rr); sp.scale.setScalar(0.75 + Math.sin(t * 9 + i) * 0.1); sp.material.opacity = fade; });
+}
 // 박준서: 빛나는 수학 공식이 비스듬히 떨어져요 (가로로 긴 판에 공식을 써요)
 function symTex(sym, rgb1 = "200,107,255", rgb2 = "120,60,220") {
   return textTex("sym" + rgb1 + sym, 512, 128, (g, w, h) => {
@@ -2463,7 +2521,7 @@ function drawMark(z, dt) {
   ud.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -3 : 2); r.material.opacity = (0.55 + Math.sin(t * 6) * 0.2) * fade; });
   ud.cross.rotation.y += dt * 1.5; ud.cross.children.forEach((b) => (b.material.opacity = 0.6 * fade));
 }
-const ZDRAW = { zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
+const ZDRAW = { net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();

@@ -81,6 +81,22 @@ const SK = {
       addHuge(B, u, "捌", "#ffffff", "#ff2a3a", legend ? 5.2 : 4.6); // 하치: 가르다·베다
       if (B.visual) { sfx("charge"); S.shake = Math.max(S.shake || 0, 0.15); }
     } },
+  "최윤서": { s: "그물 던지기", d: (P) => `적이 가장 많이 모인 곳에 그물을 던져요. 반경 1칸 적 모두 ${R0(90 * P)} 피해 + 1.5초 동안 꼼짝 못 함, 3초 동안 받는 피해 +20%. ★2는 1.75초, ★3은 반경 2칸에 2.5초 묶고 그물 가운데로 끌어당겨요`,
+    run(B, u, P, t, al, fo) {
+      const live = fo.filter((o) => o.alive); if (!live.length) return;
+      const c = live.map((o) => [o, near(live, o, 1).length + (t && o === t ? 0.5 : 0)]).sort((a, b) => b[1] - a[1])[0][0]; // 가장 많이 모인 곳 (대상 근처 우선)
+      const star = u.star || 1, hold = star >= 3 ? 2.5 : star === 2 ? 1.75 : 1.5, rad = star >= 3 ? 2 : 1;
+      B.zones.push({ kind: "net", step: stepNet, team: u.team, owner: u, P, r: c.r, c: c.c, X: c.X, Y: c.Y, ox: u.X, oy: u.Y, t: 0, hitAt: NET_AT, hold, rad, pull: star >= 3, dur: NET_AT + hold + 0.4 });
+      addHuge(B, u, star >= 3 ? "대어 포획!" : "그물 던지기!", "#ffffff", "#2fd0a0", star >= 3 ? 3 : 2.5);
+      if (B.visual) sfx("charge");
+    } },
+  "은혜린": { s: "춤추기", d: (P) => `발밑에 반짝이는 댄스 무대를 깔아요 (반경 2칸, 4초). 무대 위 아군은 공격 속도 +35%와 0.5초마다 회복(합계 ${R0(120 * P)}), 무대 위 적은 박자에 맞춰 0.5초 멈칫해요. 댄스부 특성이면 1초 더 오래 가요. ★3은 무대가 전장 전체로 넓어지고 공격 속도 +50%`,
+    run(B, u, P) {
+      const star = u.star || 1, dur = 4 + (u.dance ? 1 : 0), all = star >= 3;
+      B.zones.push({ kind: "dance", step: stepDance, team: u.team, owner: u, P, X: u.X, Y: u.Y, r: u.r, c: u.c, t: 0, tick: 0, n: 0, dur, rad: all ? 99 : 2, asb: all ? 0.5 : 0.35, heal: 120 * P / (dur / 0.5), froze: 0, all });
+      addHuge(B, u, all ? "전장 무대 ♪" : "♪ 춤추기 ♪", "#ffffff", "#ff7ab0", all ? 3.2 : 2.6);
+      if (B.visual) sfx("charge");
+    } },
   "박현호": { s: "응원가", d: (P) => `무대 조명 아래서 응원가를 불러요. 아군 전체 5초 동안 공격 속도 +25%, ${R0(70 * P)} 회복`,
     run(B, u, P, t, al) {
       al.forEach((o) => { o.asBuff = Math.max(o.asBuff || 0, 0.25); o.asBuffT = 5; heal(B, o, 70 * P); });
@@ -256,6 +272,40 @@ function stepScribble(B, z, dt) {
 function stepCheer(B, z, dt) {
   const t0 = z.t; stepShow(B, z, dt);
   [0, 0.22, 0.44].forEach((at, i) => { if (t0 <= at && z.t > at) addFx(B, z.X, z.Y, 3 + i * 1.5, ["#ffe66b", "#ff9ac8", "#7fc4ff"][i], 0.8); });
+}
+// 최윤서 "그물 던지기": 그물이 날아가고(NET_AT초) 떨어지는 순간 범위 안 적을 묶어요
+const NET_AT = 0.45;
+function stepNet(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  if (!(t0 < z.hitAt && z.t >= z.hitAt)) { if (z.t >= z.dur) z.done = 1; return; }
+  const u = z.owner, foes = foesOf(B, z.team), hit = near(foes, z, z.rad);
+  const occ = new Set(B.f.filter((o) => o.alive).map((o) => o.r * COLS + o.c));
+  hit.sort((a, b) => hexDist(a, z) - hexDist(b, z)).forEach((o) => {
+    dealDamage(B, u, o, 90 * z.P, "skill");
+    if (!o.alive) return;
+    o.stunT = Math.max(o.stunT || 0, z.hold); o.vuln = Math.max(o.vuln || 0, 0.2); o.vulnT = Math.max(o.vulnT || 0, 3);
+    if (z.pull && hexDist(o, z) > 0) { // 그물 가운데로 한 칸 끌어당겨요
+      let best = null, bd = hexDist(o, z);
+      for (const [nr, nc] of neighbors(o.r, o.c)) { const nd = hexDistRC(nr, nc, z.r, z.c); if (nd < bd && !occ.has(nr * COLS + nc)) { bd = nd; best = [nr, nc]; } }
+      if (best) { occ.delete(o.r * COLS + o.c); o.r = best[0]; o.c = best[1]; occ.add(o.r * COLS + o.c); }
+    }
+    addFx(B, o.X, o.Y, 0.7, "#7fffd0", 0.4);
+  });
+  addFx(B, z.X, z.Y, z.rad + 1, "#2fd0a0", 0.6); addFx(B, z.X, z.Y, z.rad + 0.3, "#ffffff", 0.35);
+  if (hit.length) addHuge(B, z, "꼼짝 마!", "#ffffff", "#2fd0a0", 2.6);
+  if (B.visual) { S.shake = Math.max(S.shake || 0, 0.12); sfx("kick"); }
+}
+// 은혜린 "춤추기": 무대(은혜린을 따라다녀요) 위 아군은 빨라지고 회복, 적은 처음에 한 번 멈칫
+function stepDance(B, z, dt) {
+  const u = z.owner;
+  if (!u.alive) { z.done = 1; return; }
+  z.t += dt; z.X = u.X; z.Y = u.Y; z.r = u.r; z.c = u.c; z.tick += dt;
+  if (z.tick >= 0.5 || !z.n) {
+    z.tick = z.n ? z.tick - 0.5 : 0; z.n++;
+    B.f.filter((o) => o.alive && o.team === z.team && hexDist(o, z) <= z.rad).forEach((o) => { o.asBuff = Math.max(o.asBuff || 0, z.asb); o.asBuffT = Math.max(o.asBuffT || 0, 0.7); heal(B, o, z.heal); });
+    if (!z.froze) { z.froze = 1; near(foesOf(B, z.team), z, z.rad).forEach((o) => { o.stunT = Math.max(o.stunT || 0, 0.5); }); }
+  }
+  if (z.t >= z.dur) z.done = 1;
 }
 // 조하윤 "¡Adiós!": 조준(0.4초) → 저격
 function stepSnipe(B, z, dt) {
