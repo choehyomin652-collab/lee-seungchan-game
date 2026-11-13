@@ -23,7 +23,7 @@ jobs:
       - name: 게임 파일만 모으기
         run: |
           mkdir _site
-          cp -r index.html style.css manifest.webmanifest sw.js js icons _site/
+          cp -r index.html style.css manifest.webmanifest sw.js js icons cards _site/
           # 배포할 때마다 앱 저장소 이름을 바꿔서, 홈 화면 앱이 새 버전을 받게 해요
           sed -i "s/const CACHE = \"ssipto-v1\";/const CACHE = \"ssipto-${GITHUB_SHA::8}\";/" _site/sw.js
       - uses: actions/configure-pages@v5
