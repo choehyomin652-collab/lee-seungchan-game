@@ -79,9 +79,9 @@ const WEAPONS = {
     const m = new THREE.MeshStandardMaterial({ map: bballTex(), roughness: 0.7 }); e.ud.mats.push(m);
     e.put(GEO.ball, m, 0, -0.5, 0.1, e.R).scale.setScalar(1.2);
   } },
-  "김현우": { n: "삼각자", anim: "slashL", pr: { col: "#7fc4ff", shape: "orb" }, build(e) {
-    const geo = wg("tri", () => { const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(0.42, 0); sh.lineTo(0, 0.42); sh.lineTo(0, 0); const h = new THREE.Path(); h.moveTo(0.07, 0.07); h.lineTo(0.22, 0.07); h.lineTo(0.07, 0.22); h.lineTo(0.07, 0.07); sh.holes.push(h); const g2 = new THREE.ExtrudeGeometry(sh, { depth: 0.015, bevelEnabled: false }); g2.translate(-0.14, -0.14, -0.008); return g2; });
-    const m = e.put(geo, e.mk(0x7fc4ff, 0.3), 0, -0.45, 0.1, e.L); m.rotation.set(0.2, 1.0, 0.3);
+  "김현우": { n: "방패", anim: "bash", build(e) {
+    const sd = e.put(GEO.shield, e.mk(0x2a3550, 0.4, { metalness: 0.6 }), -0.1, -0.3, 0.06, e.L); sd.rotation.z = Math.PI / 2;
+    e.put(GEO.boss, e.mk(0x7fc4ff, 0.35, { metalness: 0.5 }), -0.14, -0.3, 0.06, e.L);
   } },
   "이보경": { n: "방패", anim: "bash", build(e) {
     const sd = e.put(GEO.shield, e.mk(0xb8c4bc, 0.35, { metalness: 0.7 }), -0.1, -0.3, 0.06, e.L); sd.rotation.z = Math.PI / 2;
