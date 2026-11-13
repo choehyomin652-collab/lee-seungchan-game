@@ -1624,7 +1624,8 @@ function collect(dt) {
       }
       if (u.combo && u.combo.t < u.combo.dur) {
         const t = u.combo.t; if (t < COMBO_ASM) continue;
-        const drop = t > COMBO_DONE ? Math.abs(Math.sin((t - COMBO_DONE) * 9)) * 0.2 * Math.max(0, 1 - (t - COMBO_DONE) / 0.4) : 0; // 조립은 robotAssemble 이 해요
+        const land = t > COMBO_DONE ? Math.abs(Math.sin((t - COMBO_DONE) * 9)) * 0.2 * Math.max(0, 1 - (t - COMBO_DONE) / 0.4) : 0; // 조립은 robotAssemble 이 해요
+        const drop = u.mega && t <= COMBO_DONE ? 14 * Math.pow(1 - (t - COMBO_ASM) / (COMBO_DONE - COMBO_ASM), 2) : land; // 초합체: 다 만들어진 채로 하늘에서 쿵!
         push(u, u, worldX(u.X), worldZ(u.Y), { f: u, enemy: isFoe(u), face: isFoe(u) ? 0 : Math.PI, lift: drop, alpha: 1 });
         continue;
       }
@@ -1656,7 +1657,7 @@ function collect(dt) {
 }
 function placeUnit(it, dt) {
   const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
-  const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.6 : 1.12)) * (it.bench ? 0.8 : 1); // 친구들은 12% 크게: 갑옷이 잘 보여요
+  const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? (it.sp.mega ? 1.95 : 1.6) : 1.12)) * (it.bench ? 0.8 : 1); // 친구들은 12% 크게: 갑옷이 잘 보여요
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
   const pv = ud.prev || { x: it.x, z: it.z };
@@ -1729,7 +1730,7 @@ function placeUnit(it, dt) {
     ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.018;
     if (ud.flames) { // 합체로봇: 추진기 불꽃이 일렁이고, 합체해서 내려올 때·걸을 때 더 크게 뿜어요
       const cb = it.f && it.f.combo && it.f.combo.t < it.f.combo.dur ? it.f.combo.t : -1;
-      const asm = cb >= 0 ? Math.max(0, Math.min(1, (cb - COMBO_ASM) / (COMBO_DONE - COMBO_ASM))) : 1; // 부품 조립 진행도
+      const asm = cb >= 0 && !it.f.mega ? Math.max(0, Math.min(1, (cb - COMBO_ASM) / (COMBO_DONE - COMBO_ASM))) : 1; // 부품 조립 진행도 (초합체로봇은 완성된 채로 내려와요)
       if (asm !== ud.lastAsm) { robotAssemble(ud, asm); ud.lastAsm = asm; }
       ud.eye.emissiveIntensity = !ud.eyeOn ? 0.05 : 2.2 + (cb >= COMBO_DONE ? 7 * Math.max(0, 1 - (cb - COMBO_DONE) / 0.5) : 0); // 다 조립되면 눈이 번쩍
       const k = cb >= 0 ? (cb < 2.0 ? 2.8 : 1.6) : ud.move > 0.1 ? 1.5 : 1;
@@ -2666,7 +2667,7 @@ function drawOverlay(dt, R) {
     if (S.phase === "carousel" && it.key && "taken" in it.key) { it.key.sx = sx; it.key.sy = sy + u0 * 1.6; }
     ctx.globalAlpha = it.alpha ?? 1;
     const sp = it.sp, fs = u0 * (it.bench ? 0.78 : 0.92);
-    const name = sp.robot ? "합체로봇" : sp.mon ? sp.mon.mn : short(DEFS[sp.d].n);
+    const name = sp.robot ? (sp.mega ? "초합체로봇" : "합체로봇") : sp.mon ? sp.mon.mn : short(DEFS[sp.d].n);
     if (!sp.mon) {
       ctx.fillStyle = sp.star === 3 ? TOK["--c5"] : TOK["--accent"]; ctx.font = font(fs * 0.85);
       ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText("★".repeat(sp.star), sx, sy - fs * 1.15);
@@ -2773,10 +2774,11 @@ function drawOverlay(dt, R) {
       const q = Math.min(1, (t - COMBO_DONE + 0.05) / 0.18), sc = 1 + (1 - q) * 0.8, [tx, ty] = proj(crb2.combo.cx, 3.2, crb2.combo.cz);
       ctx.save(); ctx.translate(tx, ty); ctx.scale(sc, sc); ctx.globalAlpha = q;
       ctx.font = font(u0 * 4.2); ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.shadowColor = "#7ff0ff"; ctx.shadowBlur = 24; ctx.lineWidth = 8; ctx.strokeStyle = "#0b2a3a"; ctx.strokeText("합체!", 0, 0);
+      ctx.shadowColor = "#7ff0ff"; ctx.shadowBlur = 24; ctx.lineWidth = 8; ctx.strokeStyle = "#0b2a3a"; ctx.strokeText(crb2.mega ? "초합체!" : "합체!", 0, 0);
       const gr = ctx.createLinearGradient(0, -u0 * 2, 0, u0 * 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.5, "#7ff0ff"); gr.addColorStop(1, "#ffd36b");
-      ctx.fillStyle = gr; ctx.fillText("합체!", 0, 0);
-      ctx.font = font(u0 * 1.5); ctx.shadowBlur = 12; ctx.lineWidth = 5; ctx.strokeText("4인 합체로봇 출격!", 0, u0 * 3.1); ctx.fillStyle = "#ffe9a0"; ctx.fillText("4인 합체로봇 출격!", 0, u0 * 3.1);
+      ctx.fillStyle = gr; ctx.fillText(crb2.mega ? "초합체!" : "합체!", 0, 0);
+      const sub = crb2.mega ? "★3 초합체로봇 강림!" : "4인 합체로봇 출격!";
+      ctx.font = font(u0 * 1.5); ctx.shadowBlur = 12; ctx.lineWidth = 5; ctx.strokeText(sub, 0, u0 * 3.1); ctx.fillStyle = "#ffe9a0"; ctx.fillText(sub, 0, u0 * 3.1);
       ctx.restore();
     } else if (t < 1.2) {
       const [tx, ty] = proj(crb2.combo.cx, 3.0, crb2.combo.cz);

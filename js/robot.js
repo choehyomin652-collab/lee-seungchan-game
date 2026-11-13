@@ -19,6 +19,10 @@ function combineRobot(f, team, visual) {
     amp: Math.max(...ms.map((m) => m.amp)), crit: Math.max(...ms.map((m) => m.crit)), power: sum("power") * 0.45,
     shield: sum("shield"), tgt: null, dmg: 0, flash: 0, lunge: 0,
   });
+  if (ms.every((m) => m.star >= 3)) { // 네 명 모두 ★3: 초합체로봇 (정주환 ★3 과 비슷한 세기)
+    const K = MEGA_K;
+    Object.assign(robot, { mega: 1, maxHp: robot.maxHp * K.hp, ad: robot.ad * K.ad, power: robot.power * K.sk, ar: Math.min(0.75, robot.ar + 0.05), mana: robot.mm });
+  }
   robot.hp = robot.maxHp;
   for (const m of ms) { m.alive = false; m.deadT = 0; m.merged = 1; }
   f.push(robot);
@@ -27,6 +31,26 @@ function combineRobot(f, team, visual) {
     robot.combo = { t: 0, dur: 3.2, cx, cz, members: ms.map((m) => { const x = worldX(m.X), z = worldZ(m.Y); return { m, a0: Math.atan2(z - cz, x - cx), r0: Math.max(0.8, Math.hypot(x - cx, z - cz)) }; }), ring: 0 };
   }
 }
+const MEGA_K = { hp: 4.2, ad: 4.2, sk: 4.2 }; // 초합체로봇 배율 (정주환 ★3 과 1대1이 비슷하도록 맞춘 값)
+// 초합체로봇 필살기: 대상을 향해 일직선으로 돌진! 지나가는 길의 적을 모두 들이받아요
+const MEGA_SK = { s: "초합체 돌진!", d: (P) => `가장 먼 적을 향해 일직선으로 돌진해 지나가는 길의 적 모두 공격력×2 + ${Math.round(260 * P)} 피해 + 1.2초 기절`,
+  run(B, u, P, t, al, fo) {
+    const live = fo.filter((o) => o.alive); if (!live.length) return;
+    const tg = live.slice().sort((a, b) => hexDist(b, u) - hexDist(a, u))[0];
+    const ax = u.X, ay = u.Y, dx = tg.X - ax, dy = tg.Y - ay, L2 = dx * dx + dy * dy || 1;
+    const onPath = live.filter((o) => { const k = Math.max(0, Math.min(1, ((o.X - ax) * dx + (o.Y - ay) * dy) / L2)); return Math.hypot(ax + dx * k - o.X, ay + dy * k - o.Y) <= 0.9; });
+    for (const o of onPath) { dealDamage(B, u, o, u.ad * 2 + 260 * P, "skill"); o.stunT = Math.max(o.stunT || 0, 1.2); addFx(B, o.X, o.Y, 1.0, "#ffd36b", 0.4); }
+    // 대상 너머(없으면 옆) 빈 칸으로 미끄러져 들어가요
+    const occ = new Set(B.f.filter((o) => o.alive && o !== u).map((o) => o.r * COLS + o.c));
+    const free = neighbors(tg.r, tg.c).filter(([r, c]) => !occ.has(r * COLS + c));
+    if (free.length) { free.sort((a, b) => hexDistRC(b[0], b[1], u.r, u.c) - hexDistRC(a[0], a[1], u.r, u.c)); [u.r, u.c] = free[0]; }
+    addHuge(B, u, "초합체 돌진!", "#ffffff", "#ffd36b", 3.2);
+    if (B.visual) {
+      B.zones.push({ kind: "tackle", step: stepTimer, team: u.team, owner: u, ax, ay, X: tg.X, Y: tg.Y, t: 0, dur: 0.6, col: "#ffd36b" });
+      for (let i = 0; i < 5; i++) B.fx.push({ kind: "puff", X: ax + dx * i / 5, Y: ay + dy * i / 5, t: 0.3 + i * 0.06, t0: 0.3 + i * 0.06 });
+      S.shake = Math.max(S.shake || 0, 0.45); sfx("boom");
+    }
+  } };
 const ROBOT_SK = { s: "합체 필살기: ¡Gol Final!", d: () => "축구공 5개를 연속으로 차서 대상과 주변 적에게 피해",
   run(B, u, P, t, al, fo) {
     const live = fo.filter((o) => o.alive); if (!live.length) return;
@@ -55,7 +79,7 @@ function stepCombo(B, u, dt) {
   if (cross(1.25)) { S.shake = 0.5; sfx("boom"); }
   ROBOT_ASM.forEach(([, , e], i) => { if (cross(COMBO_ASM + e * (COMBO_DONE - COMBO_ASM))) { sfx("clank"); S.shake = Math.max(S.shake || 0, 0.12); addFx(B, u.X, u.Y, 1.4, ROBOT_COLS[i % 4], 0.3); } });
   if (cross(COMBO_DONE)) {
-    S.shake = 0.6; sfx("merge");
+    S.shake = u.mega ? 0.9 : 0.6; sfx("merge"); if (u.mega) sfx("boom");
     [2.2, 3.0, 3.8, 4.6, 5.4].forEach((r, i) => addFx(B, u.X, u.Y, r, i ? ROBOT_COLS[i - 1] : "#ffffff", 0.6 + i * 0.12));
     B.fx.push({ kind: "spark", X: u.X, Y: u.Y, col: "#ffe9a0", t: 0.6, t0: 0.6 }, { kind: "spark", X: u.X, Y: u.Y, col: "#7ff0ff", t: 0.7, t0: 0.7 });
   }

@@ -159,7 +159,7 @@ function cast(B, u) {
   const t = u.tgt;
   const allies = B.f.filter((o) => o.alive && o.team === u.team), foes = B.f.filter((o) => o.alive && o.team !== u.team);
   u.castT = 0.35;
-  const SKU = u.robot ? ROBOT_SK : SK[def.n];
+  const SKU = u.robot ? (u.mega ? MEGA_SK : ROBOT_SK) : SK[def.n];
   addFloat(B, { X: u.X, Y: u.Y }, SKU ? SKU.s : CLASS[def.k].sk, TOK["--accent"], true);
   if (B.visual) sfx("cast");
   if (SKU) SKU.run(B, u, P, t, allies, foes);
