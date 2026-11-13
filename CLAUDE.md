@@ -24,3 +24,15 @@
 - 기본 브랜치에 올라오면 `.github/workflows/pages.yml` 이 자동 배포해요. 처음 한 번 저장소 Settings → Pages → Source 를 "GitHub Actions" 로 바꿔야 해요
 - 앱 설정(manifest · 아이콘 · 서비스 워커 등록)은 `index.html` 의 `<!-- PWA -->` 표시 사이에 있어요. 아티팩트 페이지를 만들 때는 이 부분이 빠져요
 - 앱에서는 claude.ai 기능(친구와 같이 하기 · 공유 사진 · 미리 넣은 카드 사진)이 없어요. 혼자 하기 · 연습장 · 내 기기 사진은 돼요
+
+## 화면 확인 도구 (tools/preview)
+진짜 three.js 대신 간이 렌더러(`tools/preview/mini-three.js`, WebGL2)를 끼워 Playwright 로 화면을 찍어요. 외곽선·빛번짐은 안 나와요. 인자의 `.` 은 저장소 루트예요.
+- `node tools/preview/combat.js .` — 전투 몇 판 돌리고 오류 확인
+- `node tools/preview/view.js . out game` — 게임 화면 캡처 (`out-game.png`)
+- `node tools/preview/hero.js . out.png 진성욱,이현` — 영웅 앞·옆·뒤 (끝에 `cull` 을 붙이면 면 방향 검사)
+- `node tools/preview/anim.js . out.png "이현,최효민"` — 공격 동작 6장
+- `node tools/preview/prac.js . pr` · `node tools/preview/rend2.js . rr team` — 연습장, 김예균 궁 연출
+
+## 게임 코드 규칙
+- 전투 결과는 온라인에서 모두에게 같아야 해요: 전투 계산(`battle.js`, `skills.js` 의 run/step)은 정해진 순서·전투용 난수만 쓰고, 보이는 것만 바꿀 땐 데이터 필드만 추가해요. 그림·이펙트는 `render3d.js` · `hero.js` 에서.
+- 디자인은 롤/롤토체스나 다른 작품의 캐릭터·맵을 그대로 베끼지 않고, 느낌만 참고한 새 디자인으로 만들어요.
