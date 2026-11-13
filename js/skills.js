@@ -291,6 +291,7 @@ function stepNet(B, z, dt) {
     }
     addFx(B, o.X, o.Y, 0.7, "#7fffd0", 0.4);
   });
+  z.caught = hit.map((o) => ({ o })); // 걸린 적마다 그물이 덮여요 (연출용)
   addFx(B, z.X, z.Y, z.rad + 1, "#2fd0a0", 0.6); addFx(B, z.X, z.Y, z.rad + 0.3, "#ffffff", 0.35);
   if (hit.length) addHuge(B, z, "꼼짝 마!", "#ffffff", "#2fd0a0", 2.6);
   if (B.visual) { S.shake = Math.max(S.shake || 0, 0.12); sfx("kick"); }
