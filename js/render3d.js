@@ -2318,17 +2318,17 @@ function drawSlam(z, dt) {
 }
 // 최윤서 그물: 날아가서 펼쳐진 뒤, 묶는 동안 바닥에 깔려 있어요
 const netTex = () => textTex("net", 256, 256, (g, w, h) => {
-  g.clearRect(0, 0, w, h); g.strokeStyle = "#ffffff"; g.lineWidth = 5; g.lineCap = "round";
+  g.clearRect(0, 0, w, h); g.strokeStyle = "#ffffff"; g.lineWidth = 11; g.lineCap = "round";
   const cx = w / 2, R = w * 0.47;
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.beginPath(); g.moveTo(cx, cx); g.lineTo(cx + Math.cos(a) * R, cx + Math.sin(a) * R); g.stroke(); }
   for (let k = 1; k <= 4; k++) { g.beginPath(); g.arc(cx, cx, (R * k) / 4, 0, 7); g.stroke(); }
-  g.lineWidth = 9; g.beginPath(); g.arc(cx, cx, R, 0, 7); g.stroke();
+  g.lineWidth = 18; g.beginPath(); g.arc(cx, cx, R, 0, 7); g.stroke();
 });
 function drawNet(z, dt) {
   const k = z.t - z.hitAt, fade = Math.max(0, Math.min(1, (z.dur - z.t) / 0.4));
   const g = useMesh(z, () => {
     const grp = new THREE.Group(), ud = grp.userData;
-    ud.net = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: netTex(), color: new THREE.Color("#19c98a"), transparent: true, depthWrite: false, side: THREE.DoubleSide })); ud.net.rotation.x = -Math.PI / 2; grp.add(ud.net);
+    ud.net = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: netTex(), color: new THREE.Color("#2dffb0"), transparent: true, depthWrite: false, side: THREE.DoubleSide })); ud.net.rotation.x = -Math.PI / 2; grp.add(ud.net);
     ud.ring = new THREE.Mesh(GEO.ringFx, additive("#2fd0a0")); ud.ring.rotation.x = -Math.PI / 2; ud.ring.position.y = 0.05; grp.add(ud.ring);
     return grp;
   });
@@ -2341,8 +2341,15 @@ function drawNet(z, dt) {
     return;
   }
   g.position.set(worldX(z.X), 0.12, worldZ(z.Y)); ud.ring.position.set(0, 0, 0);
+  // 걸린 적마다 그물이 몸을 덮어요 (유닛에 가려지지 않게 위에 그려요)
+  for (const c of z.caught || []) {
+    const cm = useMesh(c, () => { const sg = new THREE.SphereGeometry(0.62, 14, 10); sg.userData.own = 1; const m = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: netTex(), color: new THREE.Color("#2dffb0"), transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); m.renderOrder = 20; return m; });
+    const on = c.o.alive && c.o.stunT > 0;
+    cm.visible = on; cm.position.set(worldX(c.o.X), 0.85, worldZ(c.o.Y)); cm.scale.set(1, 1.35, 1); cm.rotation.y += dt * 0.6;
+    cm.material.opacity = (0.95 + Math.sin(z.t * 16 + c.o.X) * 0.05) * fade;
+  }
   const open = Math.min(1, k / 0.12);
-  ud.net.rotation.z = 0.3; ud.net.scale.setScalar(d * (0.8 + 0.2 * open)); ud.net.material.opacity = (0.95 + Math.sin(z.t * 14) * 0.05) * fade;
+  ud.net.rotation.z = 0.3; ud.net.scale.setScalar(d * 1.15 * (0.8 + 0.2 * open)); g.position.y = 0.2; ud.net.material.opacity = (0.95 + Math.sin(z.t * 14) * 0.05) * fade;
   ud.ring.scale.setScalar(d * 0.45 + k * 3); ud.ring.material.opacity = Math.max(0, 0.7 - k * 2.2);
 }
 // 은혜린 춤추기: 반짝이는 무대 + 떠오르는 음표
