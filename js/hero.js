@@ -654,6 +654,18 @@ const HERO = (() => {
         add(w, lathe([[0, 0.012], [0.07, 0.008], [0.075, 0], [0, -0.004]], { seg: 6, pal: pal(CH.accent) }), 0, 0.03, 0.105, Math.PI / 2 - 0.3, 0, 0, glow(CH.accent, 1.6));
         break;
       }
+      case "pizzabox": { // 왼손엔 피자 상자(빨간 피자 그림), 오른손엔 피자 한 조각
+        const w = holder(L, 0.2);
+        add(w, plate(0.34, 0.34, { th: 0.07, pal: pal(0xd9a86a), ch: 0.015, edgeCol: lc(0xb07a3a) }), 0, 0.02, 0.06, -0.3);
+        add(w, lathe([[0, 0.012], [0.1, 0.008], [0.105, 0], [0, -0.004]], { seg: 16, pal: pal(0xc8322a) }), 0, 0.03, 0.1, Math.PI / 2 - 0.3);
+        add(w, slab([[0, -0.05], [-0.045, 0.05]], [[0, -0.05], [0.045, 0.05]], 0.01, { pal: pal(0xf0b030) }), 0, 0.03, 0.112, -0.3);
+        const ws = holder(R, 0.3), sl = [], sr = [];
+        for (let i = 0; i <= 6; i++) { const t = i / 6; sl.push([-0.11 * t, -0.04 + 0.24 * t]); sr.push([0.11 * t, -0.04 + 0.24 * t]); }
+        add(ws, slab(sl, sr, 0.025, { pal: pal(0xf0a830), edgeCol: lc(0xc8843a) }), 0, 0.06, 0.03, -0.2);
+        add(ws, plate(0.24, 0.035, { th: 0.04, pal: pal(0xc8843a) }), 0, 0.27, 0.03, -0.2);
+        for (const [x, y] of [[0, 0.1], [-0.04, 0.18], [0.045, 0.17]]) add(ws, lathe([[0, 0.006], [0.022, 0.004], [0.022, -0.004], [0, -0.006]], { seg: 10, pal: pal(0xc8322a) }), x, y, 0.05, Math.PI / 2 - 0.2);
+        break;
+      }
       case "shield": {
         const ws = holder(R); grip(ws); pommel(ws, -0.11); cross(ws, 0.09, 0.22); add(ws, swordBlade(0.66, 0.04), 0, 0.1, 0);
         const w = holder(L, 0.05);

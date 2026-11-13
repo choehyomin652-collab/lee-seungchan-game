@@ -125,7 +125,7 @@ const CHAMPS = {
   "김민기": { title: "룬 필경사", kit: "mage", top: 0x5a3c9a, bottom: 0x2e2840, accent: 0xd8b0ff, metal: "gold", hair: "mushroom", hc: 0x3a291c, skin: 2, head: "hood", weapon: "quill", coat: 1 },
   "임시온": { title: "철문 수문장", kit: "juggernaut", top: 0x8a7a1a, bottom: 0x1e2126, accent: 0xf0e040, metal: "dark", hair: "side", hc: 0x2a1d15, skin: 1, head: "horned", weapon: "gauntlets" },
   "최윤서": { title: "그물 사냥꾼", kit: "ranger", top: 0x2a6a58, bottom: 0x2a2e2a, accent: 0xa8f0d0, metal: "bronze", hair: "wavy", hc: 0x1c1612, skin: 2, head: "hood", weapon: "net" },
-  "박현호": { title: "전장 음유시인", kit: "bard", top: 0x9a2a30, bottom: 0x2a3550, accent: 0xf2e6c8, metal: "gold", hair: "side", hc: 0x3a291c, skin: 2, head: "none", weapon: "horn", coat: 1 },
+  "박현호": { title: "전장 음유시인", kit: "bard", top: 0x9a2a30, bottom: 0x2a3550, accent: 0xf2e6c8, metal: "gold", hair: "side", hc: 0x3a291c, skin: 2, head: "none", weapon: "pizzabox", coat: 1 },
   "조하윤": { title: "심연의 사수", kit: "assassin", top: 0x16161e, bottom: 0x101016, accent: 0x3fd8ff, metal: "dark", hair: "bowl", hc: 0x101014, tip: 0x3fd8ff, skin: 0, head: "visor", weapon: "rifle", coat: 1 },
   "박희찬": { title: "불꽃 창기병", kit: "ranger", top: 0x2a4ab0, bottom: 0xe8e8f0, accent: 0xff8a2a, metal: "steel", hair: "wavy", hc: 0x2a1d15, skin: 1, head: "circlet", weapon: "spear" },
   "진성욱": { title: "강철 파괴자", kit: "juggernaut", top: 0x4a4e56, bottom: 0x1e2126, accent: 0xe8402e, metal: "dark", hair: "buzz", hc: 0x141414, skin: 3, head: "helm", weapon: "greataxe", scar: 1 },

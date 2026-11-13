@@ -1060,6 +1060,7 @@ function buildChampWeapon(CH, C) {
       const em = add(w, G.emblem, trim, -0.115, 0.08, 0.075); em.rotation.set(0, 0, Math.PI / 2); add(w, G.gem, glowM(CH.accent), -0.13, 0.08, 0.072).scale.setScalar(1.3);
       break;
     }
+    case "pizzabox": { const w = holder(L, 0.2); add(w, new THREE.BoxGeometry(0.34, 0.34, 0.07), mk(0xd9a86a, 0.8), 0, 0.02, 0.06).rotation.x = -0.3; break; }
     case "bo": { const w = holder(R, Math.PI / 2 - 0.9); const h = add(w, G.haft, mk(0x6a4a2a, 0.6), 0, 0.15, 0); h.scale.y = 1.5; for (const y of [-0.55, 0.85]) add(w, G.emblem, metal, 0, y, 0).scale.set(0.3, 3, 0.3); break; }
     case "quill": { const w = holder(R); add(w, G.haft, mk(0xf2ead8, 0.6), 0, 0.3, 0).scale.set(0.7, 0.9, 0.7); const v = add(w, G.vane, mk(CH.accent, 0.7), 0.03, 0.62, 0); v.scale.set(0.9, 3.2, 0.25); add(w, G.tip, glowM(0xe8d0ff), 0, -0.18, 0).rotation.x = Math.PI; break; }
     case "gauntlets": for (const hand of [L, R]) { const w = holder(hand, 0); add(w, G.fist, metal, 0, 0.02, 0).scale.set(1.1, 1.0, 1.2); for (let i = 0; i < 3; i++) { const sp = add(w, G.spike, trim, (i - 1) * 0.06, 0.02, 0.1); sp.rotation.x = Math.PI / 2; } add(w, G.gem, glowM(CH.accent), 0, 0.09, 0.0); } break;
@@ -1834,13 +1835,13 @@ const CANIM = {
   smite: (p) => ({ ra: ph3(p, -3.1, -1.35, 0.3, 0.44), re: ph3(p, -0.6, -0.05, 0.3, 0.44), la: hold(p, 0.4), lz: hold(p, -0.6), hop: ph3(p, 0.18, 0.02, 0.3, 0.44), lean: ph3(p, -0.2, 0.3, 0.3, 0.44), head: ph3(p, -0.3, 0.1, 0.3, 0.44) }),
 };
 const DIV_ANIM = { "김예균": "slash" }; // 김예균은 홀의 낫날로 크게 베어요
-const CH_ANIM = { sword: "slash", blades: "twin", greataxe: "cleave", hammer: "cleave", bow: "bow", crossbow: "aim", rifle: "aim", tome: "tome", shield: "bash", bo: "bo", quill: "quill", gauntlets: "punch", horn: "horn", astrolabe: "cast", abyssorb: "orb", spear: "thrust", crystalstaff: "cast", sunstaff: "cast", net: "cleave", ribbon: "cast" };
+const CH_ANIM = { sword: "slash", blades: "twin", greataxe: "cleave", hammer: "cleave", bow: "bow", crossbow: "aim", rifle: "aim", tome: "tome", shield: "bash", bo: "bo", quill: "quill", gauntlets: "punch", horn: "horn", pizzabox: "tome", astrolabe: "cast", abyssorb: "orb", spear: "thrust", crystalstaff: "cast", sunstaff: "cast", net: "cleave", ribbon: "cast" };
 // 무기 종류별 공격 효과 색·모양
 const champOfUnit = (f) => (f && !f.robot && !f.mon && f.d >= 0 && typeof CHAMPS !== "undefined" && CHAMPS[DEFS[f.d].n]) || null;
 function projKind(CH) {
   if (!CH) return null;
   const w = CH.weapon;
-  return w === "bow" ? "arrow" : w === "crossbow" ? "bolt" : w === "rifle" ? "bullet" : w === "spear" ? (CH.kit === "god" ? "lightning" : "javelin") : w === "horn" ? "wave" : "magic";
+  return w === "bow" ? "arrow" : w === "crossbow" ? "bolt" : w === "rifle" ? "bullet" : w === "spear" ? (CH.kit === "god" ? "lightning" : "javelin") : w === "horn" ? "wave" : w === "pizzabox" ? null : "magic"; // 피자 상자는 weapons.js 의 피자 조각을 던져요
 }
 // ----- 영웅 원거리 공격 모양: 화살 · 석궁 볼트 · 총알 · 마법탄 · 투창 · 번개 · 음파 -----
 function champProj(kind, col) {
