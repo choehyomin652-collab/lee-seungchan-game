@@ -172,18 +172,32 @@ function buildWorld() {
   OUT.add(water); WATER = waterTex;
   // 경기장 바닥: 풀밭 가운데가 닳아서 흙이 드러난 모양
   // 경기장 바닥: 크기가 제각각인 판석, 틈새 이끼, 가운데 희미한 마법진
-  const arena = canvasTex(1024, 1024, (g, w, h) => {
-    g.fillStyle = "#23262f"; g.fillRect(0, 0, w, h);
-    const slab = (x, y, sw, sh) => {
-      const l = 82 + R() * 30, tint = R() * 10;
-      g.fillStyle = `rgb(${l - 4 + tint},${l},${l + 10})`; g.fillRect(x + 3, y + 3, sw - 6, sh - 6);
-      const gr = g.createLinearGradient(x, y, x, y + sh); gr.addColorStop(0, "rgba(255,255,255,.08)"); gr.addColorStop(1, "rgba(0,0,0,.18)"); g.fillStyle = gr; g.fillRect(x + 3, y + 3, sw - 6, sh - 6);
-      for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(${R() < 0.5 ? "20,22,30" : "200,205,220"},${0.06 + R() * 0.06})`; g.beginPath(); g.ellipse(x + R() * sw, y + R() * sh, 6 + R() * 20, 4 + R() * 10, R() * 3, 0, Math.PI * 2); g.fill(); }
-      if (R() < 0.35) { g.strokeStyle = "rgba(20,22,30,.5)"; g.lineWidth = 2; let cx2 = x + R() * sw, cy2 = y + R() * sh; g.beginPath(); g.moveTo(cx2, cy2); for (let k = 0; k < 4; k++) { cx2 += (R() - 0.5) * 50; cy2 += (R() - 0.5) * 40; g.lineTo(Math.max(x + 4, Math.min(x + sw - 4, cx2)), Math.max(y + 4, Math.min(y + sh - 4, cy2))); } g.stroke(); }
-    };
-    for (let y = 0; y < h; ) { const rh = 70 + Math.floor(R() * 4) * 18; for (let x = -R() * 80; x < w; ) { const sw = 80 + R() * 110; slab(x, y, sw, rh); x += sw; } y += rh; }
-    // 틈새 이끼와 잡초
-    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${40 + R() * 30},${90 + R() * 40},${60 + R() * 20},${0.35 + R() * 0.3})`; g.beginPath(); g.ellipse(R() * w, R() * h, 2 + R() * 7, 1.5 + R() * 4, R() * 3, 0, Math.PI * 2); g.fill(); }
+  // 판석 배치를 먼저 정하고, 같은 배치로 색 그림(map)과 높낮이 그림(bumpMap)을 그려요 → 달빛에 판석 모서리가 도드라져요
+  const AS = HQ ? 2048 : 1024, ak = AS / 1024, slabs = [];
+  for (let y = 0; y < AS; ) { const rh = (70 + Math.floor(R() * 4) * 18) * ak; for (let x = -R() * 80 * ak; x < AS; ) { const sw = (80 + R() * 110) * ak; slabs.push({ x, y, sw, sh: rh, l: 56 + R() * 30, warm: R(), tilt: (R() - 0.5) * 0.5, crack: R() < 0.32 ? [R(), R(), R(), R(), R(), R(), R(), R()] : null }); x += sw; } y += rh; }
+  const gap = 4 * ak, bev = 7 * ak;
+  const arena = canvasTex(AS, AS, (g, w, h) => {
+    g.fillStyle = "#1a1c24"; g.fillRect(0, 0, w, h); // 줄눈
+    for (const sl of slabs) {
+      const { x, y, sw, sh } = sl, x0 = x + gap, y0 = y + gap, x1 = x + sw - gap, y1 = y + sh - gap, l = sl.l;
+      // 돌마다 살짝 다른 색: 차가운 청회색 ~ 따뜻한 베이지
+      const r0 = l - 6 + sl.warm * 16, g0 = l + sl.warm * 6, b0 = l + 12 - sl.warm * 10;
+      g.fillStyle = `rgb(${r0 | 0},${g0 | 0},${b0 | 0})`; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, `rgba(255,255,255,${0.06 + sl.tilt * 0.06})`); gr.addColorStop(1, "rgba(0,0,0,.16)"); g.fillStyle = gr; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      // 모서리: 위·왼쪽은 밝게, 아래·오른쪽은 어둡게 (깎인 돌)
+      g.fillStyle = "rgba(255,255,255,.10)"; g.fillRect(x0, y0, x1 - x0, bev * 0.5); g.fillRect(x0, y0, bev * 0.5, y1 - y0);
+      g.fillStyle = "rgba(0,0,0,.22)"; g.fillRect(x0, y1 - bev * 0.6, x1 - x0, bev * 0.6); g.fillRect(x1 - bev * 0.6, y0, bev * 0.6, y1 - y0);
+      // 얼룩 · 닳은 자국
+      for (let i = 0; i < 7; i++) { g.fillStyle = `rgba(${R() < 0.55 ? "18,20,28" : "210,214,228"},${0.04 + R() * 0.06})`; g.beginPath(); g.ellipse(x0 + R() * (x1 - x0), y0 + R() * (y1 - y0), (6 + R() * 22) * ak, (4 + R() * 10) * ak, R() * 3, 0, Math.PI * 2); g.fill(); }
+      if (sl.crack) { const c = sl.crack; g.strokeStyle = "rgba(16,18,26,.55)"; g.lineWidth = 2 * ak; g.beginPath(); let cx2 = x0 + c[0] * (x1 - x0), cy2 = y0 + c[1] * (y1 - y0); g.moveTo(cx2, cy2); for (let k = 2; k < 8; k += 2) { cx2 = Math.max(x0, Math.min(x1, cx2 + (c[k] - 0.5) * 60 * ak)); cy2 = Math.max(y0, Math.min(y1, cy2 + (c[k + 1] - 0.5) * 44 * ak)); g.lineTo(cx2, cy2); } g.stroke(); }
+    }
+    // 이끼: 줄눈을 따라 자라요 (가장자리 쪽에 더 많이)
+    for (const sl of slabs) for (let i = 0; i < 5; i++) {
+      const side = Math.floor(R() * 4), t = R(), px = side < 2 ? sl.x + t * sl.sw : sl.x + (side === 2 ? 0 : sl.sw), py = side < 2 ? sl.y + (side === 0 ? 0 : sl.sh) : sl.y + t * sl.sh;
+      const edge = Math.min(1, Math.hypot(px / AS - 0.5, py / AS - 0.47) * 1.9); if (R() > 0.25 + edge * 0.75) continue;
+      for (let k = 0; k < 4; k++) { g.fillStyle = `rgba(${40 + R() * 30},${92 + R() * 46},${56 + R() * 22},${0.35 + R() * 0.35})`; g.beginPath(); g.ellipse(px + (R() - 0.5) * 14 * ak, py + (R() - 0.5) * 10 * ak, (2 + R() * 6) * ak, (1.5 + R() * 3.5) * ak, R() * 3, 0, Math.PI * 2); g.fill(); }
+    }
+    g.save(); g.scale(ak, ak); w /= ak; h /= ak;
     // 가운데 마법진 (아주 희미하게)
     const cx = w / 2, cy = h * 0.47;
     g.strokeStyle = "rgba(120,220,255,.16)"; g.lineWidth = 6; for (const r of [150, 196]) { g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke(); }
@@ -191,9 +205,19 @@ function buildWorld() {
     g.fillStyle = "rgba(120,220,255,.16)"; g.font = "28px serif"; g.textAlign = "center"; g.textBaseline = "middle";
     for (let i = 0; i < 16; i++) { const a2 = (i / 16) * Math.PI * 2; g.save(); g.translate(cx + Math.cos(a2) * 173, cy + Math.sin(a2) * 173); g.rotate(a2 + Math.PI / 2); g.fillText("ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊ"[i], 0, 0); g.restore(); }
     // 가장자리로 갈수록 어둡게
-    const vg = g.createRadialGradient(cx, cy, 200, cx, cy, 720); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(8,8,20,.45)"); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+    const vg = g.createRadialGradient(cx, cy, 200, cx, cy, 720); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(8,8,20,.5)"); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+    g.restore();
   });
-  const af = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 16.8), new THREE.MeshStandardMaterial({ map: arena, roughness: 0.95 }));
+  const arenaBump = canvasTex(AS / 2, AS / 2, (g, w, h) => { // 높낮이: 판석은 볼록, 줄눈은 오목, 모서리는 둥글게
+    const k = 0.5; g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
+    for (const sl of slabs) {
+      const x0 = (sl.x + gap) * k, y0 = (sl.y + gap) * k, x1 = (sl.x + sl.sw - gap) * k, y1 = (sl.y + sl.sh - gap) * k, b = bev * k;
+      for (let i = 0; i < 4; i++) { const v = 90 + i * 40 + sl.tilt * 20; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x0 + i * b / 4, y0 + i * b / 4, x1 - x0 - i * b / 2, y1 - y0 - i * b / 2); }
+      if (sl.crack) { const c = sl.crack; g.strokeStyle = "#303030"; g.lineWidth = 1.5; g.beginPath(); let cx2 = x0 + c[0] * (x1 - x0), cy2 = y0 + c[1] * (y1 - y0); g.moveTo(cx2, cy2); for (let j = 2; j < 8; j += 2) { cx2 = Math.max(x0, Math.min(x1, cx2 + (c[j] - 0.5) * 30)); cy2 = Math.max(y0, Math.min(y1, cy2 + (c[j + 1] - 0.5) * 22)); g.lineTo(cx2, cy2); } g.stroke(); }
+    }
+  });
+  arena.anisotropy = arenaBump.anisotropy = renderer.capabilities.getMaxAnisotropy ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 1;
+  const af = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 16.8), new THREE.MeshStandardMaterial({ map: arena, bumpMap: arenaBump, bumpScale: 0.035, roughness: 0.88 }));
   af.rotation.x = -Math.PI / 2; af.position.set(0, 0.16, 0.9); af.receiveShadow = true; scene.add(af);
   // 돌 재질
   const stoneTex = canvasTex(256, 256, (g, w, h) => {
@@ -1665,7 +1689,7 @@ function placeUnit(it, dt) {
   ud.prev = { x: it.x, z: it.z };
   const moving = it.walking ? 0.6 : it.held ? 0 : Math.min(1, speed / 2.2);
   ud.move = ud.move * 0.85 + moving * 0.15;
-  ud.walk += dt * 10;
+  ud.walk += dt * (it.walking ? 9 : 5 + Math.min(9, speed * 3.2)); // 걷는 박자를 실제 이동 속도에 맞춰요 (발이 미끄러지지 않게)
   const sw = Math.sin(ud.walk) * 0.65 * ud.move;
   const bounce = Math.abs(Math.sin(ud.walk)) * 0.05 * ud.move;
   const ff = it.f, hitK = ff && ff.alive && ff.flash > 0 ? ff.flash / 0.12 : 0;
@@ -1677,8 +1701,9 @@ function placeUnit(it, dt) {
   g.position.set(it.x, (it.lift || 0) + (it.jump || 0) + bounce + cheer - (it.dead ? (1 - it.alpha) * 0.4 : 0), it.z);
   const cur = g.rotation.y, d = ((((it.face ?? 0) - cur) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
   g.rotation.y = cur + d * Math.min(1, dt * 10);
-  g.rotation.x = it.dead ? -(1 - it.alpha) * 1.4 : it.held ? 0.25 : -hitK * 0.2;
-  g.rotation.z = it.dead ? (1 - it.alpha) * 0.9 : 0;
+  const fall = it.dead ? Math.min(1, (1 - it.alpha) * 1.7) : 0, fe = fall * fall * (3 - 2 * fall); // 쓰러질 때: 천천히 기울다가 털썩
+  g.rotation.x = it.dead ? -fe * 1.4 : it.held ? 0.25 : -hitK * 0.2;
+  g.rotation.z = it.dead ? fe * 0.9 : ud.legs ? Math.sin(ud.walk) * 0.035 * ud.move + Math.sin(clock3d * 0.9 + it.x * 1.7) * 0.012 * (1 - ud.move) : 0; // 걸을 때 좌우로 흔들, 서 있을 땐 체중을 살짝 옮겨요
   if (ud.legs) {
     ud.legs[0].rotation.x = sw; ud.legs[1].rotation.x = -sw;
     let la = -sw * 0.8, ra = sw * 0.8, lz = ud.restZ[0], rz = ud.restZ[1], lean = ud.move * 0.14, twist = 0;
@@ -1702,6 +1727,7 @@ function placeUnit(it, dt) {
       g.position.y += A.hop || 0;
     }
     ud.legs[1].rotation.x += kick;
+    twist += Math.sin(ud.walk) * 0.12 * ud.move; // 걸을 때 어깨가 다리와 반대로 돌아요
     if (ud.knees) { // 걸을 때 뒤로 가는 다리의 무릎을 굽혀요, 차는 다리는 펴요
       ud.knees[0].rotation.x = Math.max(0, Math.sin(ud.walk + 1.2)) * 0.95 * ud.move;
       ud.knees[1].rotation.x = Math.max(0, -Math.sin(ud.walk + 1.2)) * 0.95 * ud.move + Math.max(0, kick) * 0.6;
@@ -1714,7 +1740,13 @@ function placeUnit(it, dt) {
       else g.position.y += Math.abs(Math.sin(ph)) * 0.1;
     }
     if (it.held) { la = -0.3; ra = -0.3; lz = -0.6; rz = 0.6; }
-    ud.arms[0].rotation.set(la, 0, lz); ud.arms[1].rotation.set(ra, 0, rz);
+    { // 서 있을 땐 숨 쉬듯 팔이 살짝 움직이고, 자세가 바뀔 땐 툭 튀지 않게 부드럽게 따라가요
+      const atk = !!(f && f.atkT > 0), idle = (1 - ud.move) * (atk || win ? 0 : 1), br = Math.sin(clock3d * 2.2 + it.x);
+      la += br * 0.045 * idle; ra -= br * 0.045 * idle; lz -= (0.5 + 0.5 * br) * 0.04 * idle; rz += (0.5 + 0.5 * br) * 0.04 * idle;
+      const ak = ud.armInit ? Math.min(1, dt * (atk ? 34 : 14)) : 1; ud.armInit = 1;
+      const A0 = ud.arms[0].rotation, A1 = ud.arms[1].rotation;
+      A0.set(A0.x + (la - A0.x) * ak, 0, A0.z + (lz - A0.z) * ak); A1.set(A1.x + (ra - A1.x) * ak, 0, A1.z + (rz - A1.z) * ak);
+    }
     if (ud.elbows) { // 팔꿈치: 공격할 때 굽혔다 펴요 (평소엔 살짝 굽힌 자세)
       const tl = -0.22 + elbL, tr = -0.22 + elbR, kk = Math.min(1, dt * 30);
       ud.elbows[0].rotation.x += (tl - ud.elbows[0].rotation.x) * kk; ud.elbows[1].rotation.x += (tr - ud.elbows[1].rotation.x) * kk;
@@ -1753,7 +1785,7 @@ function placeUnit(it, dt) {
     if (ud.orb) { ud.orb.position.y = 0.78 + Math.sin(clock3d * 2.4 + it.z) * 0.04; ud.orb.rotation.y += dt * 1.5; }
     if (ud.banner) ud.banner.rotation.y = Math.sin(clock3d * 3 + it.x) * 0.35;
     if (spin != null) ud.torso.rotation.y = spin; else { if (ud.torso.rotation.y > Math.PI) ud.torso.rotation.y -= Math.PI * 2; ud.torso.rotation.y += (twist - ud.torso.rotation.y) * Math.min(1, dt * 18); }
-    ud.head.rotation.y = Math.sin(clock3d * 0.7 + it.z * 2) * 0.18 * (1 - ud.move);
+    ud.head.rotation.y = Math.sin(clock3d * 0.7 + it.z * 2) * 0.18 * (1 - ud.move) - ud.torso.rotation.y * 0.45; // 몸이 돌아도 시선은 앞을 봐요
     ud.head.rotation.z = Math.sin(clock3d * 1.1 + it.x * 3) * 0.05 + (win ? Math.sin(clock3d * 7) * 0.12 : 0);
     ud.head.rotation.x = hitK * -0.3 + (it.dead ? -0.4 : 0) + headX;
     if (ud.scarf) ud.scarf.rotation.x = 0.25 + ud.move * 0.9 + Math.sin(clock3d * 3 + it.x) * 0.12;
