@@ -79,9 +79,9 @@ const WEAPONS = {
     const m = new THREE.MeshStandardMaterial({ map: bballTex(), roughness: 0.7 }); e.ud.mats.push(m);
     e.put(GEO.ball, m, 0, -0.5, 0.1, e.R).scale.setScalar(1.2);
   } },
-  "김현우": { n: "삼각자", anim: "slashL", pr: { col: "#7fc4ff", shape: "orb" }, build(e) {
-    const geo = wg("tri", () => { const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(0.42, 0); sh.lineTo(0, 0.42); sh.lineTo(0, 0); const h = new THREE.Path(); h.moveTo(0.07, 0.07); h.lineTo(0.22, 0.07); h.lineTo(0.07, 0.22); h.lineTo(0.07, 0.07); sh.holes.push(h); const g2 = new THREE.ExtrudeGeometry(sh, { depth: 0.015, bevelEnabled: false }); g2.translate(-0.14, -0.14, -0.008); return g2; });
-    const m = e.put(geo, e.mk(0x7fc4ff, 0.3), 0, -0.45, 0.1, e.L); m.rotation.set(0.2, 1.0, 0.3);
+  "김현우": { n: "방패", anim: "bash", build(e) {
+    const sd = e.put(GEO.shield, e.mk(0x2a3550, 0.4, { metalness: 0.6 }), -0.1, -0.3, 0.06, e.L); sd.rotation.z = Math.PI / 2;
+    e.put(GEO.boss, e.mk(0x7fc4ff, 0.35, { metalness: 0.5 }), -0.14, -0.3, 0.06, e.L);
   } },
   "이보경": { n: "방패", anim: "bash", build(e) {
     const sd = e.put(GEO.shield, e.mk(0xb8c4bc, 0.35, { metalness: 0.7 }), -0.1, -0.3, 0.06, e.L); sd.rotation.z = Math.PI / 2;
@@ -116,9 +116,9 @@ const WEAPONS = {
     const [tx, ty, tz] = wStick(e, e.mk(0xf2e6d0, 0.5), 0.4, 0.016, 0, -0.43, 0.1, 0.6);
     const r = e.put(wg("rb", () => new THREE.BoxGeometry(0.03, 0.3, 0.004)), e.mk(0xff7ab0, 0.5), tx, ty - 0.12, tz, e.R); r.rotation.x = 0.3;
   } },
-  "박현호": { n: "마이크", anim: "shout", pr: { col: "#ffd36b", shape: "orb" }, build(e) {
-    const [tx, ty, tz] = wStick(e, e.mk(0x2b2f33, 0.4), 0.3, 0.028, 0, -0.43, 0.1, 0.9);
-    e.put(wg("mich", () => sphG(0.075)), e.mk(0xc9d1cc, 0.3, { metalness: 0.6 }), tx, ty + Math.cos(0.9) * 0.06, tz + Math.sin(0.9) * 0.06, e.R);
+  "박현호": { n: "피자 상자", anim: "toss", pr: { col: "#ffb43a", shape: "pizza" }, build(e) {
+    const b = e.put(wg("pzb", () => new THREE.BoxGeometry(0.3, 0.05, 0.3)), e.mk(0xd9a86a, 0.8), 0, -0.45, 0.12, e.L); b.rotation.set(0.1, 0.3, 0);
+    const l = e.put(wg("pzl", () => new THREE.CylinderGeometry(0.08, 0.08, 0.01, 14)), e.mk(0xc8322a, 0.6), 0, -0.42, 0.12, e.L); l.rotation.set(0.1, 0.3, 0);
   } },
   "조하윤": { n: "게임 컨트롤러", anim: "mash", build(e) {
     const g = new THREE.Group(); g.position.set(0, -0.46, 0.14); g.rotation.x = 0.5; g.scale.setScalar(1.7); e.R.add(g);
@@ -161,6 +161,13 @@ const WEAPONS = {
 function projSpecial(p) {
   if (p.ball || p.shape === "ball") return new THREE.Mesh(GEO.ball, new THREE.MeshStandardMaterial({ map: ballTex(), color: 0xffffff, roughness: 0.5 }));
   if (p.shape === "orb") { const c = lin(p.col || "#ffffff"), m = new THREE.Mesh(GEO.ball, new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, roughness: 0.4 })); m.scale.setScalar(0.45); return m; }
+  if (p.shape === "pizza") { // 피자 한 조각: 노릇한 치즈 + 페퍼로니 + 빵 끝
+    const g = new THREE.Group(), M2 = (c) => new THREE.MeshStandardMaterial({ color: lin(c), roughness: 0.7 });
+    const sl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 12, 1, false, -0.35, 0.7), M2(0xf0a830)); g.add(sl);
+    const cr = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.07, 12, 1, true, -0.35, 0.7), M2(0xc8843a)); cr.material.side = THREE.DoubleSide; g.add(cr);
+    for (const [x, z] of [[0.05, 0.16], [-0.04, 0.24], [0.02, 0.08]]) { const pp = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 10), M2(0xc8322a)); pp.position.set(x, 0.03, z); g.add(pp); }
+    g.children.forEach((c) => (c.position.z -= 0.15)); return g;
+  }
   if (p.shape === "dart") { const m = new THREE.Mesh(GEO.spike, new THREE.MeshStandardMaterial({ color: lin(0xe8402e), roughness: 0.5 })); m.scale.set(1.2, 1.7, 1.2); return m; }
   return null;
 }

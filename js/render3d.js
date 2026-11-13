@@ -35,7 +35,7 @@ function paintChalk(g, w, h) {
   g.fillStyle = "#262a36"; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.035})`; g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, 40 + Math.random() * 160, 10 + Math.random() * 30, Math.random(), 0, Math.PI * 2); g.fill(); }
   g.fillStyle = "rgba(170,236,255,.95)"; g.textAlign = "center"; g.textBaseline = "middle";
-  g.font = `190px ${DF()}`; g.fillText("우리반 오토배틀", w / 2, h * 0.44);
+  g.font = `190px ${DF()}`; g.fillText("씹토체스", w / 2, h * 0.44);
   g.fillStyle = "rgba(245,215,110,.9)"; g.font = `70px ${DF()}`; g.fillText("오늘의 목표: 끝까지 살아남기!", w / 2, h * 0.78);
   g.textAlign = "right"; g.fillStyle = "rgba(240,244,232,.85)"; g.font = `58px ${DF()}`;
   { const d = new Date(); g.fillText(`${d.getMonth() + 1}월 ${d.getDate()}일 ${"일월화수목금토"[d.getDay()]}요일`, w - 70, 80); } g.fillText("주번: 정주환", w - 70, 160);
@@ -172,18 +172,32 @@ function buildWorld() {
   OUT.add(water); WATER = waterTex;
   // 경기장 바닥: 풀밭 가운데가 닳아서 흙이 드러난 모양
   // 경기장 바닥: 크기가 제각각인 판석, 틈새 이끼, 가운데 희미한 마법진
-  const arena = canvasTex(1024, 1024, (g, w, h) => {
-    g.fillStyle = "#23262f"; g.fillRect(0, 0, w, h);
-    const slab = (x, y, sw, sh) => {
-      const l = 82 + R() * 30, tint = R() * 10;
-      g.fillStyle = `rgb(${l - 4 + tint},${l},${l + 10})`; g.fillRect(x + 3, y + 3, sw - 6, sh - 6);
-      const gr = g.createLinearGradient(x, y, x, y + sh); gr.addColorStop(0, "rgba(255,255,255,.08)"); gr.addColorStop(1, "rgba(0,0,0,.18)"); g.fillStyle = gr; g.fillRect(x + 3, y + 3, sw - 6, sh - 6);
-      for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(${R() < 0.5 ? "20,22,30" : "200,205,220"},${0.06 + R() * 0.06})`; g.beginPath(); g.ellipse(x + R() * sw, y + R() * sh, 6 + R() * 20, 4 + R() * 10, R() * 3, 0, Math.PI * 2); g.fill(); }
-      if (R() < 0.35) { g.strokeStyle = "rgba(20,22,30,.5)"; g.lineWidth = 2; let cx2 = x + R() * sw, cy2 = y + R() * sh; g.beginPath(); g.moveTo(cx2, cy2); for (let k = 0; k < 4; k++) { cx2 += (R() - 0.5) * 50; cy2 += (R() - 0.5) * 40; g.lineTo(Math.max(x + 4, Math.min(x + sw - 4, cx2)), Math.max(y + 4, Math.min(y + sh - 4, cy2))); } g.stroke(); }
-    };
-    for (let y = 0; y < h; ) { const rh = 70 + Math.floor(R() * 4) * 18; for (let x = -R() * 80; x < w; ) { const sw = 80 + R() * 110; slab(x, y, sw, rh); x += sw; } y += rh; }
-    // 틈새 이끼와 잡초
-    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${40 + R() * 30},${90 + R() * 40},${60 + R() * 20},${0.35 + R() * 0.3})`; g.beginPath(); g.ellipse(R() * w, R() * h, 2 + R() * 7, 1.5 + R() * 4, R() * 3, 0, Math.PI * 2); g.fill(); }
+  // 판석 배치를 먼저 정하고, 같은 배치로 색 그림(map)과 높낮이 그림(bumpMap)을 그려요 → 달빛에 판석 모서리가 도드라져요
+  const AS = HQ ? 2048 : 1024, ak = AS / 1024, slabs = [];
+  for (let y = 0; y < AS; ) { const rh = (70 + Math.floor(R() * 4) * 18) * ak; for (let x = -R() * 80 * ak; x < AS; ) { const sw = (80 + R() * 110) * ak; slabs.push({ x, y, sw, sh: rh, l: 56 + R() * 30, warm: R(), tilt: (R() - 0.5) * 0.5, crack: R() < 0.32 ? [R(), R(), R(), R(), R(), R(), R(), R()] : null }); x += sw; } y += rh; }
+  const gap = 4 * ak, bev = 7 * ak;
+  const arena = canvasTex(AS, AS, (g, w, h) => {
+    g.fillStyle = "#1a1c24"; g.fillRect(0, 0, w, h); // 줄눈
+    for (const sl of slabs) {
+      const { x, y, sw, sh } = sl, x0 = x + gap, y0 = y + gap, x1 = x + sw - gap, y1 = y + sh - gap, l = sl.l;
+      // 돌마다 살짝 다른 색: 차가운 청회색 ~ 따뜻한 베이지
+      const r0 = l - 6 + sl.warm * 16, g0 = l + sl.warm * 6, b0 = l + 12 - sl.warm * 10;
+      g.fillStyle = `rgb(${r0 | 0},${g0 | 0},${b0 | 0})`; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, `rgba(255,255,255,${0.06 + sl.tilt * 0.06})`); gr.addColorStop(1, "rgba(0,0,0,.16)"); g.fillStyle = gr; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      // 모서리: 위·왼쪽은 밝게, 아래·오른쪽은 어둡게 (깎인 돌)
+      g.fillStyle = "rgba(255,255,255,.10)"; g.fillRect(x0, y0, x1 - x0, bev * 0.5); g.fillRect(x0, y0, bev * 0.5, y1 - y0);
+      g.fillStyle = "rgba(0,0,0,.22)"; g.fillRect(x0, y1 - bev * 0.6, x1 - x0, bev * 0.6); g.fillRect(x1 - bev * 0.6, y0, bev * 0.6, y1 - y0);
+      // 얼룩 · 닳은 자국
+      for (let i = 0; i < 7; i++) { g.fillStyle = `rgba(${R() < 0.55 ? "18,20,28" : "210,214,228"},${0.04 + R() * 0.06})`; g.beginPath(); g.ellipse(x0 + R() * (x1 - x0), y0 + R() * (y1 - y0), (6 + R() * 22) * ak, (4 + R() * 10) * ak, R() * 3, 0, Math.PI * 2); g.fill(); }
+      if (sl.crack) { const c = sl.crack; g.strokeStyle = "rgba(16,18,26,.55)"; g.lineWidth = 2 * ak; g.beginPath(); let cx2 = x0 + c[0] * (x1 - x0), cy2 = y0 + c[1] * (y1 - y0); g.moveTo(cx2, cy2); for (let k = 2; k < 8; k += 2) { cx2 = Math.max(x0, Math.min(x1, cx2 + (c[k] - 0.5) * 60 * ak)); cy2 = Math.max(y0, Math.min(y1, cy2 + (c[k + 1] - 0.5) * 44 * ak)); g.lineTo(cx2, cy2); } g.stroke(); }
+    }
+    // 이끼: 줄눈을 따라 자라요 (가장자리 쪽에 더 많이)
+    for (const sl of slabs) for (let i = 0; i < 5; i++) {
+      const side = Math.floor(R() * 4), t = R(), px = side < 2 ? sl.x + t * sl.sw : sl.x + (side === 2 ? 0 : sl.sw), py = side < 2 ? sl.y + (side === 0 ? 0 : sl.sh) : sl.y + t * sl.sh;
+      const edge = Math.min(1, Math.hypot(px / AS - 0.5, py / AS - 0.47) * 1.9); if (R() > 0.25 + edge * 0.75) continue;
+      for (let k = 0; k < 4; k++) { g.fillStyle = `rgba(${40 + R() * 30},${92 + R() * 46},${56 + R() * 22},${0.35 + R() * 0.35})`; g.beginPath(); g.ellipse(px + (R() - 0.5) * 14 * ak, py + (R() - 0.5) * 10 * ak, (2 + R() * 6) * ak, (1.5 + R() * 3.5) * ak, R() * 3, 0, Math.PI * 2); g.fill(); }
+    }
+    g.save(); g.scale(ak, ak); w /= ak; h /= ak;
     // 가운데 마법진 (아주 희미하게)
     const cx = w / 2, cy = h * 0.47;
     g.strokeStyle = "rgba(120,220,255,.16)"; g.lineWidth = 6; for (const r of [150, 196]) { g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke(); }
@@ -191,9 +205,19 @@ function buildWorld() {
     g.fillStyle = "rgba(120,220,255,.16)"; g.font = "28px serif"; g.textAlign = "center"; g.textBaseline = "middle";
     for (let i = 0; i < 16; i++) { const a2 = (i / 16) * Math.PI * 2; g.save(); g.translate(cx + Math.cos(a2) * 173, cy + Math.sin(a2) * 173); g.rotate(a2 + Math.PI / 2); g.fillText("ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊ"[i], 0, 0); g.restore(); }
     // 가장자리로 갈수록 어둡게
-    const vg = g.createRadialGradient(cx, cy, 200, cx, cy, 720); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(8,8,20,.45)"); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+    const vg = g.createRadialGradient(cx, cy, 200, cx, cy, 720); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(8,8,20,.5)"); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+    g.restore();
   });
-  const af = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 16.8), new THREE.MeshStandardMaterial({ map: arena, roughness: 0.95 }));
+  const arenaBump = canvasTex(AS / 2, AS / 2, (g, w, h) => { // 높낮이: 판석은 볼록, 줄눈은 오목, 모서리는 둥글게
+    const k = 0.5; g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
+    for (const sl of slabs) {
+      const x0 = (sl.x + gap) * k, y0 = (sl.y + gap) * k, x1 = (sl.x + sl.sw - gap) * k, y1 = (sl.y + sl.sh - gap) * k, b = bev * k;
+      for (let i = 0; i < 4; i++) { const v = 90 + i * 40 + sl.tilt * 20; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x0 + i * b / 4, y0 + i * b / 4, x1 - x0 - i * b / 2, y1 - y0 - i * b / 2); }
+      if (sl.crack) { const c = sl.crack; g.strokeStyle = "#303030"; g.lineWidth = 1.5; g.beginPath(); let cx2 = x0 + c[0] * (x1 - x0), cy2 = y0 + c[1] * (y1 - y0); g.moveTo(cx2, cy2); for (let j = 2; j < 8; j += 2) { cx2 = Math.max(x0, Math.min(x1, cx2 + (c[j] - 0.5) * 30)); cy2 = Math.max(y0, Math.min(y1, cy2 + (c[j + 1] - 0.5) * 22)); g.lineTo(cx2, cy2); } g.stroke(); }
+    }
+  });
+  arena.anisotropy = arenaBump.anisotropy = renderer.capabilities.getMaxAnisotropy ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 1;
+  const af = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 16.8), new THREE.MeshStandardMaterial({ map: arena, bumpMap: arenaBump, bumpScale: 0.035, roughness: 0.88 }));
   af.rotation.x = -Math.PI / 2; af.position.set(0, 0.16, 0.9); af.receiveShadow = true; scene.add(af);
   // 돌 재질
   const stoneTex = canvasTex(256, 256, (g, w, h) => {
@@ -1060,6 +1084,8 @@ function buildChampWeapon(CH, C) {
       const em = add(w, G.emblem, trim, -0.115, 0.08, 0.075); em.rotation.set(0, 0, Math.PI / 2); add(w, G.gem, glowM(CH.accent), -0.13, 0.08, 0.072).scale.setScalar(1.3);
       break;
     }
+    case "mawshield": { const w = holder(L, 0.05); add(w, GEO.shield, mk(CH.top, 0.5), -0.1, 0.05, 0.08).rotation.z = Math.PI / 2; break; }
+    case "pizzabox": { const w = holder(L, 0.2); add(w, new THREE.BoxGeometry(0.34, 0.34, 0.07), mk(0xd9a86a, 0.8), 0, 0.02, 0.06).rotation.x = -0.3; break; }
     case "bo": { const w = holder(R, Math.PI / 2 - 0.9); const h = add(w, G.haft, mk(0x6a4a2a, 0.6), 0, 0.15, 0); h.scale.y = 1.5; for (const y of [-0.55, 0.85]) add(w, G.emblem, metal, 0, y, 0).scale.set(0.3, 3, 0.3); break; }
     case "quill": { const w = holder(R); add(w, G.haft, mk(0xf2ead8, 0.6), 0, 0.3, 0).scale.set(0.7, 0.9, 0.7); const v = add(w, G.vane, mk(CH.accent, 0.7), 0.03, 0.62, 0); v.scale.set(0.9, 3.2, 0.25); add(w, G.tip, glowM(0xe8d0ff), 0, -0.18, 0).rotation.x = Math.PI; break; }
     case "gauntlets": for (const hand of [L, R]) { const w = holder(hand, 0); add(w, G.fist, metal, 0, 0.02, 0).scale.set(1.1, 1.0, 1.2); for (let i = 0; i < 3; i++) { const sp = add(w, G.spike, trim, (i - 1) * 0.06, 0.02, 0.1); sp.rotation.x = Math.PI / 2; } add(w, G.gem, glowM(CH.accent), 0, 0.09, 0.0); } break;
@@ -1085,8 +1111,15 @@ function buildChampWeapon(CH, C) {
     case "sunstaff": { const w = holder(R, Math.PI / 2 - 0.85, "up", "up"); const top = staff(w, 1.25); const disc = add(w, G.ringA, trim, 0, top + 0.08, 0); disc.scale.setScalar(0.9); for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const r = add(w, G.ray, trim, Math.cos(a) * 0.15, top + 0.08 + Math.sin(a) * 0.15, 0); r.rotation.z = a - Math.PI / 2; } add(w, G.orb, glowM(0xffe08a), 0, top + 0.08, 0); break; }
   }
 }
+// 영웅 모습에도 등번호를 달 수 있어요 (CHAMPS 의 num: 가슴 · 등)
+function champNum(CH, C) {
+  if (!CH.num) return;
+  const col = "#" + (CH.numCol ?? 0xffffff).toString(16).padStart(6, "0");
+  C.put(GEO.human.patch, chestTex(CH.num, col), 0, 0.38, 0.215, C.torso).scale.setScalar(2.4);
+  const bk = C.put(GEO.human.patch, chestTex(CH.num, col), 0, 0.3, -0.29, C.torso); bk.rotation.set(-0.15, Math.PI, 0); bk.scale.setScalar(3.4); // 망토 위에
+}
 function applyArmor(def, C) {
-  { const CHh = champOf(def); if (CHh && typeof HERO !== "undefined" && HERO.armor(def, CHh, { ...C, mP: C.mk(0xffffff, 0.6) })) return; } // 조각한 영웅 갑옷 (hero.js)
+  { const CHh = champOf(def); if (CHh && typeof HERO !== "undefined" && HERO.armor(def, CHh, { ...C, mP: C.mk(0xffffff, 0.6) })) { champNum(CHh, C); return; } } // 조각한 영웅 갑옷 (hero.js)
   const { put, mk, head, torso, ud, OF } = C, A = armorGeo(), kit = (champOf(def) && champOf(def).kit) || ROLE_KIT[def.k] || "warrior";
   const main = OF.top ?? 0x445566, acc = OF.accent ?? 0xffffff;
   const dark = (hex, k = 0.55) => { const r = ((hex >> 16) & 255) * k, g = ((hex >> 8) & 255) * k, b = (hex & 255) * k; return (r << 16) | (g << 8) | b; };
@@ -1527,7 +1560,7 @@ function buildUnit(sp, enemy) {
   return g;
 }
 function buildUnit0(sp, enemy) {
-  if (sp.robot) return buildRobot(enemy);
+  if (sp.robot) return buildRobot(enemy, !!sp.mega);
   if (sp.mon && sp.mon.summon) {
     const g = buildJelly(!!sp.mon.giant, enemy);
     const aura = new THREE.Mesh(GEO.ringFx, additive("#7ff0e0")); aura.rotation.x = -Math.PI / 2; aura.position.y = 0.24; aura.scale.setScalar(0.7); g.add(aura);
@@ -1608,14 +1641,15 @@ function collect(dt) {
     for (const u of S.battle.f) {
       if (u.merged) {
         const k = comboOf(u);
-        if (!k || k.t >= 1.25) continue;
+        if (!k || k.t >= COMBO_TF) continue; // 그다음부터는 탈것으로 변신해서 따로 그려요
         const mm = k.members.find((q) => q.m === u), p = Math.min(1, k.t / 1.2), ang = mm.a0 + p * 7, rad = mm.r0 * (1 - p * p);
         push(u, u, k.cx + Math.cos(ang) * rad, k.cz + Math.sin(ang) * rad, { f: null, face: ang + Math.PI, lift: p * 1.6 + Math.sin(p * Math.PI) * 0.3, alpha: 1, walking: 1 });
         continue;
       }
       if (u.combo && u.combo.t < u.combo.dur) {
-        const t = u.combo.t; if (t < 1.3) continue;
-        const q = Math.min(1, (t - 1.3) / 0.7), drop = q < 1 ? 4.5 * (1 - q) * (1 - q) : Math.abs(Math.sin((t - 2.0) * 9)) * 0.25 * Math.max(0, 1 - (t - 2.0) / 0.4);
+        const t = u.combo.t; if (t < COMBO_ASM) continue;
+        const land = t > COMBO_DONE ? Math.abs(Math.sin((t - COMBO_DONE) * 9)) * 0.2 * Math.max(0, 1 - (t - COMBO_DONE) / 0.4) : 0; // 조립은 robotAssemble 이 해요
+        const drop = u.mega && t <= COMBO_DONE ? 14 * Math.pow(1 - (t - COMBO_ASM) / (COMBO_DONE - COMBO_ASM), 2) : land; // 초합체: 다 만들어진 채로 하늘에서 쿵!
         push(u, u, worldX(u.X), worldZ(u.Y), { f: u, enemy: isFoe(u), face: isFoe(u) ? 0 : Math.PI, lift: drop, alpha: 1 });
         continue;
       }
@@ -1646,8 +1680,8 @@ function collect(dt) {
   return out;
 }
 function placeUnit(it, dt) {
-  const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
-  const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? 1.6 : 1.12)) * (it.bench ? 0.8 : 1); // 친구들은 12% 크게: 갑옷이 잘 보여요
+  const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + (it.sp.mega ? "m" : "") + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
+  const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? (it.sp.mega ? 1.95 : 1.6) : 1.12)) * (it.bench ? 0.8 : 1); // 친구들은 12% 크게: 갑옷이 잘 보여요
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
   const pv = ud.prev || { x: it.x, z: it.z };
@@ -1655,7 +1689,7 @@ function placeUnit(it, dt) {
   ud.prev = { x: it.x, z: it.z };
   const moving = it.walking ? 0.6 : it.held ? 0 : Math.min(1, speed / 2.2);
   ud.move = ud.move * 0.85 + moving * 0.15;
-  ud.walk += dt * 10;
+  ud.walk += dt * (it.walking ? 9 : 5 + Math.min(9, speed * 3.2)); // 걷는 박자를 실제 이동 속도에 맞춰요 (발이 미끄러지지 않게)
   const sw = Math.sin(ud.walk) * 0.65 * ud.move;
   const bounce = Math.abs(Math.sin(ud.walk)) * 0.05 * ud.move;
   const ff = it.f, hitK = ff && ff.alive && ff.flash > 0 ? ff.flash / 0.12 : 0;
@@ -1667,8 +1701,9 @@ function placeUnit(it, dt) {
   g.position.set(it.x, (it.lift || 0) + (it.jump || 0) + bounce + cheer - (it.dead ? (1 - it.alpha) * 0.4 : 0), it.z);
   const cur = g.rotation.y, d = ((((it.face ?? 0) - cur) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
   g.rotation.y = cur + d * Math.min(1, dt * 10);
-  g.rotation.x = it.dead ? -(1 - it.alpha) * 1.4 : it.held ? 0.25 : -hitK * 0.2;
-  g.rotation.z = it.dead ? (1 - it.alpha) * 0.9 : 0;
+  const fall = it.dead ? Math.min(1, (1 - it.alpha) * 1.7) : 0, fe = fall * fall * (3 - 2 * fall); // 쓰러질 때: 천천히 기울다가 털썩
+  g.rotation.x = it.dead ? -fe * 1.4 : it.held ? 0.25 : -hitK * 0.2;
+  g.rotation.z = it.dead ? fe * 0.9 : ud.legs ? Math.sin(ud.walk) * 0.035 * ud.move + Math.sin(clock3d * 0.9 + it.x * 1.7) * 0.012 * (1 - ud.move) : 0; // 걸을 때 좌우로 흔들, 서 있을 땐 체중을 살짝 옮겨요
   if (ud.legs) {
     ud.legs[0].rotation.x = sw; ud.legs[1].rotation.x = -sw;
     let la = -sw * 0.8, ra = sw * 0.8, lz = ud.restZ[0], rz = ud.restZ[1], lean = ud.move * 0.14, twist = 0;
@@ -1692,6 +1727,7 @@ function placeUnit(it, dt) {
       g.position.y += A.hop || 0;
     }
     ud.legs[1].rotation.x += kick;
+    twist += Math.sin(ud.walk) * 0.12 * ud.move; // 걸을 때 어깨가 다리와 반대로 돌아요
     if (ud.knees) { // 걸을 때 뒤로 가는 다리의 무릎을 굽혀요, 차는 다리는 펴요
       ud.knees[0].rotation.x = Math.max(0, Math.sin(ud.walk + 1.2)) * 0.95 * ud.move;
       ud.knees[1].rotation.x = Math.max(0, -Math.sin(ud.walk + 1.2)) * 0.95 * ud.move + Math.max(0, kick) * 0.6;
@@ -1704,7 +1740,13 @@ function placeUnit(it, dt) {
       else g.position.y += Math.abs(Math.sin(ph)) * 0.1;
     }
     if (it.held) { la = -0.3; ra = -0.3; lz = -0.6; rz = 0.6; }
-    ud.arms[0].rotation.set(la, 0, lz); ud.arms[1].rotation.set(ra, 0, rz);
+    { // 서 있을 땐 숨 쉬듯 팔이 살짝 움직이고, 자세가 바뀔 땐 툭 튀지 않게 부드럽게 따라가요
+      const atk = !!(f && f.atkT > 0), idle = (1 - ud.move) * (atk || win ? 0 : 1), br = Math.sin(clock3d * 2.2 + it.x);
+      la += br * 0.045 * idle; ra -= br * 0.045 * idle; lz -= (0.5 + 0.5 * br) * 0.04 * idle; rz += (0.5 + 0.5 * br) * 0.04 * idle;
+      const ak = ud.armInit ? Math.min(1, dt * (atk ? 34 : 14)) : 1; ud.armInit = 1;
+      const A0 = ud.arms[0].rotation, A1 = ud.arms[1].rotation;
+      A0.set(A0.x + (la - A0.x) * ak, 0, A0.z + (lz - A0.z) * ak); A1.set(A1.x + (ra - A1.x) * ak, 0, A1.z + (rz - A1.z) * ak);
+    }
     if (ud.elbows) { // 팔꿈치: 공격할 때 굽혔다 펴요 (평소엔 살짝 굽힌 자세)
       const tl = -0.22 + elbL, tr = -0.22 + elbR, kk = Math.min(1, dt * 30);
       ud.elbows[0].rotation.x += (tl - ud.elbows[0].rotation.x) * kk; ud.elbows[1].rotation.x += (tr - ud.elbows[1].rotation.x) * kk;
@@ -1718,6 +1760,21 @@ function placeUnit(it, dt) {
       }
     }
     ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.018;
+    if (ud.flames) { // 합체로봇: 추진기 불꽃이 일렁이고, 합체해서 내려올 때·걸을 때 더 크게 뿜어요
+      const cb = it.f && it.f.combo && it.f.combo.t < it.f.combo.dur ? it.f.combo.t : -1;
+      const asm = cb >= 0 && !it.f.mega ? Math.max(0, Math.min(1, (cb - COMBO_ASM) / (COMBO_DONE - COMBO_ASM))) : 1; // 부품 조립 진행도 (초합체로봇은 완성된 채로 내려와요)
+      if (asm !== ud.lastAsm) { robotAssemble(ud, asm); ud.lastAsm = asm; }
+      ud.eye.emissiveIntensity = !ud.eyeOn ? 0.05 : 2.2 + (cb >= COMBO_DONE ? 7 * Math.max(0, 1 - (cb - COMBO_DONE) / 0.5) : 0); // 다 조립되면 눈이 번쩍
+      const k = cb >= 0 ? (cb < 2.0 ? 2.8 : 1.6) : ud.move > 0.1 ? 1.5 : 1;
+      ud.flames.forEach((m, i) => { const s = k * (0.85 + 0.25 * Math.sin(clock3d * 40 + i * 2.1)); m.scale.set(1 + (k - 1) * 0.25, s, 1 + (k - 1) * 0.25); m.position.y = 0.11 - 0.15 * s; });
+      ud.ball.rotation.y += dt * 2.5; ud.core.rotation.z = Math.sin(clock3d * 1.5) * 0.15;
+      const mz = ud.sword && S.battle && S.battle.zones.find((z) => z.kind === "megasword" && z.owner === it.f);
+      if (mz) { // 초합체 대검: 칼을 높이 들어 올렸다가(빛이 모임) 한 번에 휘둘러요
+        const k = mz.t - MEGA_SLASH_AT, up = k < 0 ? Math.min(1, mz.t / 0.3) : Math.max(0, 1 - k / 0.12), down = k < 0 ? 0 : Math.min(1, k / 0.12) * Math.max(0, 1 - (k - 0.5) / 0.4);
+        ud.arms[1].rotation.set(-3.0 * up + 0.4 * down, 0, 0.25 * up - 0.9 * down); ud.torso.rotation.y = -0.6 * down;
+        ud.blade.material.emissiveIntensity = 1.4 + 4 * (k < 0 ? Math.min(1, mz.t / MEGA_SLASH_AT) : Math.max(0, 1 - k / 0.5));
+      }
+    }
     ud.torso.rotation.x += (lean - ud.torso.rotation.x) * Math.min(1, dt * 18);
     if (ud.cape) ud.cape.rotation.x = 0.12 + ud.move * 0.55 + Math.sin(clock3d * 2.1 + it.x) * 0.04;
     if (ud.spin) ud.spin.forEach((r, i) => (r.rotation.y += dt * (1.2 + i)));
@@ -1728,7 +1785,7 @@ function placeUnit(it, dt) {
     if (ud.orb) { ud.orb.position.y = 0.78 + Math.sin(clock3d * 2.4 + it.z) * 0.04; ud.orb.rotation.y += dt * 1.5; }
     if (ud.banner) ud.banner.rotation.y = Math.sin(clock3d * 3 + it.x) * 0.35;
     if (spin != null) ud.torso.rotation.y = spin; else { if (ud.torso.rotation.y > Math.PI) ud.torso.rotation.y -= Math.PI * 2; ud.torso.rotation.y += (twist - ud.torso.rotation.y) * Math.min(1, dt * 18); }
-    ud.head.rotation.y = Math.sin(clock3d * 0.7 + it.z * 2) * 0.18 * (1 - ud.move);
+    ud.head.rotation.y = Math.sin(clock3d * 0.7 + it.z * 2) * 0.18 * (1 - ud.move) - ud.torso.rotation.y * 0.45; // 몸이 돌아도 시선은 앞을 봐요
     ud.head.rotation.z = Math.sin(clock3d * 1.1 + it.x * 3) * 0.05 + (win ? Math.sin(clock3d * 7) * 0.12 : 0);
     ud.head.rotation.x = hitK * -0.3 + (it.dead ? -0.4 : 0) + headX;
     if (ud.scarf) ud.scarf.rotation.x = 0.25 + ud.move * 0.9 + Math.sin(clock3d * 3 + it.x) * 0.12;
@@ -1825,13 +1882,13 @@ const CANIM = {
   smite: (p) => ({ ra: ph3(p, -3.1, -1.35, 0.3, 0.44), re: ph3(p, -0.6, -0.05, 0.3, 0.44), la: hold(p, 0.4), lz: hold(p, -0.6), hop: ph3(p, 0.18, 0.02, 0.3, 0.44), lean: ph3(p, -0.2, 0.3, 0.3, 0.44), head: ph3(p, -0.3, 0.1, 0.3, 0.44) }),
 };
 const DIV_ANIM = { "김예균": "slash" }; // 김예균은 홀의 낫날로 크게 베어요
-const CH_ANIM = { sword: "slash", blades: "twin", greataxe: "cleave", hammer: "cleave", bow: "bow", crossbow: "aim", rifle: "aim", tome: "tome", shield: "bash", bo: "bo", quill: "quill", gauntlets: "punch", horn: "horn", astrolabe: "cast", abyssorb: "orb", spear: "thrust", crystalstaff: "cast", sunstaff: "cast", net: "cleave", ribbon: "cast" };
+const CH_ANIM = { sword: "slash", blades: "twin", greataxe: "cleave", hammer: "cleave", bow: "bow", crossbow: "aim", rifle: "aim", tome: "tome", shield: "bash", bo: "bo", quill: "quill", gauntlets: "punch", horn: "horn", pizzabox: "tome", mawshield: "bash", astrolabe: "cast", abyssorb: "orb", spear: "thrust", crystalstaff: "cast", sunstaff: "cast", net: "cleave", ribbon: "cast" };
 // 무기 종류별 공격 효과 색·모양
 const champOfUnit = (f) => (f && !f.robot && !f.mon && f.d >= 0 && typeof CHAMPS !== "undefined" && CHAMPS[DEFS[f.d].n]) || null;
 function projKind(CH) {
   if (!CH) return null;
   const w = CH.weapon;
-  return w === "bow" ? "arrow" : w === "crossbow" ? "bolt" : w === "rifle" ? "bullet" : w === "spear" ? (CH.kit === "god" ? "lightning" : "javelin") : w === "horn" ? "wave" : "magic";
+  return w === "bow" ? "arrow" : w === "crossbow" ? "bolt" : w === "rifle" ? "bullet" : w === "spear" ? (CH.kit === "god" ? "lightning" : "javelin") : w === "horn" ? "wave" : w === "pizzabox" ? null : "magic"; // 피자 상자는 weapons.js 의 피자 조각을 던져요
 }
 // ----- 영웅 원거리 공격 모양: 화살 · 석궁 볼트 · 총알 · 마법탄 · 투창 · 번개 · 음파 -----
 function champProj(kind, col) {
@@ -2155,24 +2212,6 @@ function drawDunk(z, dt) {
   ud.ball.position.set(0, 4.2 - bp * 3.9 + (bp >= 1 ? Math.abs(Math.sin((t - DUNK_AT) * 12)) * 0.6 * fade : 0), 0); ud.ball.rotation.x += dt * 14; ud.ball.material.opacity = fade; ud.ball.visible = t > 0.1;
   ud.ring.scale.setScalar(1.5 - 0.9 * Math.min(1, t / DUNK_AT)); ud.ring.material.opacity = t < DUNK_AT ? 0.9 : 0;
 }
-// 김현우: 머리 위에 써지는 공식, 바닥에서 도는 삼각자, 대입 순간의 파란 빛기둥
-function drawFormula(z, dt) {
-  const g = useMesh(z, () => {
-    const grp = new THREE.Group(), ud = grp.userData;
-    const mk = (txt, a, b) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: symTex(txt, a, b), transparent: true, depthWrite: false })); grp.add(sp); return sp; };
-    ud.f1 = mk("y = f(x)", "90,170,255", "40,90,220"); ud.f2 = mk("y = 2·f(x) !", "255,200,80", "230,120,30");
-    ud.tri = [0, 1].map((i) => { const m = new THREE.Mesh(zgeo().tri, additive(i ? "#ffffff" : "#7fc4ff")); m.rotation.x = -Math.PI / 2; m.position.y = 0.27; grp.add(m); return m; });
-    ud.beam = new THREE.Mesh(zgeo().tube, additive("#7fc4ff")); ud.beam.position.y = 1.5; grp.add(ud.beam);
-    return grp;
-  });
-  const ud = g.userData, t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.25)), pop = Math.min(1, t / 0.15);
-  g.position.set(worldX(z.X), 0, worldZ(z.Y));
-  const dbl = t >= FORMULA_AT ? !!z.dbl : z.tgt.alive && z.tgt.hp < z.tgt.maxHp * 0.5;
-  for (const [sp, on] of [[ud.f1, !dbl], [ud.f2, dbl]]) { sp.visible = on; sp.position.y = 3.0 + Math.sin(t * 6) * 0.06; const s = 1.15 * (0.4 + 0.6 * pop) * (dbl ? 1.2 : 1); sp.scale.set(s * 4, s, 1); sp.material.opacity = fade; }
-  ud.tri.forEach((m, i) => { m.rotation.z += dt * (i ? -7 : 5); m.scale.setScalar((1.5 - i * 0.45) * (1.3 - 0.4 * Math.min(1, t / FORMULA_AT))); m.material.opacity = 0.9 * fade; });
-  const k = t - FORMULA_AT, q = k >= 0 ? Math.max(0, 1 - k / 0.35) : 0;
-  ud.beam.scale.set(0.12 + 0.5 * q, 3, 0.12 + 0.5 * q); ud.beam.material.opacity = q * 0.9; ud.beam.material.color.set(dbl ? "#ffd36b" : "#7fc4ff");
-}
 // 이보경: 슬라이딩 자국 (속도선 세 줄)
 function drawTackle(z, dt) {
   const g = useMesh(z, () => {
@@ -2283,23 +2322,6 @@ function drawSummon(z, dt) {
   ud.circle.children.forEach((m, i) => (m.material.opacity = fade * (i === 1 ? 0.6 : 0.9)));
   ud.tri[1].rotation.z -= dt * 4.4;
   ud.beams.forEach((b, i) => { const s = z.spots[i], q = Math.max(0, 1 - t / 0.8); b.position.set(worldX(s.X) - x, 4, worldZ(s.Y) - y); b.scale.set(0.08 + 0.2 * q, 8, 0.08 + 0.2 * q); b.material.opacity = 0.4 * q; });
-}
-// 박현호: 무대 조명과 아군 머리 위로 올라가는 음표
-function drawCheer(z, dt) {
-  const t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.4)), x = worldX(z.X), y = worldZ(z.Y);
-  const g = useMesh(z, () => {
-    const grp = new THREE.Group(), ud = grp.userData;
-    ud.spot = new THREE.Mesh(zgeo().cone, additive("#ffe9a0")); ud.spot.position.y = 4; grp.add(ud.spot);
-    ud.notes = z.allies.map((o, i) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(i % 2 ? "♪" : "♫", "note", "rgba(255,214,90,.9)", "rgba(255,160,60,0)", "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
-    return grp;
-  });
-  const ud = g.userData; g.position.set(0, 0, 0);
-  ud.spot.position.set(x, 4, y); ud.spot.material.opacity = (0.2 + Math.sin(t * 12) * 0.05) * fade; ud.spot.rotation.y += dt;
-  ud.notes.forEach((sp, i) => {
-    const o = z.allies[i], a = t * 5 + i * 1.7;
-    sp.visible = o.alive; sp.position.set(worldX(o.X) + Math.cos(a) * 0.45, 1.6 + ((t * 1.4 + i * 0.37) % 1.6), worldZ(o.Y) + Math.sin(a) * 0.45);
-    sp.scale.setScalar(0.85 + Math.sin(t * 9 + i) * 0.12); sp.material.opacity = fade;
-  });
 }
 // 진성욱: 내리찍은 자리에 갈라진 땅과 퍼지는 충격파
 function drawSlam(z, dt) {
@@ -2549,7 +2571,29 @@ function drawMark(z, dt) {
   ud.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -3 : 2); r.material.opacity = (0.55 + Math.sin(t * 6) * 0.2) * fade; });
   ud.cross.rotation.y += dt * 1.5; ud.cross.children.forEach((b) => (b.material.opacity = 0.6 * fade));
 }
-const ZDRAW = { net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
+// 초합체로봇 "초합체 대검": 하늘로 솟는 빛기둥 → 전장을 가로지르며 휘두르는 거대한 빛의 칼날
+function drawMegaSword(z, dt) {
+  const t = z.t, x = worldX(z.X), y = worldZ(z.Y);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 14, 24, 1, true), additive("#ffe9a0")); ud.pillar.position.y = 7; grp.add(ud.pillar);
+    ud.arc = new THREE.Group(); ud.arc.position.y = 1.6; grp.add(ud.arc);
+    for (const [w, c, op] of [[2.2, "#ffd36b", 0.55], [0.9, "#bff4ff", 0.9], [0.3, "#ffffff", 1]]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(22, w), additive(c)); m.rotation.x = -Math.PI / 2; m.position.x = 11; m.userData.op = op; ud.arc.add(m);
+    }
+    ud.ring = new THREE.Mesh(GEO.ringFx, additive("#ffd36b")); ud.ring.rotation.x = -Math.PI / 2; ud.ring.position.y = 0.3; grp.add(ud.ring);
+    return grp;
+  });
+  const ud = g.userData; g.position.set(x, 0, y);
+  const charge = Math.min(1, t / MEGA_SLASH_AT), k = t - MEGA_SLASH_AT;
+  ud.pillar.material.opacity = k < 0 ? 0.5 * charge : Math.max(0, 0.5 * (1 - k / 0.3)); ud.pillar.scale.set(0.3 + charge * 0.8, 1, 0.3 + charge * 0.8);
+  ud.ring.scale.setScalar(1 + charge * 2 + (k > 0 ? k * 14 : 0)); ud.ring.material.opacity = k < 0 ? 0.8 * charge : Math.max(0, 0.9 * (1 - k / 0.6));
+  const sweep = Math.max(0, Math.min(1, k / 0.22)), fade = k < 0 ? 0 : Math.max(0, 1 - Math.max(0, k - 0.22) / 0.5);
+  ud.arc.rotation.y = (z.team ? Math.PI : 0) + 0.5 * Math.PI + (sweep - 0.5) * 2.6; // 한쪽 끝에서 반대쪽 끝까지 크게 휘둘러요
+  ud.arc.visible = k >= 0 && fade > 0;
+  ud.arc.children.forEach((m) => (m.material.opacity = m.userData.op * fade));
+}
+const ZDRAW = { megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -2591,7 +2635,8 @@ function render3D(dt) {
         : new THREE.Mesh(GEO.chalkP, new THREE.MeshStandardMaterial({ color: new THREE.Color(p.col).convertSRGBToLinear(), roughness: 0.9 })));
       m.position.set(worldX(p.X), 1.05, worldZ(p.Y));
       m.lookAt(worldX(p.t.X), 1.05, worldZ(p.t.Y));
-      if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
+      if (p.shape === "pizza") m.rotation.y += clock3d * 10; // 피자 조각은 빙글빙글 돌며 날아가요
+      else if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
       if (p.trail && !p.fire && (p.fxT = (p.fxT || 0) - dt) <= 0) { p.fxT = 0.05; B.fx.push({ X: p.X, Y: p.Y, r: 0.28, col: p.col || "#ffe66b", t: 0.22, t0: 0.22 }); }
       if (p.fire) { // 무회전 불공: 좌우로 흔들리며 불꽃 꼬리를 남겨요
         m.scale.setScalar(1.7); m.position.x += Math.sin(clock3d * 45) * 0.12; m.position.y += Math.sin(clock3d * 31) * 0.1;
@@ -2625,6 +2670,13 @@ function render3D(dt) {
     const up = Math.min(1, k.t / 1.0), fade = k.t < 1.25 ? 1 : Math.max(0, 1 - (k.t - 1.25) / 0.5);
     pil.position.set(k.cx, 7 * up, k.cz); pil.scale.set(0.3 + up * 0.6 + Math.sin(k.t * 30) * 0.05, up, 0.3 + up * 0.6);
     pil.material.opacity = 0.55 * fade;
+    if (k.t >= COMBO_TF && k.t < 1.25) k.members.forEach((mm) => { // 탈것으로 변신해 빙글 달려와요
+      const vi = Math.max(0, ROBOT_MEMBERS.indexOf(DEFS[mm.m.d].n)), v = useMesh(mm, () => buildRobotVehicle(vi));
+      const p = Math.min(1, k.t / 1.2), ang = mm.a0 + p * 7, rad = mm.r0 * (1 - p * p), pop = Math.min(1, (k.t - COMBO_TF) / 0.12);
+      const rise = Math.max(0, k.t - 0.95) * 7 + (vi === 0 ? 1.4 : 0);
+      v.position.set(k.cx + Math.cos(ang) * rad, rise, k.cz + Math.sin(ang) * rad); v.rotation.y = -ang;
+      v.scale.setScalar(UNIT_K * 1.7 * (0.3 + 0.7 * pop)); if (vi === 0) v.rotation.z = -0.5;
+    });
   }
   WFX = drawFx(WFX, dt);
   for (const o of S.orbs || []) {
@@ -2675,7 +2727,7 @@ function drawOverlay(dt, R) {
     if (S.phase === "carousel" && it.key && "taken" in it.key) { it.key.sx = sx; it.key.sy = sy + u0 * 1.6; }
     ctx.globalAlpha = it.alpha ?? 1;
     const sp = it.sp, fs = u0 * (it.bench ? 0.78 : 0.92);
-    const name = sp.robot ? "합체로봇" : sp.mon ? sp.mon.mn : short(DEFS[sp.d].n);
+    const name = sp.robot ? (sp.mega ? "초합체로봇" : "합체로봇") : sp.mon ? sp.mon.mn : short(DEFS[sp.d].n);
     if (!sp.mon) {
       ctx.fillStyle = sp.star === 3 ? TOK["--c5"] : TOK["--accent"]; ctx.font = font(fs * 0.85);
       ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText("★".repeat(sp.star), sx, sy - fs * 1.15);
@@ -2778,17 +2830,36 @@ function drawOverlay(dt, R) {
   if (crb2) {
     const t = crb2.combo.t;
     if (t > 1.1 && t < 1.7) { ctx.fillStyle = `rgba(255,255,255,${Math.max(0, 1 - Math.abs(t - 1.28) / 0.4) * 0.95})`; ctx.fillRect(0, 0, W, H); }
-    if (t > 1.95) {
-      const q = Math.min(1, (t - 1.95) / 0.18), sc = 1 + (1 - q) * 0.8, [tx, ty] = proj(crb2.combo.cx, 3.2, crb2.combo.cz);
+    if (t > COMBO_DONE - 0.05) {
+      const q = Math.min(1, (t - COMBO_DONE + 0.05) / 0.18), sc = 1 + (1 - q) * 0.8, [tx, ty] = proj(crb2.combo.cx, 3.2, crb2.combo.cz);
       ctx.save(); ctx.translate(tx, ty); ctx.scale(sc, sc); ctx.globalAlpha = q;
       ctx.font = font(u0 * 4.2); ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.shadowColor = "#7ff0ff"; ctx.shadowBlur = 24; ctx.lineWidth = 8; ctx.strokeStyle = "#0b2a3a"; ctx.strokeText("합체!", 0, 0);
+      ctx.shadowColor = "#7ff0ff"; ctx.shadowBlur = 24; ctx.lineWidth = 8; ctx.strokeStyle = "#0b2a3a"; ctx.strokeText(crb2.mega ? "초합체!" : "합체!", 0, 0);
       const gr = ctx.createLinearGradient(0, -u0 * 2, 0, u0 * 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.5, "#7ff0ff"); gr.addColorStop(1, "#ffd36b");
-      ctx.fillStyle = gr; ctx.fillText("합체!", 0, 0); ctx.restore();
+      ctx.fillStyle = gr; ctx.fillText(crb2.mega ? "초합체!" : "합체!", 0, 0);
+      const sub = crb2.mega ? "★3 초합체로봇 강림!" : "4인 합체로봇 출격!";
+      ctx.font = font(u0 * 1.5); ctx.shadowBlur = 12; ctx.lineWidth = 5; ctx.strokeText(sub, 0, u0 * 3.1); ctx.fillStyle = "#ffe9a0"; ctx.fillText(sub, 0, u0 * 3.1);
+      ctx.restore();
     } else if (t < 1.2) {
       const [tx, ty] = proj(crb2.combo.cx, 3.0, crb2.combo.cz);
-      ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = "#cff8ff"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
-      ctx.fillText("합체 준비…", tx, ty); ctx.globalAlpha = 1;
+      ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = t < COMBO_TF ? "#cff8ff" : "#ffe9a0"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
+      ctx.fillText(t < COMBO_TF ? "합체 준비…" : "변신!", tx, ty); ctx.globalAlpha = 1;
+    }
+  }
+  // 초합체로봇 "초합체 대검": 번쩍 + 화면 전체를 가르는 금빛 선
+  const mz = S.battle && S.battle.zones.find((z) => z.kind === "megasword");
+  if (mz) {
+    const k = mz.t - MEGA_SLASH_AT;
+    if (k < 0) { ctx.fillStyle = `rgba(20,14,0,${0.3 * Math.min(1, mz.t / MEGA_SLASH_AT)})`; ctx.fillRect(0, 0, W, H); }
+    else if (k < 0.9) {
+      const q = 1 - k / 0.9, [cx2, cy2] = proj(worldX(mz.X), 1.4, worldZ(mz.Y)), ang = mz.team ? 0.22 : -0.22, ex = Math.cos(ang), ey = Math.sin(ang);
+      if (k < 0.15) { ctx.fillStyle = `rgba(255,248,220,${(1 - k / 0.15) * 0.9})`; ctx.fillRect(0, 0, W, H); }
+      ctx.save(); ctx.lineCap = "round"; ctx.globalAlpha = q;
+      for (const [lw, col, blur] of [[u0 * 6 * (1 + k * 2), "rgba(255,190,60,.45)", 40], [u0 * 2.4, "#ffd36b", 24], [u0 * 0.8, "#ffffff", 8]]) {
+        ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = blur; ctx.strokeStyle = col; ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.moveTo(cx2 - ex * W * 2, cy2 - ey * W * 2); ctx.lineTo(cx2 + ex * W * 2, cy2 + ey * W * 2); ctx.stroke();
+      }
+      ctx.restore();
     }
   }
   // 김예균 "세계를 가르는 참격": 하늘이 핏빛으로 어두워지고, 참격마다 붉게 번쩍, 마지막엔 화면 전체를 가르는 선

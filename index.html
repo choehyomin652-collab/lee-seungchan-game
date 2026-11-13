@@ -3,12 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>우리반 오토배틀</title>
+<title>씹토체스</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
 <link rel="stylesheet" href="style.css">
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#16183e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="씹토체스">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<!-- /PWA -->
 </head>
 <body>
 <div id="game">
@@ -22,7 +31,7 @@
   </div>
   <div class="hud pracbar" id="prac" hidden>
     <span class="praclbl">김예균</span><button data-star="1">★1</button><button data-star="2">★2</button><button data-star="3">★3</button>
-    <span class="pracsep"></span><span class="praclbl">상대</span><button data-foe="dummy">허수아비</button><button data-foe="team">강한 적 팀</button>
+    <span class="pracsep"></span><span class="praclbl">상대</span><button data-foe="dummy">허수아비</button><button data-foe="team">강한 적 팀</button><button data-foe="juhwan">정주환 ★3</button>
     <span class="pracsep"></span><button id="pracmana">바로 스킬 켜짐</button><button id="pracstop">전투 멈추기</button><button id="pracexit">나가기</button>
   </div>
   <div class="hud traits" id="traits"></div>
@@ -56,7 +65,7 @@
 </div>
 <div class="overlay" id="ov">
   <div class="ov-box">
-    <h1 id="ovtitle">우리반 오토배틀</h1>
+    <h1 id="ovtitle">씹토체스</h1>
     <p id="ovtext">8개 반이 겨루는 오토배틀. 마지막까지 살아남으면 1등!</p>
     <ul id="ovrules">
       <li>아래쪽 상점에서 친구를 사서 경기장에 배치해요 (탭하거나 끌어서)</li>
@@ -97,6 +106,7 @@
 <script src="js/robot.js"></script>
 <script src="js/weapons.js"></script>
 <script src="js/sound.js"></script>
+<script src="js/approom.js"></script>
 <script src="js/online.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/figure.js"></script>
@@ -104,5 +114,13 @@
 <script src="js/render3d.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/practice.js"></script>
+<!-- PWA -->
+<script>
+  // 홈 화면 앱(PWA): 앱 주소(https, 맨 바깥 창)에서만 게임 파일을 기기에 저장해요. claude.ai 아티팩트 안에서는 꺼져 있어요
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && window.top === window && !/claude\.ai|claudeusercontent/.test(location.hostname)) {
+    addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
+</script>
+<!-- /PWA -->
 </body>
 </html>

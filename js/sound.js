@@ -24,6 +24,8 @@ function sfx(name) {
     case "hit": if (performance.now() - lastHit < 70) return; lastHit = performance.now(); tone(180, 0.05, "square", 0.012, 90); break;
     case "cast": tone(300, 0.25, "sawtooth", 0.025, 900); break;
     case "boom": tone(120, 0.45, "sawtooth", 0.06, 40); break;
+    case "transform": [0, 0.07, 0.14, 0.21].forEach((d, i) => tone(220 + i * 140, 0.06, "square", 0.03, 520 + i * 160, d)); tone(160, 0.3, "sawtooth", 0.025, 640, 0.05); break; // 변신: 위잉-착착
+    case "clank": tone(1250, 0.05, "square", 0.03, 700); tone(140, 0.12, "triangle", 0.06, 70, 0.01); break; // 부품이 철컥 끼워질 때
     case "start": tone(392, 0.1, "square", 0.03); tone(587, 0.15, "square", 0.03, null, 0.1); break;
     case "win": [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.05, null, i * 0.1)); break;
     case "lose": [392, 330, 262].forEach((f, i) => tone(f, 0.25, "triangle", 0.05, null, i * 0.14)); break;

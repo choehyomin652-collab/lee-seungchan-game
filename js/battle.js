@@ -18,10 +18,10 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   const L = (t) => traitLvl(t, cnt[t] || 0), has = (t) => (def.t.includes(t) ? L(t) : 0);
   f.maxHp *= [1, 1.2, 1.4, 1.5][has("운동광")];
   if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.6][has("지는 거 못 참음")]; f.crit = 0.2; }
-  f.amp = [1, 1.3, 1.8, 2.6][has("공부는 잘함")];
+  f.amp = 1; f.power *= [1, 1.6, 2.1, 2.8][has("공부는 잘함")]; // 공부는 잘함: 스킬 세기(피해·회복·보호막 모두) 증가
   f.as0 *= [1, 1.3, 1.55, 1.65][has("축구부")];
   if (has("수학왕")) f.mgain = 1.6;
-  if (has("댄스부")) f.dance = 1; // 은혜린 춤추기 무대가 1초 더
+  if (has("댄스부")) { f.dance = 1; f.as0 *= 1.25; } // 댄스부(은혜린·최윤서) 2명: 공격 속도 +25%, 은혜린 춤추기 무대 1초 더
   if (has("프로게이머")) f.as0 *= 1.3;
   if (has("전교 1등")) f.amp += 0.4;
   if (L("신") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
@@ -85,9 +85,13 @@ function dealDamage(B, src, t, amt, kind) {
   if (!t.alive) return 0;
   let crit = false;
   if (kind === "skill") amt *= src.amp;
-  if ((kind === "atk" || (kind === "skill" && src.skillCrit)) && Math.random() < src.crit) { amt *= 1.5; crit = true; }
-  amt = Math.max(1, Math.round(amt * (1 - t.ar) * (t.vulnT > 0 ? 1 + t.vuln : 1)));
-  const abs = Math.min(t.shield, amt); t.shield -= abs; t.hp -= amt - abs; t.flash = 0.12;
+  if (kind === "exec") { amt = Math.ceil(t.hp + t.shield); t.shield = 0; t.hp = 0; } // 처형: 보호막·방어 무시하고 바로 쓰러뜨려요
+  else {
+    if ((kind === "atk" || (kind === "skill" && src.skillCrit)) && Math.random() < src.crit) { amt *= 1.5; crit = true; }
+    amt = Math.max(1, Math.round(amt * (1 - t.ar) * (t.vulnT > 0 ? 1 + t.vuln : 1)));
+    const abs = Math.min(t.shield, amt); t.shield -= abs; t.hp -= amt - abs;
+  }
+  t.flash = 0.12;
   if (src && !src.mon) src.dmg = (src.dmg || 0) + amt;
   if (t.mm !== Infinity && kind !== "thorn") t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
   if (t.lowShield && !t.lsUsed && t.hp > 0 && t.hp < t.maxHp * 0.4) { t.lsUsed = 1; t.shield += t.lowShield; addFx(B, t.X, t.Y, 0.7, TOK["--c3"]); }
@@ -155,7 +159,7 @@ function cast(B, u) {
   const t = u.tgt;
   const allies = B.f.filter((o) => o.alive && o.team === u.team), foes = B.f.filter((o) => o.alive && o.team !== u.team);
   u.castT = 0.35;
-  const SKU = u.robot ? ROBOT_SK : SK[def.n];
+  const SKU = u.robot ? (u.mega ? MEGA_SK : ROBOT_SK) : SK[def.n];
   addFloat(B, { X: u.X, Y: u.Y }, SKU ? SKU.s : CLASS[def.k].sk, TOK["--accent"], true);
   if (B.visual) sfx("cast");
   if (SKU) SKU.run(B, u, P, t, allies, foes);

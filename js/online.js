@@ -51,13 +51,15 @@ function netInit() {
   let saved = ""; try { saved = localStorage.getItem("uri-net-name") || ""; } catch (e) {}
   $("netname").value = saved;
   $("netcode").value = String(1000 + Math.floor(Math.random() * 9000));
-  const use = window.claude && window.claude.use ? window.claude.use("room") : Promise.resolve(null);
+  NET.app = !(window.claude && window.claude.use); // 홈 화면 앱: claude.ai 대신 공개 중계 서버로 (approom.js)
+  if (NET.app) $("netnote").textContent = "온라인 연결을 확인하는 중…";
+  const use = NET.app ? appRoom() : window.claude.use("room");
   use.then((room) => {
     if (!room) { $("netnote").textContent = "친구와 같이 하기는 게임 주인이 공유 메뉴에서 초대한 claude.ai 계정으로 로그인해서 열어야 쓸 수 있어요. 링크만으로는 안 돼요."; return; }
     NET.room = room; NET.ready = true;
     $("online").disabled = false; $("netnote").hidden = true;
     room.onPeers(() => netLobby(), () => { NET.ready = false; $("online").disabled = true; $("netnote").hidden = false; $("netnote").textContent = "온라인 연결이 끊겼어요. 새로고침해 주세요."; });
-  }).catch(() => { $("netnote").textContent = "온라인에 연결하지 못했어요."; });
+  }).catch(() => { $("netnote").textContent = NET.app ? "온라인에 연결하지 못했어요. 인터넷 연결을 확인하고 앱을 다시 열어 주세요." : "온라인에 연결하지 못했어요."; });
 }
 function netJoin() {
   const name = cleanName($("netname").value), code = String($("netcode").value || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
@@ -88,7 +90,7 @@ function netLobby() {
   $("netlist").innerHTML = lobby.slice(0, 8).map((p, i) => `<li><span class="dot${p.guest ? " g" : ""}"></span>${esc(cleanName(p.presence.n) || "이름 없음")}${p.sameTab ? " <em>나</em>" : ""}${i === 0 ? " <small>방장</small>" : ""}</li>`).join("");
   const n = Math.min(8, lobby.length);
   $("netmsg").textContent = n < 2
-    ? `친구에게 이 링크와 방 코드 ${NET.code}를 알려주세요. 친구는 공유 메뉴에서 초대된 계정이어야 해요. 2명부터 시작할 수 있어요.`
+    ? (NET.app ? `친구에게 방 코드 ${NET.code}를 알려주세요. 친구도 씹토체스 앱에서 같은 방 코드로 들어오면 돼요. 2명부터 시작할 수 있어요.` : `친구에게 이 링크와 방 코드 ${NET.code}를 알려주세요. 친구는 공유 메뉴에서 초대된 계정이어야 해요. 2명부터 시작할 수 있어요.`)
     : iAmHost ? `${n}명 모였어요. 빈자리 ${8 - n}개는 컴퓨터 반이 채워요.` : `${n}명 모였어요. 방장이 시작하기를 기다리는 중…`;
   if (playing && lobby.length < 2) $("netmsg").textContent = `이 방은 이미 게임 중이에요 (${playing}명). 다른 방 코드를 써 주세요.`;
   if (lobby.length > 8) $("netmsg").textContent += " 8명까지만 들어가요.";

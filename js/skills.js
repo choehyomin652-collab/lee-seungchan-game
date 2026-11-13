@@ -33,8 +33,24 @@ const SK = {
       if (B.visual) B.zones.push({ kind: "mark", step: stepMark, team: u.team, owner: u, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 4 }); } },
   "이준희": { s: "덩크슛", d: (P) => `대상 머리 위에 골대가 나타나고, 뛰어올라 내리꽂아요. 공격력×1.8 + ${R0(140 * P)} 피해 + 1초 기절, 주변 적 ${R0(60 * P)}`,
     run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "dunk", step: stepDunk, team: u.team, owner: u, P, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 0.9 }); } },
-  "김현우": { s: "공식 대입", d: (P) => `대상 머리 위에 공식을 쓰고 값을 대입해 ${R0(200 * P)} 피해, 대상 체력이 절반 아래면 2배`,
-    run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "formula", step: stepFormula, team: u.team, owner: u, P, tgt: t, X: t.X, Y: t.Y, t: 0, dur: 0.85 }); } },
+  "김현우": { s: "한입에 꿀꺽", d: (P) => `2칸 안에서 체력 비율이 가장 낮은 적에게 달려들어요. 체력이 20% 아래면 한입에 먹어 처형하고 그 적 최대 체력의 25%만큼 회복 (★2는 25%, ★3은 35% 아래, 보스는 절반 기준). 아니면 공격력 + ${R0(120 * P)} 피해, 자신에게 보호막 ${R0(150 * P)}`,
+    run(B, u, P, t, al, fo) {
+      const pool = fo.filter((o) => hexDist(o, u) <= 2);
+      const tg = pool.length ? pool.sort(byHp)[0] : t; if (!tg) return;
+      const line = [0, 0.2, 0.25, 0.35][u.star || 1] * (tg.mon && tg.mon.boss ? 0.5 : 1);
+      if (B.visual) { u.lunge = 0.18; u.lx = tg.X - u.X; u.ly = tg.Y - u.Y; B.zones.push({ kind: "tackle", step: stepTimer, team: u.team, owner: u, ax: u.X, ay: u.Y, X: tg.X, Y: tg.Y, t: 0, dur: 0.5, col: "#ff7a3a" }); }
+      if (tg.hp <= tg.maxHp * line) {
+        const mx = tg.maxHp; dealDamage(B, u, tg, 0, "exec"); heal(B, u, mx * 0.25);
+        addFx(B, tg.X, tg.Y, 1.2, "#ffffff", 0.4); addFx(B, tg.X, tg.Y, 2, "#ff7a3a", 0.6);
+        addHuge(B, tg, "꿀꺽!", "#ffffff", "#ff5a4a", 3.2);
+        if (B.visual) { S.shake = Math.max(S.shake || 0, 0.25); sfx("boom"); }
+      } else {
+        dealDamage(B, u, tg, u.ad + 120 * P, "skill"); u.shield += 150 * P;
+        addFx(B, tg.X, tg.Y, 0.9, "#ff7a3a", 0.4); addFx(B, u.X, u.Y, 0.8, C("--c3"));
+        addHuge(B, u, "앙!", "#ffffff", "#ff7a3a", 2.4);
+        if (B.visual) sfx("kick");
+      }
+    } },
   "이보경": { s: "태클 수비", d: (P) => `슬라이딩 태클! 대상에게 ${R0(90 * P)} 피해 + 1.5초 기절, 자신에게 보호막 ${R0(200 * P)}`,
     run(B, u, P, t) {
       if (t) {
@@ -97,11 +113,16 @@ const SK = {
       addHuge(B, u, all ? "전장 무대 ♪" : "♪ 춤추기 ♪", "#ffffff", "#ff7ab0", all ? 3.2 : 2.6);
       if (B.visual) sfx("charge");
     } },
-  "박현호": { s: "응원가", d: (P) => `무대 조명 아래서 응원가를 불러요. 아군 전체 5초 동안 공격 속도 +25%, ${R0(70 * P)} 회복`,
+  "박현호": { s: "피자 파티", d: (P) => `피자를 꺼내 아군에게 한 조각씩 던져 줘요. 받은 아군은 ${R0(70 * P)} 회복 + 5초 동안 공격 속도 +25%. 단, 진성욱한테만 안 줘요`,
     run(B, u, P, t, al) {
-      al.forEach((o) => { o.asBuff = Math.max(o.asBuff || 0, 0.25); o.asBuffT = 5; heal(B, o, 70 * P); });
-      addHuge(B, u, "♪ 응원가 ♪", "#ffffff", "#ffd36b", 2.4);
-      if (B.visual) B.zones.push({ kind: "cheer", step: stepCheer, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 1.6, allies: al.slice(), wave: 0 });
+      const eat = (o) => { o.asBuff = Math.max(o.asBuff || 0, 0.25); o.asBuffT = 5; heal(B, o, 70 * P); addFx(B, o.X, o.Y, 0.8, "#ffb43a", 0.4); addFloat(B, { X: o.X, Y: o.Y - 0.3 }, "🍕", "#ffd36b", true); };
+      for (const o of al) {
+        if (o.d >= 0 && !o.robot && DEFS[o.d].n === "진성욱") { addHuge(B, o, "나는…?", "#ffffff", "#8a93a0", 2); continue; } // 성욱이만 빼고!
+        if (o === u) eat(o); else B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 9, col: "#ffb43a", shape: "pizza", sz: 0.1, hit: () => eat(o) });
+      }
+      addHuge(B, u, "🍕 피자 파티!", "#ffffff", "#ff8a2a", 2.4);
+      addFx(B, u.X, u.Y, 1.6, "#ffd36b", 0.5);
+      if (B.visual) sfx("charge");
     } },
   "박희찬": { s: "무회전 프리킥", d: (P) => `잠깐 조준한 뒤 불붙은 무회전 슛! 대상에게 공격력×1.8 + ${R0(220 * P)} 피해 + 0.5초 기절, 주변 적에게 55%`,
     run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "freekick", step: stepFreekick, team: u.team, owner: u, P, tgt: t, X: u.X, Y: u.Y, t: 0, dur: 0.45 }); } },
@@ -231,27 +252,6 @@ function stepDunk(B, z, dt) {
   }
   if (z.t >= z.dur) z.done = 1;
 }
-// 김현우 "공식 대입": 공식이 써지고(0.35초) 값이 대입돼요
-const FORMULA_AT = 0.35;
-function stepFormula(B, z, dt) {
-  const t0 = z.t; z.t += dt;
-  const u = z.owner;
-  if (t0 < FORMULA_AT) {
-    if (!z.tgt.alive) z.tgt = nearest(B, u) || z.tgt;
-    z.X = z.tgt.X; z.Y = z.tgt.Y;
-    if (z.t >= FORMULA_AT) {
-      const t = z.tgt, dbl = t.alive && t.hp < t.maxHp * 0.5;
-      z.dbl = dbl;
-      if (t.alive) dealDamage(B, u, t, 200 * z.P * (dbl ? 2 : 1), "skill");
-      addFx(B, z.X, z.Y, 0.9, C("--c4")); addFx(B, z.X, z.Y, 1.5, "#7fc4ff", 0.6);
-      if (dbl) addFx(B, z.X, z.Y, 2.3, "#ffe66b", 0.7);
-      addHuge(B, z, dbl ? "×2 정답!!" : "∴ 정답!", "#ffffff", dbl ? "#ffd36b" : "#7fc4ff", dbl ? 3 : 2.4);
-      if (B.visual) { S.shake = Math.max(S.shake || 0, dbl ? 0.25 : 0.12); sfx(dbl ? "boom" : "crit"); }
-    }
-  }
-  if (z.t >= z.dur) z.done = 1;
-}
-
 // ---------- 3코스트 스킬 연출 ----------
 // 보여 주기만 하는 장판 (전투 계산에는 영향 없음)
 function stepShow(B, z, dt) { z.t += dt; z.X = z.owner.X; z.Y = z.owner.Y; if (z.t >= z.dur) z.done = 1; }
@@ -267,11 +267,6 @@ function stepScribble(B, z, dt) {
     else if (B.visual) sfx("kick");
   });
   if (z.t >= z.dur) z.done = 1;
-}
-// 박현호 "응원가": 소리 물결이 세 번 퍼져요
-function stepCheer(B, z, dt) {
-  const t0 = z.t; stepShow(B, z, dt);
-  [0, 0.22, 0.44].forEach((at, i) => { if (t0 <= at && z.t > at) addFx(B, z.X, z.Y, 3 + i * 1.5, ["#ffe66b", "#ff9ac8", "#7fc4ff"][i], 0.8); });
 }
 // 최윤서 "그물 던지기": 그물이 날아가고(NET_AT초) 떨어지는 순간 범위 안 적을 묶어요
 const NET_AT = 0.45;
