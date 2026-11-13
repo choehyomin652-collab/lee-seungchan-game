@@ -18,7 +18,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   const L = (t) => traitLvl(t, cnt[t] || 0), has = (t) => (def.t.includes(t) ? L(t) : 0);
   f.maxHp *= [1, 1.2, 1.4, 1.5][has("운동광")];
   if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.6][has("지는 거 못 참음")]; f.crit = 0.2; }
-  f.amp = [1, 1.3, 1.8, 2.6][has("공부는 잘함")];
+  f.amp = 1; f.power *= [1, 1.6, 2.1, 2.8][has("공부는 잘함")]; // 공부는 잘함: 스킬 세기(피해·회복·보호막 모두) 증가
   f.as0 *= [1, 1.3, 1.55, 1.65][has("축구부")];
   if (has("수학왕")) f.mgain = 1.6;
   if (has("댄스부")) { f.dance = 1; f.as0 *= 1.25; } // 댄스부(은혜린·최윤서) 2명: 공격 속도 +25%, 은혜린 춤추기 무대 1초 더

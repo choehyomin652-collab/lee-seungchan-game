@@ -32,8 +32,8 @@ function combineRobot(f, team, visual) {
     robot.combo = { t: 0, dur: 3.2, cx, cz, members: ms.map((m) => { const x = worldX(m.X), z = worldZ(m.Y); return { m, a0: Math.atan2(z - cz, x - cx), r0: Math.max(0.8, Math.hypot(x - cx, z - cz)) }; }), ring: 0 };
   }
 }
-let ROBOT_K = 1.11; // 일반 합체로봇 배율 (원래는 네 명을 모으면 오히려 손해였어요: 같은 골드 무작위 팀 상대 34%)
-const MEGA_K = { hp: 3.69, ad: 3.69, sk: 3.69 }; // 초합체로봇 배율 (정주환 ★3 과 1대1이 비슷하도록 맞춘 값)
+let ROBOT_K = 1.16; // 일반 합체로봇 배율 (원래는 네 명을 모으면 오히려 손해였어요: 같은 골드 무작위 팀 상대 34%)
+const MEGA_K = { hp: 3.53, ad: 3.53, sk: 3.53 }; // 초합체로봇 배율 (정주환 ★3 과 1대1이 비슷하도록 맞춘 값)
 // 초합체로봇 필살기: 거대한 빛의 대검을 들어 올렸다가 전장 전체를 한 번에 베어요
 const MEGA_SLASH_AT = 0.65;
 const MEGA_SK = { s: "초합체 대검!", d: (P) => `빛의 대검을 들어 올려 전장 전체를 베어요. 적 모두 공격력×2 + ${Math.round(260 * P)} 피해 + 1.2초 기절`,
