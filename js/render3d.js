@@ -1608,14 +1608,14 @@ function collect(dt) {
     for (const u of S.battle.f) {
       if (u.merged) {
         const k = comboOf(u);
-        if (!k || k.t >= 1.25) continue;
+        if (!k || k.t >= COMBO_TF) continue; // 그다음부터는 탈것으로 변신해서 따로 그려요
         const mm = k.members.find((q) => q.m === u), p = Math.min(1, k.t / 1.2), ang = mm.a0 + p * 7, rad = mm.r0 * (1 - p * p);
         push(u, u, k.cx + Math.cos(ang) * rad, k.cz + Math.sin(ang) * rad, { f: null, face: ang + Math.PI, lift: p * 1.6 + Math.sin(p * Math.PI) * 0.3, alpha: 1, walking: 1 });
         continue;
       }
       if (u.combo && u.combo.t < u.combo.dur) {
-        const t = u.combo.t; if (t < 1.3) continue;
-        const q = Math.min(1, (t - 1.3) / 0.7), drop = q < 1 ? 4.5 * (1 - q) * (1 - q) : Math.abs(Math.sin((t - 2.0) * 9)) * 0.25 * Math.max(0, 1 - (t - 2.0) / 0.4);
+        const t = u.combo.t; if (t < COMBO_ASM) continue;
+        const drop = t > COMBO_DONE ? Math.abs(Math.sin((t - COMBO_DONE) * 9)) * 0.2 * Math.max(0, 1 - (t - COMBO_DONE) / 0.4) : 0; // 조립은 robotAssemble 이 해요
         push(u, u, worldX(u.X), worldZ(u.Y), { f: u, enemy: isFoe(u), face: isFoe(u) ? 0 : Math.PI, lift: drop, alpha: 1 });
         continue;
       }
@@ -1720,6 +1720,9 @@ function placeUnit(it, dt) {
     ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.018;
     if (ud.flames) { // 합체로봇: 추진기 불꽃이 일렁이고, 합체해서 내려올 때·걸을 때 더 크게 뿜어요
       const cb = it.f && it.f.combo && it.f.combo.t < it.f.combo.dur ? it.f.combo.t : -1;
+      const asm = cb >= 0 ? Math.max(0, Math.min(1, (cb - COMBO_ASM) / (COMBO_DONE - COMBO_ASM))) : 1; // 부품 조립 진행도
+      if (asm !== ud.lastAsm) { robotAssemble(ud, asm); ud.lastAsm = asm; }
+      ud.eye.emissiveIntensity = !ud.eyeOn ? 0.05 : 2.2 + (cb >= COMBO_DONE ? 7 * Math.max(0, 1 - (cb - COMBO_DONE) / 0.5) : 0); // 다 조립되면 눈이 번쩍
       const k = cb >= 0 ? (cb < 2.0 ? 2.8 : 1.6) : ud.move > 0.1 ? 1.5 : 1;
       ud.flames.forEach((m, i) => { const s = k * (0.85 + 0.25 * Math.sin(clock3d * 40 + i * 2.1)); m.scale.set(1 + (k - 1) * 0.25, s, 1 + (k - 1) * 0.25); m.position.y = 0.11 - 0.15 * s; });
       ud.ball.rotation.y += dt * 2.5; ud.core.rotation.z = Math.sin(clock3d * 1.5) * 0.15;
@@ -2613,6 +2616,13 @@ function render3D(dt) {
     const up = Math.min(1, k.t / 1.0), fade = k.t < 1.25 ? 1 : Math.max(0, 1 - (k.t - 1.25) / 0.5);
     pil.position.set(k.cx, 7 * up, k.cz); pil.scale.set(0.3 + up * 0.6 + Math.sin(k.t * 30) * 0.05, up, 0.3 + up * 0.6);
     pil.material.opacity = 0.55 * fade;
+    if (k.t >= COMBO_TF && k.t < 1.25) k.members.forEach((mm) => { // 탈것으로 변신해 빙글 달려와요
+      const vi = Math.max(0, ROBOT_MEMBERS.indexOf(DEFS[mm.m.d].n)), v = useMesh(mm, () => buildRobotVehicle(vi));
+      const p = Math.min(1, k.t / 1.2), ang = mm.a0 + p * 7, rad = mm.r0 * (1 - p * p), pop = Math.min(1, (k.t - COMBO_TF) / 0.12);
+      const rise = Math.max(0, k.t - 0.95) * 7 + (vi === 0 ? 1.4 : 0);
+      v.position.set(k.cx + Math.cos(ang) * rad, rise, k.cz + Math.sin(ang) * rad); v.rotation.y = -ang;
+      v.scale.setScalar(UNIT_K * 1.7 * (0.3 + 0.7 * pop)); if (vi === 0) v.rotation.z = -0.5;
+    });
   }
   WFX = drawFx(WFX, dt);
   for (const o of S.orbs || []) {
@@ -2766,8 +2776,8 @@ function drawOverlay(dt, R) {
   if (crb2) {
     const t = crb2.combo.t;
     if (t > 1.1 && t < 1.7) { ctx.fillStyle = `rgba(255,255,255,${Math.max(0, 1 - Math.abs(t - 1.28) / 0.4) * 0.95})`; ctx.fillRect(0, 0, W, H); }
-    if (t > 1.95) {
-      const q = Math.min(1, (t - 1.95) / 0.18), sc = 1 + (1 - q) * 0.8, [tx, ty] = proj(crb2.combo.cx, 3.2, crb2.combo.cz);
+    if (t > COMBO_DONE - 0.05) {
+      const q = Math.min(1, (t - COMBO_DONE + 0.05) / 0.18), sc = 1 + (1 - q) * 0.8, [tx, ty] = proj(crb2.combo.cx, 3.2, crb2.combo.cz);
       ctx.save(); ctx.translate(tx, ty); ctx.scale(sc, sc); ctx.globalAlpha = q;
       ctx.font = font(u0 * 4.2); ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.shadowColor = "#7ff0ff"; ctx.shadowBlur = 24; ctx.lineWidth = 8; ctx.strokeStyle = "#0b2a3a"; ctx.strokeText("합체!", 0, 0);
@@ -2777,8 +2787,8 @@ function drawOverlay(dt, R) {
       ctx.restore();
     } else if (t < 1.2) {
       const [tx, ty] = proj(crb2.combo.cx, 3.0, crb2.combo.cz);
-      ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = "#cff8ff"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
-      ctx.fillText("합체 준비…", tx, ty); ctx.globalAlpha = 1;
+      ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = t < COMBO_TF ? "#cff8ff" : "#ffe9a0"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
+      ctx.fillText(t < COMBO_TF ? "합체 준비…" : "변신!", tx, ty); ctx.globalAlpha = 1;
     }
   }
   // 김예균 "세계를 가르는 참격": 하늘이 핏빛으로 어두워지고, 참격마다 붉게 번쩍, 마지막엔 화면 전체를 가르는 선
