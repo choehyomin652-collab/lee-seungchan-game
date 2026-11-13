@@ -35,7 +35,7 @@ function paintChalk(g, w, h) {
   g.fillStyle = "#262a36"; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.035})`; g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, 40 + Math.random() * 160, 10 + Math.random() * 30, Math.random(), 0, Math.PI * 2); g.fill(); }
   g.fillStyle = "rgba(170,236,255,.95)"; g.textAlign = "center"; g.textBaseline = "middle";
-  g.font = `190px ${DF()}`; g.fillText("우리반 오토배틀", w / 2, h * 0.44);
+  g.font = `190px ${DF()}`; g.fillText("씹토체스", w / 2, h * 0.44);
   g.fillStyle = "rgba(245,215,110,.9)"; g.font = `70px ${DF()}`; g.fillText("오늘의 목표: 끝까지 살아남기!", w / 2, h * 0.78);
   g.textAlign = "right"; g.fillStyle = "rgba(240,244,232,.85)"; g.font = `58px ${DF()}`;
   { const d = new Date(); g.fillText(`${d.getMonth() + 1}월 ${d.getDate()}일 ${"일월화수목금토"[d.getDay()]}요일`, w - 70, 80); } g.fillText("주번: 정주환", w - 70, 160);
