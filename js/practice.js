@@ -13,6 +13,7 @@ function pracDummies() { // 허수아비: 체력이 아주 많고 거의 때리�
   return [[0, 2], [0, 3], [0, 4], [1, 2], [1, 3]].map(([lr, c]) => ({ spec: { mon: { ...mon } }, lr, c }));
 }
 function pracFoes() {
+  if (S.pracFoe === "juhwan") return [{ spec: mkUnit(pracIdx("정주환"), 3), lr: 0, c: 3 }]; // 1대1: 정주환 ★3
   if (S.pracFoe === "team") return PRAC_TEAM.map(([n, star, lr, c]) => ({ spec: mkUnit(pracIdx(n), star), lr, c }));
   return pracDummies();
 }
@@ -54,7 +55,7 @@ startCombatNow = function () {
   collectOrbs(true);
   S.sel = null; S.scout = null; drag = null;
   const P = human(), B = makeBattle(sideOf(P), pracFoes(), true, P, null);
-  if (S.pracMana) B.f.forEach((f) => { if (f.team === 0 && f.d >= 0 && DEFS[f.d].n === PRAC_HERO) f.mana = f.mm; }); // 시작하자마자 스킬
+  if (S.pracMana) B.f.forEach((f) => { if (f.d >= 0 && ((f.team === 0 && DEFS[f.d].n === PRAC_HERO) || (f.team === 1 && S.pracFoe === "juhwan"))) f.mana = f.mm; }); // 시작하자마자 스킬 (1대1이면 주환도 같이)
   S.battle = B; S.results = [{ kind: "prac", a: P, B }]; S.opp = null;
   S.phase = "combat"; sfx("start"); renderUI();
 };
@@ -65,7 +66,8 @@ finishCombat = function () {
   const hero = B.f.filter((f) => f.team === 0 && f.d >= 0 && DEFS[f.d].n === PRAC_HERO);
   const dmg = Math.round(hero.reduce((s, f) => s + (f.dmg || f.dealt || 0), 0));
   S.banner = { text: win ? "승리!" : S.pracFoe === "dummy" ? "연습 끝" : "패배", col: win ? TOK["--accent"] : TOK["--chalk"], t: 1.8 };
-  if (dmg) toast(`${PRAC_HERO} 피해량 ${dmg}`);
+  if (S.pracFoe === "juhwan") { const foe = B.f.find((f) => f.team === 1 && f.d >= 0); toast(win ? `김예균 승리! 남은 체력 ${Math.round(hero.reduce((s, f) => s + Math.max(0, f.hp), 0))}` : `정주환 승리! 남은 체력 ${Math.round(foe ? Math.max(0, foe.hp) : 0)}`); }
+  else if (dmg) toast(`${PRAC_HERO} 피해량 ${dmg}`);
   sfx(win ? "win" : "lose");
   S.resultT = 2; renderUI();
 };
