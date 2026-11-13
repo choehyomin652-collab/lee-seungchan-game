@@ -118,7 +118,25 @@
 <script>
   // 홈 화면 앱(PWA): 앱 주소(https, 맨 바깥 창)에서만 게임 파일을 기기에 저장해요. claude.ai 아티팩트 안에서는 꺼져 있어요
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && window.top === window && !/claude\.ai|claudeusercontent/.test(location.hostname)) {
-    addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    addEventListener("load", () => navigator.serviceWorker.register("sw.js").then((reg) => {
+      // 새 버전 알림: 이미 앱을 쓰던 중에 새 버전이 설치되면 알려 줘요 (처음 설치할 때는 조용히)
+      let had = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener("controllerchange", () => { if (had) appUpdateReady(); had = true; });
+      const check = () => reg.update().catch(() => {});
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); }); // 앱으로 돌아올 때
+      setInterval(check, 30 * 60 * 1000); // 켜 둔 동안 30분마다
+    }).catch(() => {}));
+  }
+  function appUpdateReady() {
+    const ov = document.getElementById("ov"), inRoom = typeof NET !== "undefined" && (NET.on || NET.joined), onTitle = ov && !ov.hidden && !inRoom;
+    if (onTitle) { location.reload(); return; } // 첫 화면이면 바로 새 버전으로 (친구와 같이 하기 방에 있을 땐 알림만)
+    if (document.getElementById("appupd")) return;
+    const b = document.createElement("div"); b.id = "appupd";
+    b.style.cssText = "position:fixed;z-index:9999;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;border-radius:999px;background:rgba(18,20,44,.94);border:1px solid #ffd36b;color:#fff;font:600 14px/1.2 sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.45)";
+    b.innerHTML = '<span>✨ 새 버전이 나왔어요!</span><button style="border:0;border-radius:999px;padding:7px 14px;background:#ffd36b;color:#2a1a00;font:700 14px sans-serif">업데이트</button><button aria-label="닫기" style="border:0;background:none;color:#aab;font:700 16px sans-serif;padding:4px 6px">✕</button>';
+    const [go, x] = b.querySelectorAll("button");
+    go.onclick = () => location.reload(); x.onclick = () => b.remove(); // 게임 중이면 원할 때 누르면 돼요
+    document.body.appendChild(b);
   }
 </script>
 <!-- /PWA -->
