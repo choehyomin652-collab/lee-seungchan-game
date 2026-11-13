@@ -1536,7 +1536,7 @@ function buildUnit(sp, enemy) {
   return g;
 }
 function buildUnit0(sp, enemy) {
-  if (sp.robot) return buildRobot(enemy);
+  if (sp.robot) return buildRobot(enemy, !!sp.mega);
   if (sp.mon && sp.mon.summon) {
     const g = buildJelly(!!sp.mon.giant, enemy);
     const aura = new THREE.Mesh(GEO.ringFx, additive("#7ff0e0")); aura.rotation.x = -Math.PI / 2; aura.position.y = 0.24; aura.scale.setScalar(0.7); g.add(aura);
@@ -1656,7 +1656,7 @@ function collect(dt) {
   return out;
 }
 function placeUnit(it, dt) {
-  const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
+  const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + (it.sp.mega ? "m" : "") + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
   const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? (it.sp.mega ? 1.95 : 1.6) : 1.12)) * (it.bench ? 0.8 : 1); // 친구들은 12% 크게: 갑옷이 잘 보여요
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
@@ -1736,6 +1736,12 @@ function placeUnit(it, dt) {
       const k = cb >= 0 ? (cb < 2.0 ? 2.8 : 1.6) : ud.move > 0.1 ? 1.5 : 1;
       ud.flames.forEach((m, i) => { const s = k * (0.85 + 0.25 * Math.sin(clock3d * 40 + i * 2.1)); m.scale.set(1 + (k - 1) * 0.25, s, 1 + (k - 1) * 0.25); m.position.y = 0.11 - 0.15 * s; });
       ud.ball.rotation.y += dt * 2.5; ud.core.rotation.z = Math.sin(clock3d * 1.5) * 0.15;
+      const mz = ud.sword && S.battle && S.battle.zones.find((z) => z.kind === "megasword" && z.owner === it.f);
+      if (mz) { // 초합체 대검: 칼을 높이 들어 올렸다가(빛이 모임) 한 번에 휘둘러요
+        const k = mz.t - MEGA_SLASH_AT, up = k < 0 ? Math.min(1, mz.t / 0.3) : Math.max(0, 1 - k / 0.12), down = k < 0 ? 0 : Math.min(1, k / 0.12) * Math.max(0, 1 - (k - 0.5) / 0.4);
+        ud.arms[1].rotation.set(-3.0 * up + 0.4 * down, 0, 0.25 * up - 0.9 * down); ud.torso.rotation.y = -0.6 * down;
+        ud.blade.material.emissiveIntensity = 1.4 + 4 * (k < 0 ? Math.min(1, mz.t / MEGA_SLASH_AT) : Math.max(0, 1 - k / 0.5));
+      }
     }
     ud.torso.rotation.x += (lean - ud.torso.rotation.x) * Math.min(1, dt * 18);
     if (ud.cape) ud.cape.rotation.x = 0.12 + ud.move * 0.55 + Math.sin(clock3d * 2.1 + it.x) * 0.04;
@@ -2533,7 +2539,29 @@ function drawMark(z, dt) {
   ud.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -3 : 2); r.material.opacity = (0.55 + Math.sin(t * 6) * 0.2) * fade; });
   ud.cross.rotation.y += dt * 1.5; ud.cross.children.forEach((b) => (b.material.opacity = 0.6 * fade));
 }
-const ZDRAW = { net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+// 초합체로봇 "초합체 대검": 하늘로 솟는 빛기둥 → 전장을 가로지르며 휘두르는 거대한 빛의 칼날
+function drawMegaSword(z, dt) {
+  const t = z.t, x = worldX(z.X), y = worldZ(z.Y);
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 14, 24, 1, true), additive("#ffe9a0")); ud.pillar.position.y = 7; grp.add(ud.pillar);
+    ud.arc = new THREE.Group(); ud.arc.position.y = 1.6; grp.add(ud.arc);
+    for (const [w, c, op] of [[2.2, "#ffd36b", 0.55], [0.9, "#bff4ff", 0.9], [0.3, "#ffffff", 1]]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(22, w), additive(c)); m.rotation.x = -Math.PI / 2; m.position.x = 11; m.userData.op = op; ud.arc.add(m);
+    }
+    ud.ring = new THREE.Mesh(GEO.ringFx, additive("#ffd36b")); ud.ring.rotation.x = -Math.PI / 2; ud.ring.position.y = 0.3; grp.add(ud.ring);
+    return grp;
+  });
+  const ud = g.userData; g.position.set(x, 0, y);
+  const charge = Math.min(1, t / MEGA_SLASH_AT), k = t - MEGA_SLASH_AT;
+  ud.pillar.material.opacity = k < 0 ? 0.5 * charge : Math.max(0, 0.5 * (1 - k / 0.3)); ud.pillar.scale.set(0.3 + charge * 0.8, 1, 0.3 + charge * 0.8);
+  ud.ring.scale.setScalar(1 + charge * 2 + (k > 0 ? k * 14 : 0)); ud.ring.material.opacity = k < 0 ? 0.8 * charge : Math.max(0, 0.9 * (1 - k / 0.6));
+  const sweep = Math.max(0, Math.min(1, k / 0.22)), fade = k < 0 ? 0 : Math.max(0, 1 - Math.max(0, k - 0.22) / 0.5);
+  ud.arc.rotation.y = (z.team ? Math.PI : 0) + 0.5 * Math.PI + (sweep - 0.5) * 2.6; // 한쪽 끝에서 반대쪽 끝까지 크게 휘둘러요
+  ud.arc.visible = k >= 0 && fade > 0;
+  ud.arc.children.forEach((m) => (m.material.opacity = m.userData.op * fade));
+}
+const ZDRAW = { megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -2784,6 +2812,22 @@ function drawOverlay(dt, R) {
       const [tx, ty] = proj(crb2.combo.cx, 3.0, crb2.combo.cz);
       ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = t < COMBO_TF ? "#cff8ff" : "#ffe9a0"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
       ctx.fillText(t < COMBO_TF ? "합체 준비…" : "변신!", tx, ty); ctx.globalAlpha = 1;
+    }
+  }
+  // 초합체로봇 "초합체 대검": 번쩍 + 화면 전체를 가르는 금빛 선
+  const mz = S.battle && S.battle.zones.find((z) => z.kind === "megasword");
+  if (mz) {
+    const k = mz.t - MEGA_SLASH_AT;
+    if (k < 0) { ctx.fillStyle = `rgba(20,14,0,${0.3 * Math.min(1, mz.t / MEGA_SLASH_AT)})`; ctx.fillRect(0, 0, W, H); }
+    else if (k < 0.9) {
+      const q = 1 - k / 0.9, [cx2, cy2] = proj(worldX(mz.X), 1.4, worldZ(mz.Y)), ang = mz.team ? 0.22 : -0.22, ex = Math.cos(ang), ey = Math.sin(ang);
+      if (k < 0.15) { ctx.fillStyle = `rgba(255,248,220,${(1 - k / 0.15) * 0.9})`; ctx.fillRect(0, 0, W, H); }
+      ctx.save(); ctx.lineCap = "round"; ctx.globalAlpha = q;
+      for (const [lw, col, blur] of [[u0 * 6 * (1 + k * 2), "rgba(255,190,60,.45)", 40], [u0 * 2.4, "#ffd36b", 24], [u0 * 0.8, "#ffffff", 8]]) {
+        ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = blur; ctx.strokeStyle = col; ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.moveTo(cx2 - ex * W * 2, cy2 - ey * W * 2); ctx.lineTo(cx2 + ex * W * 2, cy2 + ey * W * 2); ctx.stroke();
+      }
+      ctx.restore();
     }
   }
   // 김예균 "세계를 가르는 참격": 하늘이 핏빛으로 어두워지고, 참격마다 붉게 번쩍, 마지막엔 화면 전체를 가르는 선

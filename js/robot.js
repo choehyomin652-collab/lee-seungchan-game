@@ -31,26 +31,28 @@ function combineRobot(f, team, visual) {
     robot.combo = { t: 0, dur: 3.2, cx, cz, members: ms.map((m) => { const x = worldX(m.X), z = worldZ(m.Y); return { m, a0: Math.atan2(z - cz, x - cx), r0: Math.max(0.8, Math.hypot(x - cx, z - cz)) }; }), ring: 0 };
   }
 }
-const MEGA_K = { hp: 4.2, ad: 4.2, sk: 4.2 }; // 초합체로봇 배율 (정주환 ★3 과 1대1이 비슷하도록 맞춘 값)
-// 초합체로봇 필살기: 대상을 향해 일직선으로 돌진! 지나가는 길의 적을 모두 들이받아요
-const MEGA_SK = { s: "초합체 돌진!", d: (P) => `가장 먼 적을 향해 일직선으로 돌진해 지나가는 길의 적 모두 공격력×2 + ${Math.round(260 * P)} 피해 + 1.2초 기절`,
-  run(B, u, P, t, al, fo) {
-    const live = fo.filter((o) => o.alive); if (!live.length) return;
-    const tg = live.slice().sort((a, b) => hexDist(b, u) - hexDist(a, u))[0];
-    const ax = u.X, ay = u.Y, dx = tg.X - ax, dy = tg.Y - ay, L2 = dx * dx + dy * dy || 1;
-    const onPath = live.filter((o) => { const k = Math.max(0, Math.min(1, ((o.X - ax) * dx + (o.Y - ay) * dy) / L2)); return Math.hypot(ax + dx * k - o.X, ay + dy * k - o.Y) <= 0.9; });
-    for (const o of onPath) { dealDamage(B, u, o, u.ad * 2 + 260 * P, "skill"); o.stunT = Math.max(o.stunT || 0, 1.2); addFx(B, o.X, o.Y, 1.0, "#ffd36b", 0.4); }
-    // 대상 너머(없으면 옆) 빈 칸으로 미끄러져 들어가요
-    const occ = new Set(B.f.filter((o) => o.alive && o !== u).map((o) => o.r * COLS + o.c));
-    const free = neighbors(tg.r, tg.c).filter(([r, c]) => !occ.has(r * COLS + c));
-    if (free.length) { free.sort((a, b) => hexDistRC(b[0], b[1], u.r, u.c) - hexDistRC(a[0], a[1], u.r, u.c)); [u.r, u.c] = free[0]; }
-    addHuge(B, u, "초합체 돌진!", "#ffffff", "#ffd36b", 3.2);
-    if (B.visual) {
-      B.zones.push({ kind: "tackle", step: stepTimer, team: u.team, owner: u, ax, ay, X: tg.X, Y: tg.Y, t: 0, dur: 0.6, col: "#ffd36b" });
-      for (let i = 0; i < 5; i++) B.fx.push({ kind: "puff", X: ax + dx * i / 5, Y: ay + dy * i / 5, t: 0.3 + i * 0.06, t0: 0.3 + i * 0.06 });
-      S.shake = Math.max(S.shake || 0, 0.45); sfx("boom");
-    }
+const MEGA_K = { hp: 4.1, ad: 4.1, sk: 4.1 }; // 초합체로봇 배율 (정주환 ★3 과 1대1이 비슷하도록 맞춘 값)
+// 초합체로봇 필살기: 거대한 빛의 대검을 들어 올렸다가 전장 전체를 한 번에 베어요
+const MEGA_SLASH_AT = 0.65;
+const MEGA_SK = { s: "초합체 대검!", d: (P) => `빛의 대검을 들어 올려 전장 전체를 베어요. 적 모두 공격력×2 + ${Math.round(260 * P)} 피해 + 1.2초 기절`,
+  run(B, u, P) {
+    B.zones.push({ kind: "megasword", step: stepMegaSword, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, dur: 1.6, hit: 0 });
+    addHuge(B, u, "초합체 대검!", "#ffffff", "#ffd36b", 3.2);
+    if (B.visual) sfx("charge");
   } };
+function stepMegaSword(B, z, dt) {
+  const u = z.owner; z.t += dt; z.X = u.X; z.Y = u.Y;
+  if (!z.hit && z.t >= MEGA_SLASH_AT) {
+    z.hit = 1;
+    if (u.alive) B.f.filter((o) => o.alive && o.team !== z.team).forEach((o) => {
+      dealDamage(B, u, o, u.ad * 2 + 260 * z.P, "skill");
+      if (o.alive) o.stunT = Math.max(o.stunT || 0, 1.2);
+      addFx(B, o.X, o.Y, 1.1, "#ffd36b", 0.4); addFx(B, o.X, o.Y, 0.6, "#ffffff", 0.3);
+    });
+    if (B.visual) { S.shake = Math.max(S.shake || 0, 0.7); sfx("boom"); sfx("crit"); }
+  }
+  if (z.t >= z.dur) z.done = 1;
+}
 const ROBOT_SK = { s: "합체 필살기: ¡Gol Final!", d: () => "축구공 5개를 연속으로 차서 대상과 주변 적에게 피해",
   run(B, u, P, t, al, fo) {
     const live = fo.filter((o) => o.alive); if (!live.length) return;
@@ -98,7 +100,7 @@ function robotAssemble(ud, a) {
   ud.eyeOn = a >= 1;
 }
 // 네 친구 영웅 색을 합친 메카: 머리·가슴 = 박희찬(파랑·주황), 어깨·방패 = 이보경(초록·금), 다리 = 윤동욱(흰·검정), 팔 대포·추진기 = 조하윤(검정·청록)
-function buildRobot(enemy) {
+function buildRobot(enemy, mega) {
   const g = new THREE.Group(); g.rotation.order = "YXZ";
   const ud = g.userData; ud.mats = []; ud.walk = 0; ud.move = 0; ud.restZ = [-0.2, 0.2];
   const T = (hex) => { const m = toonMat(hex); ud.mats.push(m); return m; };
@@ -211,6 +213,15 @@ function buildRobot(enemy) {
       add(new THREE.SphereGeometry(0.06, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), T(0x9fe4ff), 0, 0.02, 0.09, cg, Math.PI / 2, 0, 0).scale.set(0.8, 1.6, 0.6); // 조하윤 제트기 조종석
     }
     ud.arms.push(sh); ud.elbows.push(el);
+  }
+  if (mega) { // 초합체로봇: 오른손에 빛의 대검
+    const sw = new THREE.Group(); sw.position.set(0, -0.12, 0.12); sw.rotation.x = -1.25; ud.cannon.add(sw); ud.sword = sw;
+    cyl(0.04, 0.04, 0.26, black, 0, 0.05, 0, sw);
+    box(0.42, 0.07, 0.1, gold, 0, -0.1, 0, sw);
+    box(0.08, 0.08, 0.12, cyan, 0, -0.1, 0.03, sw);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.5, 0.035), glowM(0xbff4ff, 1.4)); blade.position.y = -0.88; sw.add(blade);
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.56, 0.012), glowM(0xffd36b, 2.2)); edge.position.y = -0.9; sw.add(edge);
+    ud.blade = blade;
   }
   bakeFigure(g, ud); // 친구들처럼 만화 음영 + 외곽선
   // 합체 조립 연출용: 부품마다 제자리와 날아올 방향
