@@ -90,10 +90,10 @@ const SK = {
       addHuge(B, u, star >= 3 ? "대어 포획!" : "그물 던지기!", "#ffffff", "#2fd0a0", star >= 3 ? 3 : 2.5);
       if (B.visual) sfx("charge");
     } },
-  "은혜린": { s: "춤추기", d: (P) => `발밑에 반짝이는 댄스 무대를 깔아요 (반경 2칸, 4초). 무대 위 아군은 공격 속도 +35%와 0.5초마다 회복(합계 ${R0(120 * P)}), 무대 위 적은 박자에 맞춰 0.5초 멈칫해요. 댄스부 특성이면 1초 더 오래 가요. ★3은 무대가 전장 전체로 넓어지고 공격 속도 +50%`,
+  "은혜린": { s: "춤추기", d: (P) => `발밑에 반짝이는 댄스 무대를 깔아요 (반경 3칸, 4초). 무대 위 아군은 공격 속도 +35%와 0.5초마다 회복(합계 ${R0(120 * P)}), 무대 위 적은 박자에 맞춰 0.5초 멈칫해요. 댄스부 특성이면 1초 더 오래 가요. ★3은 무대가 전장 전체로 넓어지고 공격 속도 +50%`,
     run(B, u, P) {
       const star = u.star || 1, dur = 4 + (u.dance ? 1 : 0), all = star >= 3;
-      B.zones.push({ kind: "dance", step: stepDance, team: u.team, owner: u, P, X: u.X, Y: u.Y, r: u.r, c: u.c, t: 0, tick: 0, n: 0, dur, rad: all ? 99 : 2, asb: all ? 0.5 : 0.35, heal: 120 * P / (dur / 0.5), froze: 0, all });
+      B.zones.push({ kind: "dance", step: stepDance, team: u.team, owner: u, P, X: u.X, Y: u.Y, r: u.r, c: u.c, t: 0, tick: 0, n: 0, dur, rad: all ? 99 : 3, asb: all ? 0.5 : 0.35, heal: 120 * P / (dur / 0.5), froze: 0, all });
       addHuge(B, u, all ? "전장 무대 ♪" : "♪ 춤추기 ♪", "#ffffff", "#ff7ab0", all ? 3.2 : 2.6);
       if (B.visual) sfx("charge");
     } },

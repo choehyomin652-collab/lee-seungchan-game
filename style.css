@@ -286,3 +286,12 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .pracbar button.on { background: linear-gradient(#e0606a, #8a1828); color: #fff; border-color: #ffc0c4; }
 .pracbar .praclbl { color: var(--chalk-dim); font-size: .85em; }
 .pracsep { width: 1px; align-self: stretch; background: var(--edge); margin: 0 calc(var(--u) * .3); }
+/* 낮은 가로 화면(휴대폰): 시작 화면이 한눈에 들어오게 줄여요 — 규칙은 두 줄씩, 버튼이 잘리지 않게 */
+@media (max-height: 430px) {
+  .ov-box { padding: 14px 18px; gap: 8px; max-width: 600px; }
+  .ov-box h1 { font-size: 24px; }
+  .ov-box h1::after { margin-top: 6px; }
+  .ov-box ul { columns: 2; column-gap: 18px; font-size: 12px; line-height: 1.45; }
+  .ov-box p { line-height: 1.4; }
+  .ovbtns .go { padding: 9px 8px; font-size: 16px; white-space: nowrap; }
+}
