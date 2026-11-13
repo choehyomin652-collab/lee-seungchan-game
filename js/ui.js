@@ -184,7 +184,7 @@ function showUnit(u, foe) {
       back.onclick = () => {
         if (!hasCustomCard(u.d)) return unshareCardPhoto(u.d);
         try { localStorage.removeItem("uri-card-" + DEFS[u.d].n); } catch (e) {}
-        PORTRAIT[u.d] = sharedCard(u.d) ? blobUrl(sharedCard(u.d)) : BASE_PORTRAIT[u.d]; toast("원래 카드 사진으로 돌아왔어요"); renderUI();
+        setPortrait(u.d, sharedCard(u.d) ? photoUrl(sharedCard(u.d)) : BASE_PORTRAIT[u.d]); toast("원래 카드 사진으로 돌아왔어요"); renderUI();
       };
       row.appendChild(back);
     }
