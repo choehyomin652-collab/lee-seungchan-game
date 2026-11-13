@@ -14,7 +14,7 @@
 - 페이지 만들기: `sh tools/make-artifact-page.sh > <스크래치패드>/uri-battle.html`
 - 올리기: Artifact publish 에 `url` = 위 주소, `file_path` = 만든 페이지, `files` = 이번에 바뀐 `style.css` · `js/*.js` 만 (published 경로와 저장소 경로가 같아요. 빠진 파일은 아티팩트에 있던 그대로 남아요)
 - 전부 다시 올리지 않는 이유: 다른 계정이 아티팩트에서 직접 `js/photos.js` 를 고친 적이 있어요. 지금 저장소의 `photos.js` 는 아티팩트 것과 맞춰 뒀지만, 올리기 전에 아티팩트의 `photos.js` 가 또 바뀌었는지 확인하고 바뀌었으면 합친 뒤 올려요
-- 미리 넣은 친구 카드 사진은 아티팩트에만 있어요 (`cards/<id>.jpg`, 친구들 얼굴 사진이라 GitHub 저장소에는 넣지 않아요). 아티팩트를 올릴 때 `cards/` 는 `files` 에 넣지 않으면 그대로 남아요. 사진을 새로 추가할 때만 assets 에서 받아 `cards/` 로 함께 올려요
+- 미리 넣은 친구 카드 사진은 저장소의 `cards/<id>.jpg` 에 있어요 (홈 화면 앱에서도 보이게 넣었어요, 사용자가 요청). 아티팩트에도 같은 `cards/` 가 있어요. 사진을 새로 넣거나 바꾸면 `cards/` 에 넣고 `js/photos.js` 의 `BUILTIN_CARDS` · `sw.js` 의 카드 목록을 고친 뒤, 아티팩트에 올릴 때 그 사진도 `files` 에 넣어요
 - 올리다가 "newer version" 으로 거절되면, 다른 곳에서 바뀐 파일이 내가 이번에 올리는 파일과 겹치는지 확인하고, 겹치지 않으면 그대로 다시 올려요
 - `capabilities` 는 빼고 올려요 (사진 저장 db 규칙 · 온라인 room 설정을 그대로 유지)
 - 새 JS 파일을 추가했다면 `index.html` 의 `<script>` 와 `files` 목록, 그리고 `sw.js` 의 `FILES` 에도 넣어요
@@ -23,7 +23,7 @@
 - iPad · 아이폰용 홈 화면 앱은 GitHub Pages 로 배포해요: https://choehyomin652-collab.github.io/lee-seungchan-game/
 - 기본 브랜치에 올라오면 `.github/workflows/pages.yml` 이 자동 배포해요. 처음 한 번 저장소 Settings → Pages → Source 를 "GitHub Actions" 로 바꿔야 해요
 - 앱 설정(manifest · 아이콘 · 서비스 워커 등록)은 `index.html` 의 `<!-- PWA -->` 표시 사이에 있어요. 아티팩트 페이지를 만들 때는 이 부분이 빠져요
-- 앱에서는 claude.ai 기능(친구와 같이 하기 · 공유 사진 · 미리 넣은 카드 사진)이 없어요. 혼자 하기 · 연습장 · 내 기기 사진은 돼요
+- 앱에서는 claude.ai 기능(친구와 같이 하기 · 게임에서 올린 공유 사진)이 없어요. 혼자 하기 · 연습장 · 미리 넣은 카드 사진 · 내 기기 사진은 돼요
 
 ## 화면 확인 도구 (tools/preview)
 진짜 three.js 대신 간이 렌더러(`tools/preview/mini-three.js`, WebGL2)를 끼워 Playwright 로 화면을 찍어요. 외곽선·빛번짐은 안 나와요. 인자의 `.` 은 저장소 루트예요.

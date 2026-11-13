@@ -10,18 +10,18 @@
 const SHARED = { db: null, assets: null, ref: null, cards: {}, backdrop: null, shownBackdrop: null };
 const blobUrl = (id) => "/_blob/" + id;
 // 미리 넣어 둔 카드 사진은 게임 파일과 같은 방식(아티팩트의 cards/ 폴더)으로 불러와요.
-// 공용 저장소 주소(/_blob/)는 일부 기기(iPad 등)에서 안 열릴 때가 있어서예요. 사진 파일은 저장소(GitHub)에는 넣지 않아요
+// 공용 저장소 주소(/_blob/)는 일부 기기(iPad 등)에서 안 열릴 때가 있어서예요. 홈 화면 앱에서도 보이게 저장소의 cards/ 에도 넣어 뒀어요
 const cardUrl = (id) => "cards/" + id + ".jpg";
 // 이 사람이 올리면 모두에게 보이나요? (페이지를 고칠 수 있는 사람만)
 const canShare = () => !!(SHARED.assets && SHARED.ref);
 // 페이지에 미리 넣어 둔 친구 카드 사진 (공용 저장소 assets 의 id). 게임에서 따로 올린 사진이 있으면 그게 먼저예요
 const BUILTIN_CARDS = {
   "진성욱": "264e6bd68a2c650b492c1dc6323e184d", "이현": "c084b0de9c9b195fee549e8f97d9ea18", "박희찬": "6aee6c7bd14f060b99cc998ca9189a6d", "이보경": "563237f2f1a3547d18a32898c1374476",
-  "최효민": "f09797c0e85c00dbe8e414d9760a7d35", "임시온": "a36ad8d9c7b6ba8c8c3bc27873c13506", "이준희": "5222d38967af0784aef52d443ef0df91", "김현우": "3bff9474594a6588873ad9bfe078e3de",
+  "최효민": "7ff0207f57255560ce6a3051f66ca17b", "임시온": "a36ad8d9c7b6ba8c8c3bc27873c13506", "이준희": "5222d38967af0784aef52d443ef0df91", "김현우": "3bff9474594a6588873ad9bfe078e3de",
   "전하율": "3bf362f3a07f7dbe065481282e4c0d9c", "박준서": "4149220f3f8d1008942372463b05ec31", "손태민": "9095b56b47d55663c996ac30108f7e12", "윤동욱": "7d50b9e62657f7d2e5b0873b190bfc11",
 };
 // 이 친구들은 미리 넣어 둔 사진이 게임에서 예전에 올린 공용 사진보다 먼저예요 (본인 요청)
-const BUILTIN_FIRST = new Set(["윤동욱"]);
+const BUILTIN_FIRST = new Set(["윤동욱", "최효민"]);
 const BUILTIN_IDS = new Set(Object.values(BUILTIN_CARDS));
 const photoUrl = (id) => (BUILTIN_IDS.has(id) ? cardUrl(id) : blobUrl(id));
 // 카드 사진을 정해요. 사진을 못 불러오면 검은 카드 대신 원래 3D 그림으로 돌아가요
@@ -38,10 +38,10 @@ function setPortrait(d, url) {
   };
   im.src = url;
 }
-const sharedCard = (d) => { const n = DEFS[d].n, b = window.claude ? BUILTIN_CARDS[n] : null; return (BUILTIN_FIRST.has(n) && b) || SHARED.cards[n] || b || null; };
+const sharedCard = (d) => { const n = DEFS[d].n, b = BUILTIN_CARDS[n]; return (BUILTIN_FIRST.has(n) && b) || SHARED.cards[n] || b || null; };
 
 function photosInit() {
-  if (window.claude) DEFS.forEach((def, d) => { const id = BUILTIN_CARDS[def.n]; if (id && !hasCustomCard(d)) setPortrait(d, cardUrl(id)); }); // 미리 넣어 둔 사진부터 보여요
+  DEFS.forEach((def, d) => { const id = BUILTIN_CARDS[def.n]; if (id && !hasCustomCard(d)) setPortrait(d, cardUrl(id)); }); // 미리 넣어 둔 사진부터 보여요
   if (!window.claude || !window.claude.use) return;
   Promise.all([window.claude.use("db"), window.claude.use("assets")]).then(([db, assets]) => {
     if (!db) return;
