@@ -162,7 +162,7 @@ const tuneOf = (def) => TUNE[def.n] || { hp: 1, ad: 1, sk: 1 };
 const LEGEND = { hp: 5, ad: 3, sk: 5 };
 // 친구마다 따로 정한 전설 배율. 김예균 ★3("세계를 가르는 참격")은 스킬이 아주 세서, 전설끼리 붙으면 정주환이 2%밖에 못 이겼어요
 // → 스킬 배율만 낮춰서 정주환 약 58% (다른 팀 상대로는 김예균 ★3 도 그대로 100% 이겨요). 김예균 스킬을 바꾸면 다시 재 주세요
-const LEGEND_FOR = { "김예균": { hp: 5, ad: 3, sk: 3.8 } };
+const LEGEND_FOR = { "김예균": { hp: 5, ad: 3, sk: 3.8 }, "정주환": { hp: 6, ad: 3, sk: 6 } }; // 정주환 ★3 은 김예균 ★3 을 1대1로 이겨요
 const legendOf = (def, star) => (def.c === 5 && star >= 3 ? LEGEND_FOR[def.n] || LEGEND : { hp: 1, ad: 1, sk: 1 });
 const MAIN_TRAITS = ["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"];
 // rg = 육각 칸 사거리
