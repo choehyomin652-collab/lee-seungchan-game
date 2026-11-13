@@ -303,7 +303,9 @@ function stepDance(B, z, dt) {
   z.t += dt; z.X = u.X; z.Y = u.Y; z.r = u.r; z.c = u.c; z.tick += dt;
   if (z.tick >= 0.5 || !z.n) {
     z.tick = z.n ? z.tick - 0.5 : 0; z.n++;
-    B.f.filter((o) => o.alive && o.team === z.team && hexDist(o, z) <= z.rad).forEach((o) => { o.asBuff = Math.max(o.asBuff || 0, z.asb); o.asBuffT = Math.max(o.asBuffT || 0, 0.7); heal(B, o, z.heal); });
+    const on = B.f.filter((o) => o.alive && o.team === z.team && hexDist(o, z) <= z.rad);
+    on.forEach((o) => { o.asBuff = Math.max(o.asBuff || 0, z.asb); o.asBuffT = Math.max(o.asBuffT || 0, 0.7); o.grooveUntil = B.t + 0.7; heal(B, o, z.heal); });
+    z.on = on.map((o) => ({ o })); // 무대 위 아군 (연출용: 발밑 반짝임)
     if (!z.froze) { z.froze = 1; near(foesOf(B, z.team), z, z.rad).forEach((o) => { o.stunT = Math.max(o.stunT || 0, 0.5); }); }
   }
   if (z.t >= z.dur) z.done = 1;
