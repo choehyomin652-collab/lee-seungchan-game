@@ -8,10 +8,11 @@ const CACHE = "ssipto-v1";
 const FILES = [
   "./", "index.html", "style.css", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
   "js/friends.js", "js/skills.js", "js/augments.js", "js/constants.js", "js/game.js", "js/battle.js", "js/robot.js", "js/weapons.js",
-  "js/sound.js", "js/online.js", "js/photos.js", "js/figure.js", "js/hero.js", "js/render3d.js", "js/ui.js", "js/practice.js",
+  "js/sound.js", "js/approom.js", "js/online.js", "js/photos.js", "js/figure.js", "js/hero.js", "js/render3d.js", "js/ui.js", "js/practice.js",
 ];
 const CDN = [
   "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+  "https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js",
   ...["environments/RoomEnvironment.js", "shaders/CopyShader.js", "shaders/LuminosityHighPassShader.js", "postprocessing/EffectComposer.js",
     "postprocessing/RenderPass.js", "postprocessing/ShaderPass.js", "postprocessing/UnrealBloomPass.js"].map((f) => "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/" + f),
 ];
