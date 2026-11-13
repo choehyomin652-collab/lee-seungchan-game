@@ -38,16 +38,16 @@ const SK = {
       const pool = fo.filter((o) => hexDist(o, u) <= 2);
       const tg = pool.length ? pool.sort(byHp)[0] : t; if (!tg) return;
       const line = [0, 0.2, 0.25, 0.35][u.star || 1] * (tg.mon && tg.mon.boss ? 0.5 : 1);
-      if (B.visual) { u.lunge = 0.18; u.lx = tg.X - u.X; u.ly = tg.Y - u.Y; B.zones.push({ kind: "tackle", step: stepTimer, team: u.team, owner: u, ax: u.X, ay: u.Y, X: tg.X, Y: tg.Y, t: 0, dur: 0.5, col: "#7fc4ff" }); }
+      if (B.visual) { u.lunge = 0.18; u.lx = tg.X - u.X; u.ly = tg.Y - u.Y; B.zones.push({ kind: "tackle", step: stepTimer, team: u.team, owner: u, ax: u.X, ay: u.Y, X: tg.X, Y: tg.Y, t: 0, dur: 0.5, col: "#ff7a3a" }); }
       if (tg.hp <= tg.maxHp * line) {
         const mx = tg.maxHp; dealDamage(B, u, tg, 0, "exec"); heal(B, u, mx * 0.25);
-        addFx(B, tg.X, tg.Y, 1.2, "#ffffff", 0.4); addFx(B, tg.X, tg.Y, 2, "#7fc4ff", 0.6);
+        addFx(B, tg.X, tg.Y, 1.2, "#ffffff", 0.4); addFx(B, tg.X, tg.Y, 2, "#ff7a3a", 0.6);
         addHuge(B, tg, "꿀꺽!", "#ffffff", "#ff5a4a", 3.2);
         if (B.visual) { S.shake = Math.max(S.shake || 0, 0.25); sfx("boom"); }
       } else {
         dealDamage(B, u, tg, u.ad + 120 * P, "skill"); u.shield += 150 * P;
-        addFx(B, tg.X, tg.Y, 0.9, "#7fc4ff", 0.4); addFx(B, u.X, u.Y, 0.8, C("--c3"));
-        addHuge(B, u, "앙!", "#ffffff", "#7fc4ff", 2.4);
+        addFx(B, tg.X, tg.Y, 0.9, "#ff7a3a", 0.4); addFx(B, u.X, u.Y, 0.8, C("--c3"));
+        addHuge(B, u, "앙!", "#ffffff", "#ff7a3a", 2.4);
         if (B.visual) sfx("kick");
       }
     } },

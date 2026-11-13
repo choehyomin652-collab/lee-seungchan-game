@@ -654,6 +654,21 @@ const HERO = (() => {
         add(w, lathe([[0, 0.012], [0.07, 0.008], [0.075, 0], [0, -0.004]], { seg: 6, pal: pal(CH.accent) }), 0, 0.03, 0.105, Math.PI / 2 - 0.3, 0, 0, glow(CH.accent, 1.6));
         break;
       }
+      case "mawshield": { // 김현우 '한입에 꿀꺽': 오른손엔 큰 포크, 왼손엔 이빨 달린 입이 그려진 방패
+        const ws = holder(R); add(ws, rod(0.55, 0.018, SIL, -0.18));
+        add(ws, plate(0.12, 0.05, { th: 0.022, pal: SIL }), 0, 0.38, 0);
+        for (const x of [-0.042, 0, 0.042]) add(ws, blade(0.2, () => 0.009, { th: 0.014, pal: SIL, n: 4 }), x, 0.4, 0);
+        const w = holder(L, 0.05);
+        const Lp = [], Rp = []; for (let i = 0; i <= 10; i++) { const t = i / 10, y = -0.34 + t * 0.66, hw = t < 0.35 ? 0.24 * Math.sin((t / 0.35) * Math.PI / 2) : 0.24 - 0.02 * (t - 0.35); Lp.push([-hw, y]); Rp.push([hw, y]); }
+        add(w, slab(Lp, Rp, 0.04, { pal: pal(CH.top), edgeCol: lc(CH.accent), bev: 0.03, ridge: 0.03, warp: bendX(0.4) }), -0.1, 0.05, 0.08, 0, Math.PI / 2 - 0.2, 0);
+        const f = new THREE.Group(); f.position.set(-0.155, 0.0, 0.07); f.rotation.y = -Math.PI / 2 - 0.2; f.scale.setScalar(1.3); w.add(f);
+        add(f, plate(0.3, 0.12, { th: 0.02, pal: pal(0xa0141e), ch: 0.045 }), 0, 0, 0);
+        for (let i = 0; i < 6; i++) { const x = -0.12 + i * 0.048;
+          add(f, blade(0.065, (u) => 0.022 * (1 - u), { th: 0.014, pal: pal(0xf4f0e6), n: 3 }), x, 0.06, 0.012, 0, 0, Math.PI);
+          if (i < 5) add(f, blade(0.055, (u) => 0.02 * (1 - u), { th: 0.014, pal: pal(0xf4f0e6), n: 3 }), x + 0.024, -0.06, 0.012); }
+        for (const x of [-0.08, 0.08]) add(f, gemGeo(), x, 0.15, 0.01, 0, 0, 0, glow(CH.accent, 2)).scale.setScalar(1.3);
+        break;
+      }
       case "pizzabox": { // 왼손엔 피자 상자(빨간 피자 그림), 오른손엔 피자 한 조각
         const w = holder(L, 0.2);
         add(w, plate(0.34, 0.34, { th: 0.07, pal: pal(0xd9a86a), ch: 0.015, edgeCol: lc(0xb07a3a) }), 0, 0.02, 0.06, -0.3);
