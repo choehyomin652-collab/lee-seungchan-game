@@ -19,7 +19,7 @@ const CDN = [
 self.addEventListener("install", (e) => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
-    await c.addAll(FILES);
+    await c.addAll(FILES.map((u) => new Request(u, { cache: "reload" }))); // 브라우저에 남은 예전 파일 말고 서버의 새 파일로
     await Promise.all(CDN.map((u) => fetch(u, { mode: "cors" }).then((r) => r.ok && c.put(u, r)).catch(() => {})));
     self.skipWaiting();
   })());
