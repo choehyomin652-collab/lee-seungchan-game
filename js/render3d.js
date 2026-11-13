@@ -2069,6 +2069,26 @@ function drawSmite(z, dt) {
     ud2.ring.scale.setScalar(s.mega ? 2 + k * 18 : (s.big ? 1 : 0.5) + k * (s.big ? 8 : 5)); ud2.ring.material.opacity = q;
   }
 }
+// 정주환 평타 번개: 떨어지기 전엔 대상 발밑에 작은 고리가 모이고, 맞는 순간 하늘에서 번개가 번쩍여요
+function drawZap(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group();
+    grp.userData.ring = new THREE.Mesh(GEO.ringFx, additive("#bfe8ff")); grp.userData.ring.rotation.x = -Math.PI / 2; grp.userData.ring.position.y = 0.26; grp.add(grp.userData.ring);
+    return grp;
+  });
+  const ud = g.userData, k = z.t - z.hitAt;
+  g.position.set(worldX(z.X), 0, worldZ(z.Y));
+  if (k < 0) { const q = 1 + k / z.hitAt; ud.ring.scale.setScalar(1.1 - q * 0.7); ud.ring.material.opacity = 0.3 + q * 0.5; if (ud.bolt) ud.bolt.visible = false; return; }
+  if (!ud.bT || (ud.bT -= dt) <= 0) {
+    ud.bT = 0.05;
+    if (ud.bolt) { g.remove(ud.bolt); ud.bolt.userData.mats.forEach((mt) => mt.dispose()); }
+    ud.bolt = makeBolt(9, 0.3, 0.09, ["#ffffff", "#9fdcff", "#ffe66b"], 1); g.add(ud.bolt);
+  }
+  const q = Math.max(0, 1 - k / (z.dur - z.hitAt)), fl = 0.6 + Math.random() * 0.4;
+  ud.bolt.userData.mats.forEach((mt, j) => (mt.opacity = q * fl * (j ? 0.45 : 1)));
+  ud.bolt.visible = true;
+  ud.ring.scale.setScalar(0.4 + k * 5); ud.ring.material.opacity = q;
+}
 // ----- 4코스트 스킬 3D 연출 -----
 let ZGEO = null;
 const zgeo = () => ZGEO || (ZGEO = { bar: new THREE.BoxGeometry(1, 0.03, 1), cube: new THREE.BoxGeometry(1, 1, 1), tri: new THREE.RingGeometry(0.9, 1, 3, 1), tube: new THREE.CylinderGeometry(1, 1, 1, 12, 1, true), cone: new THREE.CylinderGeometry(0.25, 1.6, 8, 20, 1, true) });
@@ -2443,7 +2463,7 @@ function drawMark(z, dt) {
   ud.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -3 : 2); r.material.opacity = (0.55 + Math.sin(t * 6) * 0.2) * fade; });
   ud.cross.rotation.y += dt * 1.5; ud.cross.children.forEach((b) => (b.material.opacity = 0.6 * fade));
 }
-const ZDRAW = { rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
+const ZDRAW = { zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, formula: drawFormula, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
