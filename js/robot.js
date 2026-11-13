@@ -148,10 +148,8 @@ function buildRobot(enemy) {
   box(0.12, 0.08, 0.12, black, 0, -0.08, 0, head);
   box(0.26, 0.22, 0.26, white, 0, 0.06, 0, head);
   box(0.28, 0.08, 0.28, blue, 0, 0.17, -0.01, head);
-  box(0.24, 0.07, 0.03, dark, 0, 0.075, 0.13, head);
-  box(0.2, 0.04, 0.03, eye, 0, 0.075, 0.14, head);
-  wedge(0.16, 0.09, 0.09, 0.035, steel, 0, -0.005, 0.135, head);
-  for (const sx of [-1, 1]) box(0.012, 0.06, 0.01, black, sx * 0.03, -0.005, 0.155, head);
+  wedge(0.2, 0.12, 0.1, 0.04, dark, 0, 0.0, 0.135, head);
+  box(0.22, 0.045, 0.03, eye, 0, 0.075, 0.135, head);
   box(0.05, 0.1, 0.05, orange, 0, 0.17, 0.13, head);
   for (const sx of [-1, 1]) {
     box(0.04, 0.24, 0.035, gold, sx * 0.1, 0.27, 0.12, head, 0, 0, sx * -0.85);
