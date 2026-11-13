@@ -1087,8 +1087,15 @@ function buildChampWeapon(CH, C) {
     case "sunstaff": { const w = holder(R, Math.PI / 2 - 0.85, "up", "up"); const top = staff(w, 1.25); const disc = add(w, G.ringA, trim, 0, top + 0.08, 0); disc.scale.setScalar(0.9); for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const r = add(w, G.ray, trim, Math.cos(a) * 0.15, top + 0.08 + Math.sin(a) * 0.15, 0); r.rotation.z = a - Math.PI / 2; } add(w, G.orb, glowM(0xffe08a), 0, top + 0.08, 0); break; }
   }
 }
+// 영웅 모습에도 등번호를 달 수 있어요 (CHAMPS 의 num: 가슴 · 등)
+function champNum(CH, C) {
+  if (!CH.num) return;
+  const col = "#" + (CH.numCol ?? 0xffffff).toString(16).padStart(6, "0");
+  C.put(GEO.human.patch, chestTex(CH.num, col), 0, 0.38, 0.215, C.torso).scale.setScalar(2.4);
+  const bk = C.put(GEO.human.patch, chestTex(CH.num, col), 0, 0.3, -0.29, C.torso); bk.rotation.set(-0.15, Math.PI, 0); bk.scale.setScalar(3.4); // 망토 위에
+}
 function applyArmor(def, C) {
-  { const CHh = champOf(def); if (CHh && typeof HERO !== "undefined" && HERO.armor(def, CHh, { ...C, mP: C.mk(0xffffff, 0.6) })) return; } // 조각한 영웅 갑옷 (hero.js)
+  { const CHh = champOf(def); if (CHh && typeof HERO !== "undefined" && HERO.armor(def, CHh, { ...C, mP: C.mk(0xffffff, 0.6) })) { champNum(CHh, C); return; } } // 조각한 영웅 갑옷 (hero.js)
   const { put, mk, head, torso, ud, OF } = C, A = armorGeo(), kit = (champOf(def) && champOf(def).kit) || ROLE_KIT[def.k] || "warrior";
   const main = OF.top ?? 0x445566, acc = OF.accent ?? 0xffffff;
   const dark = (hex, k = 0.55) => { const r = ((hex >> 16) & 255) * k, g = ((hex >> 8) & 255) * k, b = (hex & 255) * k; return (r << 16) | (g << 8) | b; };
