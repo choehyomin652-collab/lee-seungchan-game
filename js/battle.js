@@ -131,7 +131,8 @@ function attack(B, u, t) {
   u.atkT = ATK_T;
   if (u.rg > 1) {
     const wp = u.d >= 0 && WEAPONS[DEFS[u.d].n], pr = wp && wp.pr, who = u.d >= 0 && DEFS[u.d].n;
-    B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: who === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : pr && pr.col ? pr.col : u.team ? TOK["--danger"] : TOK["--chalk"], shape: pr && pr.shape, trail: pr && pr.shape === "plane" ? 1 : 0, sz: 0.1, who: who || null, hit: () => onHit(B, u, t) });
+    if (who === "정주환") B.zones.push({ kind: "zap", step: stepZap, team: u.team, owner: u, tgt: t, X: t.X, Y: t.Y, t: 0, hitAt: ZAP_AT, dur: ZAP_AT + 0.22 }); // 평타도 하늘에서 번개
+    else B.projs.push({ X: u.X, Y: u.Y, t, sp: 9, col: who === "조하윤" ? (Math.random() < 0.5 ? "#e8402e" : "#f6c431") : pr && pr.col ? pr.col : u.team ? TOK["--danger"] : TOK["--chalk"], shape: pr && pr.shape, trail: pr && pr.shape === "plane" ? 1 : 0, sz: 0.1, who: who || null, hit: () => onHit(B, u, t) });
   }
   else {
     u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y;
@@ -139,6 +140,13 @@ function attack(B, u, t) {
     onHit(B, u, t);
   }
   gainMana(B, u, 10 + u.manaOnHit);
+}
+// 정주환 평타: 대상 머리 위로 작은 번개가 떨어져요 (ZAP_AT초 뒤에 맞아요, 예전 구슬이 날아가던 시간과 비슷하게)
+const ZAP_AT = 0.18;
+function stepZap(B, z, dt) {
+  z.t += dt;
+  if (!z.hit) { if (z.tgt.alive) { z.X = z.tgt.X; z.Y = z.tgt.Y; } if (z.t >= z.hitAt) { z.hit = 1; if (z.tgt.alive) onHit(B, z.owner, z.tgt); } }
+  if (z.t >= z.dur) z.done = 1;
 }
 function cast(B, u) {
   const def = DEFS[u.d], P = u.power;
