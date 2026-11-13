@@ -10,4 +10,10 @@
 - 미리 넣은 친구 카드 사진은 아티팩트에만 있어요 (`cards/<id>.jpg`, 친구들 얼굴 사진이라 GitHub 저장소에는 넣지 않아요). 아티팩트를 올릴 때 `cards/` 는 `files` 에 넣지 않으면 그대로 남아요. 사진을 새로 추가할 때만 assets 에서 받아 `cards/` 로 함께 올려요
 - 올리다가 "newer version" 으로 거절되면, 다른 곳에서 바뀐 파일이 내가 이번에 올리는 파일과 겹치는지 확인하고, 겹치지 않으면 그대로 다시 올려요
 - `capabilities` 는 빼고 올려요 (사진 저장 db 규칙 · 온라인 room 설정을 그대로 유지)
-- 새 JS 파일을 추가했다면 `index.html` 의 `<script>` 와 `files` 목록에도 넣어요
+- 새 JS 파일을 추가했다면 `index.html` 의 `<script>` 와 `files` 목록, 그리고 `sw.js` 의 `FILES` 에도 넣어요
+
+## 홈 화면 앱 (PWA)
+- iPad · 아이폰용 홈 화면 앱은 GitHub Pages 로 배포해요: https://choehyomin652-collab.github.io/lee-seungchan-game/
+- 기본 브랜치에 올라오면 `.github/workflows/pages.yml` 이 자동 배포해요. 처음 한 번 저장소 Settings → Pages → Source 를 "GitHub Actions" 로 바꿔야 해요
+- 앱 설정(manifest · 아이콘 · 서비스 워커 등록)은 `index.html` 의 `<!-- PWA -->` 표시 사이에 있어요. 아티팩트 페이지를 만들 때는 이 부분이 빠져요
+- 앱에서는 claude.ai 기능(친구와 같이 하기 · 공유 사진 · 미리 넣은 카드 사진)이 없어요. 혼자 하기 · 연습장 · 내 기기 사진은 돼요

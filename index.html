@@ -9,6 +9,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
 <link rel="stylesheet" href="style.css">
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#16183e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="씹토체스">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<!-- /PWA -->
 </head>
 <body>
 <div id="game">
@@ -104,5 +113,13 @@
 <script src="js/render3d.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/practice.js"></script>
+<!-- PWA -->
+<script>
+  // 홈 화면 앱(PWA): 앱 주소(https, 맨 바깥 창)에서만 게임 파일을 기기에 저장해요. claude.ai 아티팩트 안에서는 꺼져 있어요
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && window.top === window && !/claude\.ai|claudeusercontent/.test(location.hostname)) {
+    addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
+</script>
+<!-- /PWA -->
 </body>
 </html>

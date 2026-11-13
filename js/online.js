@@ -53,6 +53,7 @@ function netInit() {
   $("netcode").value = String(1000 + Math.floor(Math.random() * 9000));
   const use = window.claude && window.claude.use ? window.claude.use("room") : Promise.resolve(null);
   use.then((room) => {
+    if (!room && !window.claude) { $("netnote").textContent = "홈 화면 앱에서는 친구와 같이 하기를 쓸 수 없어요. 친구와 하려면 claude.ai 게임 링크로 열어 주세요."; return; }
     if (!room) { $("netnote").textContent = "친구와 같이 하기는 게임 주인이 공유 메뉴에서 초대한 claude.ai 계정으로 로그인해서 열어야 쓸 수 있어요. 링크만으로는 안 돼요."; return; }
     NET.room = room; NET.ready = true;
     $("online").disabled = false; $("netnote").hidden = true;
