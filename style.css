@@ -295,3 +295,8 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
   .ov-box p { line-height: 1.4; }
   .ovbtns .go { padding: 9px 8px; font-size: 16px; white-space: nowrap; }
 }
+/* 좁은 세로 화면(휴대폰을 세로로 들었을 때): 시작 버튼을 한 줄에 하나씩 — 글자가 "혼자 하 / 기"로 쪼개지지 않게 */
+@media (max-width: 520px) and (orientation: portrait) {
+  .ovbtns { flex-direction: column; }
+  .ovbtns .go { white-space: nowrap; padding: 12px 10px; }
+}
