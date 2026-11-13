@@ -15,7 +15,7 @@ const DEFS = [
   { n: "전하율", c: 1, k: "저격수", t: ["지는 거 못 참음", "공부는 잘함"] },
   // 2코스트
   { n: "이준희", c: 2, k: "돌격대", t: ["운동광", "지는 거 못 참음"], s: "덩크슛" },
-  { n: "김현우", c: 2, k: "천재",   t: ["지는 거 못 참음"] },
+  { n: "김현우", c: 2, k: "수호자", t: ["지는 거 못 참음"] },
   { n: "이보경", c: 2, k: "수호자", t: ["축구부", "합체로봇"], s: "태클 수비" },
   { n: "윤동욱", c: 2, k: "돌격대", t: ["운동광", "지는 거 못 참음", "합체로봇"] },
   { n: "은혜린", c: 2, k: "응원단", t: ["다 퍼줌", "댄스부", "공부는 잘함"], s: "춤추기" },
@@ -118,7 +118,7 @@ const CHAMPS = {
   "최효민": { title: "폭풍 궁수", kit: "ranger", top: 0x2f5f98, bottom: 0x3a3a44, accent: 0xbfe0ff, metal: "steel", hair: "side", hc: 0x2a1d15, skin: 0, head: "hood", weapon: "bow" },
   "전하율": { title: "그림자 저격자", kit: "assassin", top: 0x1e2028, bottom: 0x1a1a20, accent: 0xe8402e, metal: "dark", hair: "curtain", hc: 0x121212, skin: 2, head: "mask", weapon: "crossbow", scar: 1 },
   "이준희": { title: "천둥 강타자", kit: "warrior", top: 0x5a2a8a, bottom: 0x2a2030, accent: 0xf0a020, metal: "bronze", hair: "flat", hc: 0x1c1612, skin: 3, head: "none", weapon: "hammer", paint: 0xf0a020 },
-  "김현우": { title: "비전 학자", kit: "mage", top: 0x23305a, bottom: 0x2a2e3a, accent: 0x7fd0ff, metal: "steel", hair: "curtain", hc: 0x4a3324, skin: 0, head: "circlet", weapon: "tome", coat: 1 },
+  "김현우": { title: "강철 수호기사", kit: "guard", top: 0x23305a, bottom: 0x2a2e3a, accent: 0x7fd0ff, metal: "steel", hair: "curtain", hc: 0x4a3324, skin: 0, head: "helm", weapon: "shield" },
   "이보경": { title: "에메랄드 방패기사", kit: "guard", top: 0x2a7a4a, bottom: 0x2a3a30, accent: 0xe8c25a, metal: "steel", hair: "buzz", hc: 0x1c1612, skin: 3, head: "helm", weapon: "shield" },
   "은혜린": { title: "달빛 무희", kit: "bard", top: 0xe86a98, bottom: 0x3a2030, accent: 0xffd0e4, metal: "gold", hair: "long", hc: 0x3a2418, skin: 1, head: "circlet", weapon: "ribbon", coat: 1 },
   "윤동욱": { title: "음양 무도가", kit: "monk", top: 0xf0ece0, bottom: 0x1a1a1e, accent: 0x111111, metal: "bronze", hair: "mohawk", hc: 0x141414, skin: 1, head: "band", weapon: "bo" },
