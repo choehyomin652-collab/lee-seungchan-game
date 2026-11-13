@@ -1698,6 +1698,11 @@ function placeUnit(it, dt) {
     }
     if (it.jump > 0) { lz = -0.4 - it.jump * 3; rz = 0.4 + it.jump * 3; lean = -0.15; }
     if (win) { la = ra = -2.7 + Math.sin(clock3d * 14 + it.x) * 0.25; lz = -0.45; rz = 0.45; lean = -0.1; }
+    if (f && !win && S.battle && f.grooveUntil > S.battle.t && !(f.atkT > 0)) { // 춤추기 무대 위: 은혜린은 신나게 춤추고, 아군은 박자를 타요
+      const me = f.d >= 0 && DEFS[f.d].n === "은혜린", ph = clock3d * (me ? 9 : 6) + it.x;
+      if (me) { la = -2.4 + Math.sin(ph) * 0.5; ra = -2.4 - Math.sin(ph) * 0.5; lz = -0.5 + Math.sin(ph * 0.5) * 0.25; rz = 0.5 + Math.sin(ph * 0.5) * 0.25; twist = Math.sin(ph * 0.5) * 0.5; lean = Math.sin(ph) * 0.12; g.position.y += Math.abs(Math.sin(ph)) * 0.22; }
+      else g.position.y += Math.abs(Math.sin(ph)) * 0.1;
+    }
     if (it.held) { la = -0.3; ra = -0.3; lz = -0.6; rz = 0.6; }
     ud.arms[0].rotation.set(la, 0, lz); ud.arms[1].rotation.set(ra, 0, rz);
     if (ud.elbows) { // 팔꿈치: 공격할 때 굽혔다 펴요 (평소엔 살짝 굽힌 자세)
@@ -2352,20 +2357,36 @@ function drawNet(z, dt) {
   ud.net.rotation.z = 0.3; ud.net.scale.setScalar(d * 1.15 * (0.8 + 0.2 * open)); g.position.y = 0.2; ud.net.material.opacity = (0.95 + Math.sin(z.t * 14) * 0.05) * fade;
   ud.ring.scale.setScalar(d * 0.45 + k * 3); ud.ring.material.opacity = Math.max(0, 0.7 - k * 2.2);
 }
+// 은혜린 춤추기 바닥: 무지갯빛 디스코 조각판
+const discoTex = () => textTex("disco", 256, 256, (g, w, h) => {
+  const cols = ["#ff5fa8", "#ffe66b", "#5fb8ff", "#ffffff", "#b06bff", "#6bffb8"], cx = w / 2, R = w / 2;
+  g.clearRect(0, 0, w, h);
+  for (let ring = 3; ring >= 0; ring--) for (let i = 0; i < 12; i++) {
+    g.fillStyle = cols[(i + ring * 2) % cols.length]; g.globalAlpha = 0.85 - ring * 0.08;
+    g.beginPath(); g.moveTo(cx, cx); g.arc(cx, cx, R * ((ring + 1) / 4), (i / 12) * Math.PI * 2, ((i + 1) / 12) * Math.PI * 2); g.closePath(); g.fill();
+  }
+  g.globalAlpha = 1; g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = 5; g.beginPath(); g.arc(cx, cx, R - 3, 0, 7); g.stroke();
+});
 // 은혜린 춤추기: 반짝이는 무대 + 떠오르는 음표
 function drawDance(z, dt) {
   const t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.4)), x = worldX(z.X), y = worldZ(z.Y), R = Math.min(z.rad, 4.5);
   const g = useMesh(z, () => {
     const grp = new THREE.Group(), ud = grp.userData;
-    ud.rings = ["#ff7ab0", "#ffe66b", "#7fc4ff"].map((c) => { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2; m.position.y = 0.08; grp.add(m); return m; });
+    ud.floor = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshBasicMaterial({ map: discoTex(), transparent: true, depthWrite: false })); ud.floor.rotation.x = -Math.PI / 2; ud.floor.position.y = 0.27; ud.floor.renderOrder = 2; grp.add(ud.floor);
+    ud.rings = ["#ff7ab0", "#ffe66b", "#7fc4ff"].map((c) => { const m = new THREE.Mesh(GEO.ringFx, additive(c)); m.rotation.x = -Math.PI / 2; m.position.y = 0.3; grp.add(m); return m; });
     ud.spot = new THREE.Mesh(zgeo().cone, additive("#ffb0d8")); ud.spot.position.y = 4; grp.add(ud.spot);
-    ud.notes = [0, 1, 2, 3, 4, 5].map((i) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(i % 2 ? "♪" : "♫", "note", "rgba(255,122,176,.95)", "rgba(255,160,60,0)", "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
+    ud.notes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(i % 2 ? "♪" : "♫", "note", "rgba(255,122,176,.95)", "rgba(255,160,60,0)", "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
     return grp;
   });
   const ud = g.userData; g.position.set(x, 0, y);
+  ud.floor.scale.setScalar(R * (0.55 + 0.45 * Math.min(1, t / 0.25))); ud.floor.rotation.z += dt * 0.7; ud.floor.material.opacity = (0.8 + Math.sin(t * 10) * 0.12) * fade;
+  for (const c of z.on || []) { // 무대 위 아군 발밑마다 반짝이는 고리
+    const m = useMesh(c, () => { const r = new THREE.Mesh(GEO.ringFx, additive("#ff9ad0")); r.rotation.x = -Math.PI / 2; return r; });
+    m.visible = c.o.alive; m.position.set(worldX(c.o.X), 0.32, worldZ(c.o.Y)); m.scale.setScalar(0.55 + Math.sin(t * 9 + c.o.X) * 0.08); m.material.opacity = 0.9 * fade;
+  }
   ud.rings.forEach((r, i) => { r.rotation.z += dt * (2 + i) * (i % 2 ? -1 : 1); r.scale.setScalar(R * (0.55 + 0.45 * Math.min(1, t / 0.25)) * (1 - i * 0.12) + Math.sin(t * 8 + i) * 0.05); r.material.opacity = (0.55 - i * 0.12) * fade; });
   ud.spot.rotation.y += dt; ud.spot.material.opacity = 0.16 * fade;
-  ud.notes.forEach((sp, i) => { const a = t * 2.4 + i * 1.05, rr = Math.min(R, 2.4) * (0.5 + 0.5 * Math.abs(Math.sin(i * 1.7))); sp.position.set(Math.cos(a) * rr, 1.0 + ((t * 1.2 + i * 0.4) % 1.8), Math.sin(a) * rr); sp.scale.setScalar(0.75 + Math.sin(t * 9 + i) * 0.1); sp.material.opacity = fade; });
+  ud.notes.forEach((sp, i) => { const a = t * 2.4 + i * 1.05, rr = Math.min(R, 2.4) * (0.5 + 0.5 * Math.abs(Math.sin(i * 1.7))); sp.position.set(Math.cos(a) * rr, 1.0 + ((t * 1.2 + i * 0.4) % 1.8), Math.sin(a) * rr); sp.scale.setScalar(1.15 + Math.sin(t * 9 + i) * 0.15); sp.material.opacity = fade; });
 }
 // 박준서: 빛나는 수학 공식이 비스듬히 떨어져요 (가로로 긴 판에 공식을 써요)
 function symTex(sym, rgb1 = "200,107,255", rgb2 = "120,60,220") {
