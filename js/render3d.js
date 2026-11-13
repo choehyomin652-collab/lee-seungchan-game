@@ -1718,6 +1718,12 @@ function placeUnit(it, dt) {
       }
     }
     ud.torso.scale.y = 1 + Math.sin(clock3d * 2.2 + it.x) * 0.018;
+    if (ud.flames) { // 합체로봇: 추진기 불꽃이 일렁이고, 합체해서 내려올 때·걸을 때 더 크게 뿜어요
+      const cb = it.f && it.f.combo && it.f.combo.t < it.f.combo.dur ? it.f.combo.t : -1;
+      const k = cb >= 0 ? (cb < 2.0 ? 2.8 : 1.6) : ud.move > 0.1 ? 1.5 : 1;
+      ud.flames.forEach((m, i) => { const s = k * (0.85 + 0.25 * Math.sin(clock3d * 40 + i * 2.1)); m.scale.set(1 + (k - 1) * 0.25, s, 1 + (k - 1) * 0.25); m.position.y = 0.11 - 0.15 * s; });
+      ud.ball.rotation.y += dt * 2.5; ud.core.rotation.z = Math.sin(clock3d * 1.5) * 0.15;
+    }
     ud.torso.rotation.x += (lean - ud.torso.rotation.x) * Math.min(1, dt * 18);
     if (ud.cape) ud.cape.rotation.x = 0.12 + ud.move * 0.55 + Math.sin(clock3d * 2.1 + it.x) * 0.04;
     if (ud.spin) ud.spin.forEach((r, i) => (r.rotation.y += dt * (1.2 + i)));
@@ -2766,7 +2772,9 @@ function drawOverlay(dt, R) {
       ctx.font = font(u0 * 4.2); ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.shadowColor = "#7ff0ff"; ctx.shadowBlur = 24; ctx.lineWidth = 8; ctx.strokeStyle = "#0b2a3a"; ctx.strokeText("합체!", 0, 0);
       const gr = ctx.createLinearGradient(0, -u0 * 2, 0, u0 * 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.5, "#7ff0ff"); gr.addColorStop(1, "#ffd36b");
-      ctx.fillStyle = gr; ctx.fillText("합체!", 0, 0); ctx.restore();
+      ctx.fillStyle = gr; ctx.fillText("합체!", 0, 0);
+      ctx.font = font(u0 * 1.5); ctx.shadowBlur = 12; ctx.lineWidth = 5; ctx.strokeText("4인 합체로봇 출격!", 0, u0 * 3.1); ctx.fillStyle = "#ffe9a0"; ctx.fillText("4인 합체로봇 출격!", 0, u0 * 3.1);
+      ctx.restore();
     } else if (t < 1.2) {
       const [tx, ty] = proj(crb2.combo.cx, 3.0, crb2.combo.cz);
       ctx.font = font(u0 * 1.6); ctx.textAlign = "center"; ctx.fillStyle = "#cff8ff"; ctx.globalAlpha = 0.6 + Math.sin(t * 20) * 0.4;
