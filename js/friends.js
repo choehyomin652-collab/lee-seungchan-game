@@ -44,7 +44,7 @@ const TRAITS = {
   "댄스부":   { t: [2],       d: "은혜린·최윤서 둘 다 있으면: 댄스부 공격 속도 +25%, 은혜린 춤추기 무대가 1초 더 오래 가요" },
   "프로게이머": { t: [1],     d: "조하윤 공격 속도 +30%" },
   "전교 1등": { t: [1],      d: "손태민 스킬 피해 +40%" },
-  "합체로봇": { t: [4],      d: "조하윤·박희찬·윤동욱·이보경 4명이 모두 보드에 있으면 전투 시작 때 4인 합체로봇으로 합체!" },
+  "합체로봇": { t: [4],      d: "조하윤·박희찬·윤동욱·이보경 4명이 모두 보드에 있으면 전투 시작 때 4인 합체로봇으로 합체! 4명 모두 ★3이면 초합체로봇이 하늘에서 내려와 빛의 대검으로 전장 전체를 베어요" },
   "신":       { t: [1],       d: "신의 가호: 아군 전체 공격력·체력 +12%" },
 };
 // ---------- 옷 ----------
@@ -110,7 +110,7 @@ const LOOKS = {
 // 학교 옷 대신 각자 스킬에 어울리는 판타지 영웅 차림이에요. 표에 있는 친구는 이 모습이 OUTFITS·LOOKS 보다 먼저 쓰여요.
 // kit: guard(판금 기사) warrior(전사) ranger(사냥꾼) mage(마법사) bard(음유시인) god(신) monk(무도가) assassin(암살자) juggernaut(중갑 전사)
 // head: helm(투구) horned(뿔 투구) hood(두건) circlet(머리띠 관) mask(복면) visor(빛나는 눈가리개) crown(왕관) band(머리 끈) none
-// weapon: sword blades greataxe hammer bow crossbow rifle tome shield bo quill gauntlets horn astrolabe abyssorb spear crystalstaff sunstaff
+// weapon: sword blades greataxe hammer bow crossbow rifle tome shield bo quill gauntlets horn astrolabe abyssorb spear crystalstaff sunstaff pizzabox(피자 상자) mawshield(포크 + 이빨 방패)
 // metal: steel gold dark bronze, scar: 1 이면 볼에 흉터, paint: 얼굴 문양 색
 const CHAMPS = {
   "이승찬": { title: "새벽빛 사제", kit: "bard", top: 0xd88a34, bottom: 0x5a3e26, accent: 0xfff0c0, metal: "gold", hair: "curly", hc: 0x6b4226, skin: 2, head: "circlet", weapon: "sunstaff", coat: 1 },
@@ -125,7 +125,7 @@ const CHAMPS = {
   "김민기": { title: "룬 필경사", kit: "mage", top: 0x5a3c9a, bottom: 0x2e2840, accent: 0xd8b0ff, metal: "gold", hair: "mushroom", hc: 0x3a291c, skin: 2, head: "hood", weapon: "quill", coat: 1 },
   "임시온": { title: "철문 수문장", kit: "juggernaut", top: 0x8a7a1a, bottom: 0x1e2126, accent: 0xf0e040, metal: "dark", hair: "side", hc: 0x2a1d15, skin: 1, head: "horned", weapon: "gauntlets" },
   "최윤서": { title: "그물 사냥꾼", kit: "ranger", top: 0x2a6a58, bottom: 0x2a2e2a, accent: 0xa8f0d0, metal: "bronze", hair: "wavy", hc: 0x1c1612, skin: 2, head: "hood", weapon: "net" },
-  "박현호": { title: "전장 음유시인", kit: "bard", top: 0x9a2a30, bottom: 0x2a3550, accent: 0xf2e6c8, metal: "gold", hair: "side", hc: 0x3a291c, skin: 2, head: "none", weapon: "pizzabox", coat: 1 },
+  "박현호": { title: "피자 파티 기사", kit: "bard", top: 0x9a2a30, bottom: 0x2a3550, accent: 0xf2e6c8, metal: "gold", hair: "side", hc: 0x3a291c, skin: 2, head: "none", weapon: "pizzabox", coat: 1 },
   "조하윤": { title: "심연의 사수", kit: "assassin", top: 0x16161e, bottom: 0x101016, accent: 0x3fd8ff, metal: "dark", hair: "bowl", hc: 0x101014, tip: 0x3fd8ff, skin: 0, head: "visor", weapon: "rifle", coat: 1 },
   "박희찬": { title: "불꽃 창기병", kit: "ranger", top: 0xc8102e, bottom: 0xe8e8f0, accent: 0xffd36b, num: "7", metal: "steel", hair: "wavy", hc: 0x2a1d15, skin: 1, head: "circlet", weapon: "spear" },
   "진성욱": { title: "강철 파괴자", kit: "juggernaut", top: 0x4a4e56, bottom: 0x1e2126, accent: 0xe8402e, metal: "dark", hair: "buzz", hc: 0x141414, skin: 3, head: "helm", weapon: "greataxe", scar: 1 },
