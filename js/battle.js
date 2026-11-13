@@ -21,7 +21,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   f.amp = [1, 1.3, 1.8, 2.6][has("공부는 잘함")];
   f.as0 *= [1, 1.3, 1.55, 1.65][has("축구부")];
   if (has("수학왕")) f.mgain = 1.6;
-  if (has("댄스부")) f.dance = 1; // 은혜린 춤추기 무대가 1초 더
+  if (has("댄스부")) { f.dance = 1; f.as0 *= 1.25; } // 댄스부(은혜린·최윤서) 2명: 공격 속도 +25%, 은혜린 춤추기 무대 1초 더
   if (has("프로게이머")) f.as0 *= 1.3;
   if (has("전교 1등")) f.amp += 0.4;
   if (L("신") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
