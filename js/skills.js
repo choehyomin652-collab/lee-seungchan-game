@@ -113,11 +113,16 @@ const SK = {
       addHuge(B, u, all ? "전장 무대 ♪" : "♪ 춤추기 ♪", "#ffffff", "#ff7ab0", all ? 3.2 : 2.6);
       if (B.visual) sfx("charge");
     } },
-  "박현호": { s: "응원가", d: (P) => `무대 조명 아래서 응원가를 불러요. 아군 전체 5초 동안 공격 속도 +25%, ${R0(70 * P)} 회복`,
+  "박현호": { s: "피자 파티", d: (P) => `피자를 꺼내 아군에게 한 조각씩 던져 줘요. 받은 아군은 ${R0(70 * P)} 회복 + 5초 동안 공격 속도 +25%. 단, 진성욱한테만 안 줘요`,
     run(B, u, P, t, al) {
-      al.forEach((o) => { o.asBuff = Math.max(o.asBuff || 0, 0.25); o.asBuffT = 5; heal(B, o, 70 * P); });
-      addHuge(B, u, "♪ 응원가 ♪", "#ffffff", "#ffd36b", 2.4);
-      if (B.visual) B.zones.push({ kind: "cheer", step: stepCheer, team: u.team, owner: u, X: u.X, Y: u.Y, t: 0, dur: 1.6, allies: al.slice(), wave: 0 });
+      const eat = (o) => { o.asBuff = Math.max(o.asBuff || 0, 0.25); o.asBuffT = 5; heal(B, o, 70 * P); addFx(B, o.X, o.Y, 0.8, "#ffb43a", 0.4); addFloat(B, { X: o.X, Y: o.Y - 0.3 }, "🍕", "#ffd36b", true); };
+      for (const o of al) {
+        if (o.d >= 0 && !o.robot && DEFS[o.d].n === "진성욱") { addHuge(B, o, "나는…?", "#ffffff", "#8a93a0", 2); continue; } // 성욱이만 빼고!
+        if (o === u) eat(o); else B.projs.push({ X: u.X, Y: u.Y, t: o, sp: 9, col: "#ffb43a", shape: "pizza", sz: 0.1, hit: () => eat(o) });
+      }
+      addHuge(B, u, "🍕 피자 파티!", "#ffffff", "#ff8a2a", 2.4);
+      addFx(B, u.X, u.Y, 1.6, "#ffd36b", 0.5);
+      if (B.visual) sfx("charge");
     } },
   "박희찬": { s: "무회전 프리킥", d: (P) => `잠깐 조준한 뒤 불붙은 무회전 슛! 대상에게 공격력×1.8 + ${R0(220 * P)} 피해 + 0.5초 기절, 주변 적에게 55%`,
     run(B, u, P, t) { if (!t) return; B.zones.push({ kind: "freekick", step: stepFreekick, team: u.team, owner: u, P, tgt: t, X: u.X, Y: u.Y, t: 0, dur: 0.45 }); } },
@@ -262,11 +267,6 @@ function stepScribble(B, z, dt) {
     else if (B.visual) sfx("kick");
   });
   if (z.t >= z.dur) z.done = 1;
-}
-// 박현호 "응원가": 소리 물결이 세 번 퍼져요
-function stepCheer(B, z, dt) {
-  const t0 = z.t; stepShow(B, z, dt);
-  [0, 0.22, 0.44].forEach((at, i) => { if (t0 <= at && z.t > at) addFx(B, z.X, z.Y, 3 + i * 1.5, ["#ffe66b", "#ff9ac8", "#7fc4ff"][i], 0.8); });
 }
 // 최윤서 "그물 던지기": 그물이 날아가고(NET_AT초) 떨어지는 순간 범위 안 적을 묶어요
 const NET_AT = 0.45;

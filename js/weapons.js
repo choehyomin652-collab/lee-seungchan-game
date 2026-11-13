@@ -161,6 +161,13 @@ const WEAPONS = {
 function projSpecial(p) {
   if (p.ball || p.shape === "ball") return new THREE.Mesh(GEO.ball, new THREE.MeshStandardMaterial({ map: ballTex(), color: 0xffffff, roughness: 0.5 }));
   if (p.shape === "orb") { const c = lin(p.col || "#ffffff"), m = new THREE.Mesh(GEO.ball, new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, roughness: 0.4 })); m.scale.setScalar(0.45); return m; }
+  if (p.shape === "pizza") { // 피자 한 조각: 노릇한 치즈 + 페퍼로니 + 빵 끝
+    const g = new THREE.Group(), M2 = (c) => new THREE.MeshStandardMaterial({ color: lin(c), roughness: 0.7 });
+    const sl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 12, 1, false, -0.35, 0.7), M2(0xf0a830)); g.add(sl);
+    const cr = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.07, 12, 1, true, -0.35, 0.7), M2(0xc8843a)); cr.material.side = THREE.DoubleSide; g.add(cr);
+    for (const [x, z] of [[0.05, 0.16], [-0.04, 0.24], [0.02, 0.08]]) { const pp = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 10), M2(0xc8322a)); pp.position.set(x, 0.03, z); g.add(pp); }
+    g.children.forEach((c) => (c.position.z -= 0.15)); return g;
+  }
   if (p.shape === "dart") { const m = new THREE.Mesh(GEO.spike, new THREE.MeshStandardMaterial({ color: lin(0xe8402e), roughness: 0.5 })); m.scale.set(1.2, 1.7, 1.2); return m; }
   return null;
 }

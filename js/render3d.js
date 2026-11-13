@@ -2275,23 +2275,6 @@ function drawSummon(z, dt) {
   ud.tri[1].rotation.z -= dt * 4.4;
   ud.beams.forEach((b, i) => { const s = z.spots[i], q = Math.max(0, 1 - t / 0.8); b.position.set(worldX(s.X) - x, 4, worldZ(s.Y) - y); b.scale.set(0.08 + 0.2 * q, 8, 0.08 + 0.2 * q); b.material.opacity = 0.4 * q; });
 }
-// 박현호: 무대 조명과 아군 머리 위로 올라가는 음표
-function drawCheer(z, dt) {
-  const t = z.t, fade = Math.max(0, Math.min(1, (z.dur - t) / 0.4)), x = worldX(z.X), y = worldZ(z.Y);
-  const g = useMesh(z, () => {
-    const grp = new THREE.Group(), ud = grp.userData;
-    ud.spot = new THREE.Mesh(zgeo().cone, additive("#ffe9a0")); ud.spot.position.y = 4; grp.add(ud.spot);
-    ud.notes = z.allies.map((o, i) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(i % 2 ? "♪" : "♫", "note", "rgba(255,214,90,.9)", "rgba(255,160,60,0)", "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
-    return grp;
-  });
-  const ud = g.userData; g.position.set(0, 0, 0);
-  ud.spot.position.set(x, 4, y); ud.spot.material.opacity = (0.2 + Math.sin(t * 12) * 0.05) * fade; ud.spot.rotation.y += dt;
-  ud.notes.forEach((sp, i) => {
-    const o = z.allies[i], a = t * 5 + i * 1.7;
-    sp.visible = o.alive; sp.position.set(worldX(o.X) + Math.cos(a) * 0.45, 1.6 + ((t * 1.4 + i * 0.37) % 1.6), worldZ(o.Y) + Math.sin(a) * 0.45);
-    sp.scale.setScalar(0.85 + Math.sin(t * 9 + i) * 0.12); sp.material.opacity = fade;
-  });
-}
 // 진성욱: 내리찍은 자리에 갈라진 땅과 퍼지는 충격파
 function drawSlam(z, dt) {
   const k = z.t - SLAM_AT; if (k < 0) return;
@@ -2540,7 +2523,7 @@ function drawMark(z, dt) {
   ud.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -3 : 2); r.material.opacity = (0.55 + Math.sin(t * 6) * 0.2) * fade; });
   ud.cross.rotation.y += dt * 1.5; ud.cross.children.forEach((b) => (b.material.opacity = 0.6 * fade));
 }
-const ZDRAW = { net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, cheer: drawCheer, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+const ZDRAW = { net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -2582,7 +2565,8 @@ function render3D(dt) {
         : new THREE.Mesh(GEO.chalkP, new THREE.MeshStandardMaterial({ color: new THREE.Color(p.col).convertSRGBToLinear(), roughness: 0.9 })));
       m.position.set(worldX(p.X), 1.05, worldZ(p.Y));
       m.lookAt(worldX(p.t.X), 1.05, worldZ(p.t.Y));
-      if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
+      if (p.shape === "pizza") m.rotation.y += clock3d * 10; // 피자 조각은 빙글빙글 돌며 날아가요
+      else if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
       if (p.trail && !p.fire && (p.fxT = (p.fxT || 0) - dt) <= 0) { p.fxT = 0.05; B.fx.push({ X: p.X, Y: p.Y, r: 0.28, col: p.col || "#ffe66b", t: 0.22, t0: 0.22 }); }
       if (p.fire) { // 무회전 불공: 좌우로 흔들리며 불꽃 꼬리를 남겨요
         m.scale.setScalar(1.7); m.position.x += Math.sin(clock3d * 45) * 0.12; m.position.y += Math.sin(clock3d * 31) * 0.1;
