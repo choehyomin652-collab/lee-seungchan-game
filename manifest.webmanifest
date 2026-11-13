@@ -1,6 +1,6 @@
 {
-  "name": "씹토체스",
-  "short_name": "씹토체스",
+  "name": "영토체스",
+  "short_name": "영토체스",
   "description": "반 친구들이 주인공인 오토배틀 게임",
   "lang": "ko",
   "start_url": "./",

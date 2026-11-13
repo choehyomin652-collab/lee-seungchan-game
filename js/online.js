@@ -90,7 +90,7 @@ function netLobby() {
   $("netlist").innerHTML = lobby.slice(0, 8).map((p, i) => `<li><span class="dot${p.guest ? " g" : ""}"></span>${esc(cleanName(p.presence.n) || "이름 없음")}${p.sameTab ? " <em>나</em>" : ""}${i === 0 ? " <small>방장</small>" : ""}</li>`).join("");
   const n = Math.min(8, lobby.length);
   $("netmsg").textContent = n < 2
-    ? (NET.app ? `친구에게 방 코드 ${NET.code}를 알려주세요. 친구도 씹토체스 앱에서 같은 방 코드로 들어오면 돼요. 2명부터 시작할 수 있어요.` : `친구에게 이 링크와 방 코드 ${NET.code}를 알려주세요. 친구는 공유 메뉴에서 초대된 계정이어야 해요. 2명부터 시작할 수 있어요.`)
+    ? (NET.app ? `친구에게 방 코드 ${NET.code}를 알려주세요. 친구도 영토체스 앱에서 같은 방 코드로 들어오면 돼요. 2명부터 시작할 수 있어요.` : `친구에게 이 링크와 방 코드 ${NET.code}를 알려주세요. 친구는 공유 메뉴에서 초대된 계정이어야 해요. 2명부터 시작할 수 있어요.`)
     : iAmHost ? `${n}명 모였어요. 빈자리 ${8 - n}개는 컴퓨터 반이 채워요.` : `${n}명 모였어요. 방장이 시작하기를 기다리는 중…`;
   if (playing && lobby.length < 2) $("netmsg").textContent = `이 방은 이미 게임 중이에요 (${playing}명). 다른 방 코드를 써 주세요.`;
   if (lobby.length > 8) $("netmsg").textContent += " 8명까지만 들어가요.";
