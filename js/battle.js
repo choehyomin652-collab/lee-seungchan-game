@@ -19,7 +19,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   f.maxHp *= [1, 1.2, 1.4, 1.5][has("운동광")];
   if (has("지는 거 못 참음")) { f.ad *= [1, 1.2, 1.45, 1.6][has("지는 거 못 참음")]; f.crit = 0.2; }
   f.amp = [1, 1.3, 1.8, 2.6][has("공부는 잘함")];
-  f.as0 *= [1, 1.3, 1.65, 1.9][has("축구부")];
+  f.as0 *= [1, 1.3, 1.55, 1.65][has("축구부")];
   if (has("수학왕")) f.mgain = 1.6;
   if (has("댄스부")) f.dance = 1; // 은혜린 춤추기 무대가 1초 더
   if (has("프로게이머")) f.as0 *= 1.3;
