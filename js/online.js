@@ -46,6 +46,7 @@ const cleanName = (s) => String(s || "").replace(/[\u0000-\u001f\u007f-\u009f​
 function netShowPanel(show) {
   $("net").hidden = !show; $("ovbtns").hidden = show; $("ovrules").hidden = show; $("ovtext").hidden = show;
   $("netnote").hidden = show || NET.ready;
+  if (show) { $("result").hidden = true; $("hist").hidden = true; }
 }
 function netInit() {
   let saved = ""; try { saved = localStorage.getItem("uri-net-name") || ""; } catch (e) {}

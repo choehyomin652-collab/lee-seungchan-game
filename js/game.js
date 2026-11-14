@@ -26,6 +26,7 @@ function newGame() {
     banner: null, resultT: 0, shake: 0, orbs: [], augPending: false,
   };
   if (NET.on) netSetup();
+  if ($("result")) { $("result").hidden = true; $("hist").hidden = true; }
   startRound(true);
 }
 
@@ -354,6 +355,7 @@ function finishCombat() {
   }
   S.banner = hWin ? { text: "승리!", col: TOK["--accent"], t: 1.8 } : { text: hDmg ? `패배  ♥-${hDmg}` : "패배", col: TOK["--danger"], t: 1.8 };
   sfx(hWin ? "win" : "lose");
+  if (hWin != null) tactEmote(hWin ? "dance" : "cry"); // 내 마스코트: 이기면 춤, 지면 울어요
   S.resultT = 2.2;
   renderUI();
 }
@@ -374,6 +376,8 @@ function gameOver(place) {
   $("ovrules").hidden = true;
   $("best").textContent = `최고 기록: ${best}등`;
   $("start").textContent = "혼자 다시 하기";
+  recordGame(place); // 결과 화면 · 영토 점수 · 기록 (social.js)
+  tactEmote(place <= 4 ? "dance" : "cry", 4);
   $("ov").hidden = false;
   sfx(place <= 4 ? "win" : "lose");
 }

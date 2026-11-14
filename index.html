@@ -22,7 +22,7 @@
 <body>
 <div id="game">
   <canvas id="gl"></canvas><canvas id="cv"></canvas>
-  <div class="hud mini"><button class="gearbtn" id="gear" aria-label="설정" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button><div class="menu" id="menu" hidden><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button><button id="qual">화질 높음</button><label class="menubtn" for="bgfile">배경 사진 넣기</label><input type="file" id="bgfile" accept="image/*" hidden><input type="file" id="cardfile" accept="image/*" hidden><button id="bgclear">배경 사진 빼기</button><button id="cardmenu">친구 카드 사진 바꾸기</button></div></div>
+  <div class="hud mini"><button class="gearbtn" id="gear" aria-label="설정" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button><button class="gearbtn" id="emobtn" aria-label="감정 표현" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.3 14.2c1 1.5 2.2 2.2 3.7 2.2s2.7-.7 3.7-2.2"/><circle cx="9" cy="10" r=".9" fill="currentColor"/><circle cx="15" cy="10" r=".9" fill="currentColor"/></svg></button><button class="gearbtn" id="pingbtn" aria-label="핑 찍기" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0c0 5-6.5 11.2-6.5 11.2z"/><path d="M10 8.6a2.1 2.1 0 1 1 3 1.9c-.7.4-1 .9-1 1.6"/><circle cx="12" cy="14.2" r=".6" fill="currentColor"/></svg></button><button class="gearbtn" id="chatbtn" aria-label="채팅" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2H11l-4 3.5V16H6.5a2 2 0 0 1-2-2z"/></svg><i class="badge" id="chatbadge" hidden></i></button><div class="menu" id="menu" hidden><button id="speed">속도 ×1</button><button id="mute">소리 켜짐</button><button id="qual">화질 높음</button><label class="menubtn" for="bgfile">배경 사진 넣기</label><input type="file" id="bgfile" accept="image/*" hidden><input type="file" id="cardfile" accept="image/*" hidden><button id="bgclear">배경 사진 빼기</button><button id="cardmenu">친구 카드 사진 바꾸기</button></div><div class="menu emomenu" id="emomenu" hidden></div></div>
   <div class="hud topbar">
     <div class="pill"><span id="stage">1-1</span><span class="track" id="track"></span><span class="rtype" id="rtype">급식 줄</span></div>
     <div class="timer"><i id="timerfill"></i></div>
@@ -68,6 +68,7 @@
   <div class="ov-box">
     <h1 id="ovtitle">영토체스</h1>
     <p id="ovtext">8개 반이 겨루는 오토배틀. 마지막까지 살아남으면 1등!</p>
+    <div class="result" id="result" hidden></div>
     <ul id="ovrules">
       <li>아래쪽 상점에서 친구를 사서 경기장에 배치해요 (탭하거나 끌어서)</li>
       <li>같은 친구 3명 → ★2, ★2 셋 → ★3</li>
@@ -77,6 +78,8 @@
       <li>빈 땅을 탭하면 내 마스코트가 걸어가요</li>
     </ul>
     <p id="best" style="font-size:13px;color:var(--chalk-dim)"></p>
+    <p class="rankline" id="rankline"></p>
+    <div class="hist" id="hist" hidden></div>
     <div class="ovbtns" id="ovbtns"><button class="go" id="start">혼자 하기</button><button class="go alt" id="online" disabled>친구와 같이 하기</button><button class="go prac" id="practice">연습장</button></div>
     <p class="netnote" id="netnote">온라인 연결을 확인하는 중…</p>
     <div class="net" id="net" hidden>
@@ -84,12 +87,19 @@
       <div class="netrow"><label for="netcode">방 코드</label><input id="netcode" maxlength="12" autocomplete="off"></div>
       <p class="netguide">친구들과 같은 방 코드를 쓰면 한 방에 모여요. 친구는 게임 주인이 공유 메뉴에서 이메일로 초대한 claude.ai 계정으로 로그인해서 열어야 해요. 링크만 받아서는 방에 못 들어와요.</p>
       <button class="go" id="netjoin">방 들어가기</button>
-      <div class="netlobby" id="netlobby" hidden><ul class="netlist" id="netlist"></ul><p class="netmsg" id="netmsg"></p><button class="go" id="netstart" hidden>게임 시작</button></div>
+      <div class="netlobby" id="netlobby" hidden><ul class="netlist" id="netlist"></ul><p class="netmsg" id="netmsg"></p><button class="go" id="netstart" hidden>게임 시작</button><button class="linkbtn" id="netchat" hidden>채팅</button></div>
       <button class="linkbtn" id="netback">뒤로</button>
     </div>
   </div>
 </div>
 
+<div class="chat" id="chat" hidden>
+  <div class="chathead"><b>채팅</b><button id="chatclose" aria-label="채팅 닫기">✕</button></div>
+  <ul class="chatlog" id="chatlog" aria-live="polite"></ul>
+  <div class="chatquick" id="chatquick"></div>
+  <form class="chatin" id="chatform"><input id="chatinput" maxlength="60" autocomplete="off" enterkeyhint="send" placeholder="메시지 (60자까지)"><button class="go" type="submit">보내기</button></form>
+</div>
+<div class="chatfeed" id="chatfeed" aria-live="polite"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
@@ -112,9 +122,12 @@
 <script src="js/photos.js"></script>
 <script src="js/figure.js"></script>
 <script src="js/hero.js"></script>
+<script src="js/stickers.js"></script>
 <script src="js/render3d.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/practice.js"></script>
+<script src="js/ping.js"></script>
+<script src="js/social.js"></script>
 <!-- PWA -->
 <script>
   // 홈 화면 앱(PWA): 앱 주소(https, 맨 바깥 창)에서만 게임 파일을 기기에 저장해요. claude.ai 아티팩트 안에서는 꺼져 있어요

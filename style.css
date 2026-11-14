@@ -304,3 +304,82 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
   .ovbtns { flex-direction: column; }
   .ovbtns .go { white-space: nowrap; padding: 12px 10px; }
 }
+
+/* ===== 감정 표현 · 채팅 · 결과 화면 (social.js) ===== */
+.mini { display: flex; gap: calc(var(--u) * .7); align-items: flex-start; z-index: 12; } /* 설정·감정 표현 메뉴가 시너지 목록에 가려서 안 눌리던 문제: 다른 HUD 보다 위로 */
+.mini .menu { top: 0; left: calc(100% + var(--u) * .8); } /* 메뉴는 버튼 줄 오른쪽으로 열려요 (아래로 열면 시너지 목록을 덮어서) */
+.gearbtn { position: relative; }
+.gearbtn .badge { position: absolute; top: calc(var(--u) * -.4); right: calc(var(--u) * -.4); min-width: calc(var(--u) * 2.2); height: calc(var(--u) * 2.2); border-radius: 999px; background: var(--danger); color: #fff; font: calc(var(--u) * 1.3) / calc(var(--u) * 2.2) var(--display); font-style: normal; text-align: center; padding: 0 calc(var(--u) * .4); box-shadow: 0 0 0 2px rgba(0, 0, 0, .5); }
+.emomenu { display: grid; grid-template-columns: repeat(4, auto); width: max-content; max-width: 80vw; }
+.emomenu button { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * .2); text-align: center; min-width: calc(var(--u) * 8.4); padding: calc(var(--u) * .5) calc(var(--u) * .6); font-size: calc(var(--u) * 1.45); }
+.emomenu .ei { width: calc(var(--u) * 6); height: calc(var(--u) * 6); display: block; transition: transform .15s ease; }
+.emomenu button:hover .ei, .emomenu button:active .ei { transform: scale(1.12) rotate(-4deg); }
+.gearbtn.on { background: linear-gradient(#ffe27a, #e0a020); color: #2a1a06; border-color: #fff0bd; box-shadow: 0 0 0 2px rgba(255, 210, 80, .35), var(--lift); }
+.pingwheel { position: fixed; z-index: 45; width: 0; height: 0; --r: 90px; }
+.pingwheel button { position: absolute; transform: translate(-50%, -50%); width: 76px; height: 76px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(40, 70, 86, .97), rgba(8, 20, 28, .97)); border: 2px solid var(--edge); color: #fff; font: 13px var(--display); box-shadow: 0 6px 18px rgba(0, 0, 0, .55); animation: pwin .18s ease-out both; }
+.pingwheel button img { width: 44px; height: 44px; object-fit: contain; }
+.pingwheel button:active { transform: translate(-50%, -50%) scale(.92); }
+.pingwheel .pw0 { left: 0; top: calc(var(--r) * -1); }
+.pingwheel .pw1 { left: calc(var(--r) * -1); top: 0; animation-delay: .03s; }
+.pingwheel .pw2 { left: var(--r); top: 0; animation-delay: .06s; }
+.pingwheel .pw3 { left: 0; top: var(--r); animation-delay: .09s; }
+.pingwheel .pwx { left: 0; top: 0; width: 44px; height: 44px; font-size: 18px; color: var(--chalk-dim); }
+.pingwheel::before { content: ""; position: absolute; left: calc(var(--r) * -1.05); top: calc(var(--r) * -1.05); width: calc(var(--r) * 2.1); height: calc(var(--r) * 2.1); border-radius: 50%; background: radial-gradient(rgba(4, 12, 18, .55), rgba(4, 12, 18, 0) 70%); pointer-events: none; }
+@keyframes pwin { from { opacity: 0; transform: translate(-50%, -50%) scale(.4); } }
+@media (prefers-reduced-motion: reduce) { .pingwheel button { animation: none; } }
+.chatlog li.em { display: flex; align-items: center; gap: 6px; }
+.stk { width: 30px; height: 30px; flex: none; }
+.feedline { display: flex; align-items: center; gap: 4px; }
+.feedline .stk { width: 26px; height: 26px; }
+
+.chat { position: fixed; z-index: 40; right: max(12px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); width: min(340px, calc(100vw - 24px)); max-height: min(440px, calc(100dvh - 24px));
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px; background: rgba(7, 20, 28, .96); border: 1px solid var(--edge); box-shadow: 0 10px 30px rgba(0, 0, 0, .6); }
+.chathead { display: flex; align-items: center; justify-content: space-between; font-family: var(--display); color: var(--gold); font-size: 17px; }
+.chathead b { font-weight: 400; }
+.chathead button { background: none; border: 0; color: var(--chalk-dim); font-size: 18px; padding: 2px 8px; }
+.chatlog { list-style: none; margin: 0; padding: 4px 2px; overflow-y: auto; flex: 1; min-height: 120px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.chatlog li b { font-family: var(--display); font-weight: 400; color: #8fd0ff; margin-right: 6px; }
+.chatlog li.me b { color: var(--gold); }
+.chatlog li.em { color: var(--chalk-dim); font-size: 13px; }
+.chatlog li.em b { margin-right: 0; }
+.chatlog li.sys { color: var(--chalk-dim); font-size: 13px; }
+.chatquick { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chatquick button { flex: none; background: rgba(255, 255, 255, .08); color: var(--chalk); border: 1px solid rgba(228, 192, 114, .4); border-radius: 999px; padding: 5px 10px; font: 13px var(--display); }
+.chatin { display: flex; gap: 6px; margin: 0; }
+.chatin input { flex: 1; min-width: 0; font: 16px var(--body); color: #fff; background: rgba(4, 14, 20, .8); border: 1px solid rgba(228, 192, 114, .45); border-radius: 10px; padding: 8px 10px; user-select: text; -webkit-user-select: text; }
+.chatin input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chatin .go { padding: 8px 12px; font-size: 15px; }
+.chatfeed { position: fixed; z-index: 25; right: max(12px, env(safe-area-inset-right, 0px)); top: 56%; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; max-width: min(320px, 46vw); }
+.feedline { background: rgba(7, 16, 22, .88); border: 1px solid rgba(255, 255, 255, .14); border-radius: 10px; padding: 4px 10px; font-size: 13px; color: var(--chalk); animation: feedin .25s ease; overflow-wrap: anywhere; }
+.feedline b { font-family: var(--display); font-weight: 400; color: #8fd0ff; }
+@keyframes feedin { from { opacity: 0; transform: translateX(12px); } }
+@media (prefers-reduced-motion: reduce) { .feedline { animation: none; } }
+
+.result, .hist { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.resrank { display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--display); font-size: 19px; color: var(--chalk); }
+.rbadge { font-size: 26px; }
+.up { color: #6fe08f; } .down { color: var(--danger); }
+.resrank b { font-weight: 400; font-size: 17px; }
+.rankup, .rankdown { text-align: center; font-family: var(--display); font-size: 15px; }
+.rankup { color: var(--gold); } .rankdown { color: var(--chalk-dim); }
+.ressec { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: rgba(4, 14, 20, .55); border: 1px solid rgba(255, 255, 255, .1); }
+.ressec h3 { margin: 0; font: 400 14px var(--display); color: var(--gold); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.uchip { display: inline-flex; align-items: center; gap: 3px; font: 13px var(--display); padding: 2px 8px; border-radius: 8px; border: 1px solid var(--cc); color: #fff; background: rgba(255, 255, 255, .05); }
+.uchip i { font-style: normal; color: var(--gold); font-size: 11px; }
+.tchip { font-size: 12px; padding: 2px 8px; border-radius: 8px; background: rgba(240, 207, 116, .14); color: var(--gold); }
+.muted { color: var(--chalk-dim); font-size: 13px; }
+.pdot { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; font: 14px var(--display); color: #fff; background: #45525a; flex: none; }
+.pdot.p1 { background: linear-gradient(#f8dc8c, #c2933a); color: #2a1a06; } .pdot.p4 { background: #2f7a9a; }
+.rankline { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; font-family: var(--display); font-size: 15px; color: var(--chalk); }
+.rankline small { font-family: var(--body); font-size: 12px; color: var(--chalk-dim); }
+.rankline:empty { display: none; }
+.hstat { text-align: center; font-size: 13px; color: var(--chalk-dim); }
+.hlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; }
+.hlist li { display: flex; gap: 10px; align-items: flex-start; }
+.hlist li > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.hmeta { font-size: 12px; color: var(--chalk-dim); }
+.hmeta b { font-weight: 400; font-family: var(--display); }
+.result:not([hidden]) ~ .rankline > span { display: none; } /* 결과 화면에는 등급이 위에 있으니 '기록 보기'만 */
+.ovbtns .go { word-break: keep-all; } /* "혼자 다시 하/기"처럼 낱말 가운데서 줄이 바뀌지 않게 */
