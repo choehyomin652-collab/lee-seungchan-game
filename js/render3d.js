@@ -424,6 +424,12 @@ function buildTactician() {
     put(sph(0.08, 12, 8), beak, 0, -0.06, 0.05, [1, 0.4, 1.4], f);
   }
   bakeFigure(g, ud); // 친구들처럼 만화 음영 + 외곽선
+  // 감정 표현용 부품: 평소엔 숨겨 두고 감정 표현할 때만 보여요
+  const basic = (hex, op = 1) => new THREE.MeshBasicMaterial({ color: lin(hex), transparent: op < 1, opacity: op });
+  ud.tears = [-1, 1].map((s) => { const t = new THREE.Mesh(sph(0.045, 10, 8), basic(0x8fd8ff, 0.9)); t.scale.set(0.8, 1.3, 0.8); t.position.set(s * 0.17, 0.78, 0.42); t.visible = false; bod.add(t); return t; });
+  const vein = new THREE.Group(); vein.position.set(0.24, 1.32, 0.2); vein.visible = false; bod.add(vein); ud.vein = vein; // 화남 표시 (빨간 십자 모양)
+  for (let i = 0; i < 4; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.045, 0.03), basic(0xff3a3a)); b.rotation.z = i * Math.PI / 2 + Math.PI / 4; b.position.set(Math.cos(i * Math.PI / 2) * 0.06, Math.sin(i * Math.PI / 2) * 0.06, 0); vein.add(b); }
+  ud.sparks = Array.from({ length: 6 }, (_, i) => { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.06), basic(i % 2 ? 0xffe27a : 0x9ff0ff)); m.visible = false; g.add(m); return m; }); // 춤·최고! 반짝이
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.66, 36), new THREE.MeshBasicMaterial({ color: lin(0xf0cf74), transparent: true, opacity: 0.85 }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
   return g;
@@ -460,7 +466,50 @@ function stepTactician(dt) {
     // 서 있을 땐 가끔 고개를 갸웃
     ud.bod.rotation.z = (1 - moving) * Math.sin(clock3d * 0.7) * 0.08;
     if (ud.cape) ud.cape.rotation.x = 0.1 + moving * 0.45 + Math.sin(clock3d * 2.2) * 0.05; // 걸으면 망토가 휘날려요
+    stepEmote(dt, ud);
+    if (TACT.say && (TACT.say.t -= dt) <= 0) TACT.say = null; // 내 채팅 말풍선
   }
+}
+// ----- 마스코트 감정 표현 (social.js 의 버튼 · 전투 결과에서 불러요) -----
+// dance 춤추기(이겼을 때) · cry 울기(졌을 때) · cheer 최고!(칼 들고 폴짝) · angry 화내기(발 구르기)
+const EMO_DUR = { dance: 2.6, cry: 2.6, cheer: 1.8, angry: 1.8 };
+const EMO_ICON = { dance: "💃", cry: "😢", cheer: "👍", angry: "😠" };
+function tactEmote(k, dur) { if (!EMO_DUR[k]) return; TACT.emo = { k, t: dur || EMO_DUR[k], t0: dur || EMO_DUR[k] }; }
+function stepEmote(dt, ud) {
+  const E = TACT.emo, on = E && E.t > 0 && Math.hypot(TACT.tx - TACT.x, TACT.tz - TACT.z) < 0.05; // 걷기 시작하면 멈춰요
+  const k = on ? E.k : null;
+  ud.tears.forEach((t) => (t.visible = k === "cry"));
+  ud.vein.visible = k === "angry";
+  ud.sparks.forEach((m) => (m.visible = k === "dance" || k === "cheer"));
+  if (!on) { if (E) TACT.emo = null; ud.bod.rotation.x = 0; return; }
+  E.t -= dt;
+  const e = E.t0 - E.t, fade = Math.min(1, E.t / 0.25, e / 0.15); // 시작·끝을 부드럽게
+  const W = (l, r) => { ud.wings[0].rotation.z = -l; ud.wings[1].rotation.z = r; };
+  if (k === "dance") {
+    tact.rotation.y = TACT.face + e * 6.5; // 빙글빙글
+    tact.position.y += Math.abs(Math.sin(e * 9)) * 0.28 * fade;
+    ud.bod.rotation.z = Math.sin(e * 9) * 0.25 * fade;
+    W(1.2 + Math.sin(e * 18) * 0.6, 1.2 - Math.sin(e * 18) * 0.6);
+    ud.feet.forEach((f, i) => (f.rotation.x = Math.sin(e * 18 + i * Math.PI) * 0.8));
+  } else if (k === "cry") {
+    ud.bod.rotation.x = 0.32 * fade; // 고개 푹
+    ud.bod.rotation.z = Math.sin(e * 24) * 0.05; // 훌쩍훌쩍
+    ud.eyes.forEach((x) => (x.scale.y = 0.22));
+    W(0.9 + Math.sin(e * 24) * 0.12, 0.9 + Math.sin(e * 24 + 1) * 0.12); // 날개로 눈물 닦기
+    ud.tears.forEach((t, i) => { const q = (e * 1.6 + i * 0.5) % 1; t.position.y = 0.8 - q * 0.45; t.position.x = (i ? 1 : -1) * (0.17 + q * 0.06); t.scale.setScalar(0.9 - q * 0.4); });
+  } else if (k === "cheer") {
+    tact.position.y += Math.max(0, Math.sin(e * 7)) * 0.35 * fade; // 폴짝폴짝
+    W(0.4, 2.7 * fade); // 칼 든 날개를 번쩍
+    ud.bod.scale.y *= 1 + Math.max(0, Math.sin(e * 7)) * 0.06;
+  } else if (k === "angry") {
+    ud.bod.rotation.z = Math.sin(e * 40) * 0.07; // 부들부들
+    ud.bod.rotation.x = -0.12 * fade;
+    ud.feet.forEach((f, i) => (f.rotation.x = Math.max(0, Math.sin(e * 14 + i * Math.PI)) * -0.9)); // 발 구르기
+    tact.position.y += Math.max(0, Math.sin(e * 14)) * 0.05;
+    W(0.7 + Math.sin(e * 28) * 0.3, 0.7 + Math.sin(e * 28 + 2) * 0.3);
+    ud.vein.scale.setScalar(1 + Math.sin(e * 12) * 0.2);
+  }
+  if (k === "dance" || k === "cheer") ud.sparks.forEach((m, i) => { const a = e * 3 + (i / ud.sparks.length) * Math.PI * 2; m.position.set(Math.cos(a) * 0.75, 0.9 + Math.sin(e * 5 + i) * 0.35, Math.sin(a) * 0.75); m.rotation.y = e * 6; });
 }
 // ----- 상점 카드 그림: 친구 3D 캐릭터를 미리 찍어 둬요 -----
 const PORTRAIT = {};
@@ -2886,6 +2935,16 @@ function drawOverlay(dt, R) {
     ctx.fillStyle = "rgba(0,0,0,.65)"; ctx.fillRect(tx - bw / 2 - 1, ty - 1, bw + 2, 8);
     ctx.fillStyle = "#4fe08a"; ctx.fillRect(tx - bw / 2, ty, bw * Math.max(0, P.hp) / 100, 6);
     ctx.fillStyle = "#fff"; ctx.font = font(u0 * 0.9); ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(String(Math.max(0, P.hp)), tx, ty - 2);
+    // 말풍선: 감정 표현 이모지 또는 내가 보낸 채팅 (위에서 내려다봐서 몸짓이 작게 보이니 크게 알려 줘요)
+    const E = TACT.emo, say = TACT.say && TACT.say.t > 0 ? TACT.say : null;
+    const txt = say ? say.text : E && E.t > 0 ? EMO_ICON[E.k] : null;
+    if (txt) {
+      const fs = say ? u0 * 1.15 : u0 * 2.2, bob = say ? 0 : Math.abs(Math.sin(clock3d * 6)) * u0 * 0.35;
+      ctx.font = font(fs); const w = Math.min(u0 * 22, ctx.measureText(txt).width) + u0 * 1.4, h = fs + u0 * 0.9, bx = tx - w / 2, by = ty - u0 * 1.5 - h - bob;
+      ctx.fillStyle = "rgba(255,255,255,.94)"; roundRect(bx, by, w, h, h * 0.4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(tx - u0 * 0.5, by + h - 1); ctx.lineTo(tx + u0 * 0.5, by + h - 1); ctx.lineTo(tx, by + h + u0 * 0.6); ctx.fill();
+      ctx.fillStyle = "#1a2530"; ctx.textBaseline = "middle"; ctx.fillText(txt, tx, by + h / 2 + 1, u0 * 22);
+    }
   }
   // 아이템 칸 (왼쪽)
   if (ITEMS_ON) {
