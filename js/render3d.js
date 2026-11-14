@@ -368,21 +368,49 @@ function buildArena() {
 // ----- 내 마스코트(전술가) -----
 let tact = null;
 const TACT = { x: -6.2, z: 6.1, tx: -6.2, tz: 6.1, face: 0, walk: 0 };
+// 귀여운 병아리: 친구들처럼 만화 음영 + 외곽선, 반짝이는 큰 눈 · 분홍 볼 · 머리 깃털 · 빨간 나비넥타이
 function buildTactician() {
   const g = new THREE.Group(); g.rotation.order = "YXZ";
-  const body = M(0xffd34d, 0.55), belly = M(0xfff1b8, 0.6), beak = M(0xff9a2a, 0.5), dark = M(0x1c1410, 0.3), white = M(0xffffff, 0.3);
-  const put = (geo, mat, x, y, z, s) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (s) m.scale.set(...s); m.castShadow = true; g.add(m); return m; };
-  put(new THREE.SphereGeometry(0.5, 24, 18), body, 0, 0.62, 0, [1, 0.95, 1]);
-  put(new THREE.SphereGeometry(0.36, 20, 14), belly, 0, 0.55, 0.2, [1, 1, 0.7]);
+  const ud = g.userData; ud.mats = [];
+  const T = (hex) => { const m = toonMat(hex); ud.mats.push(m); return m; };
+  const body = T(0xffc21f), belly = T(0xfff0c4), beak = T(0xff9330), dark = T(0x2a1a14), white = T(0xffffff), red = T(0xe8434e), pink = T(0xff8fa3);
+  const put = (geo, mat, x, y, z, s, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (s) m.scale.set(...s); m.castShadow = true; parent.add(m); return m; };
+  const sph = (r, a = 18, b2 = 14) => new THREE.SphereGeometry(r, a, b2);
+  const bod = new THREE.Group(); g.add(bod); ud.bod = bod; // 통통 튈 때 같이 찌그러지는 몸
+  put(sph(0.5, 28, 20), body, 0, 0.58, 0, [1, 0.94, 0.98], bod);
+  put(sph(0.36, 22, 16), belly, 0, 0.5, 0.2, [1, 0.95, 0.66], bod);
+  // 머리 깃털 세 가닥
+  for (const [x, rz, h] of [[-0.07, 0.45, 0.17], [0, 0, 0.22], [0.07, -0.45, 0.17]]) { const f = put(sph(0.06, 10, 8), body, x, 1.06 + h * 0.3, 0.02, [0.7, h / 0.06 * 0.5, 0.7], bod); f.rotation.z = rz; }
+  // 눈 (깜빡이려고 따로 묶어요): 크고 까만 눈 + 반짝이 두 개
+  ud.eyes = [];
   for (const s of [-1, 1]) {
-    put(new THREE.SphereGeometry(0.08, 12, 10), white, s * 0.17, 0.82, 0.4, [1, 1.1, 0.6]);
-    put(new THREE.SphereGeometry(0.05, 10, 8), dark, s * 0.17, 0.81, 0.44);
-    const w = put(new THREE.SphereGeometry(0.2, 12, 10), body, s * 0.47, 0.6, 0, [0.35, 0.8, 0.7]); w.rotation.z = s * 0.4;
-    put(new THREE.CylinderGeometry(0.04, 0.04, 0.2, 6), beak, s * 0.15, 0.12, 0.05);
-    put(new THREE.BoxGeometry(0.16, 0.04, 0.2), beak, s * 0.15, 0.03, 0.1);
+    const e = new THREE.Group(); e.position.set(s * 0.17, 0.72, 0.41); e.rotation.y = s * 0.28; bod.add(e); ud.eyes.push(e);
+    put(sph(0.095, 16, 12), dark, 0, 0, 0, [0.85, 1.1, 0.5], e);
+    put(sph(0.035, 10, 8), white, -0.025, 0.035, 0.04, [1, 1, 0.5], e);
+    put(sph(0.016, 8, 6), white, 0.03, -0.03, 0.042, [1, 1, 0.5], e);
+    put(sph(0.075, 12, 8), pink, s * 0.3, 0.57, 0.405, [1, 0.62, 0.28], bod).rotation.y = s * 0.62; // 볼
   }
-  const bk = put(new THREE.ConeGeometry(0.08, 0.18, 8), beak, 0, 0.7, 0.5); bk.rotation.x = Math.PI / 2;
-  put(new THREE.ConeGeometry(0.06, 0.18, 6), body, 0, 1.18, 0.05);
+  // 작은 부리 (위아래 두 조각)
+  const bu = put(new THREE.ConeGeometry(0.065, 0.12, 8), beak, 0, 0.63, 0.5, [1, 1, 0.8], bod); bu.rotation.x = Math.PI / 2 + 0.25;
+  const bl = put(new THREE.ConeGeometry(0.05, 0.08, 8), beak, 0, 0.585, 0.47, [1, 1, 0.8], bod); bl.rotation.x = Math.PI / 2 - 0.35;
+  // 빨간 나비넥타이
+  put(sph(0.04, 10, 8), red, 0, 0.36, 0.43, null, bod);
+  for (const s of [-1, 1]) { const t = put(new THREE.ConeGeometry(0.07, 0.12, 4), red, s * 0.07, 0.36, 0.42, [1, 1, 0.45], bod); t.rotation.z = s * Math.PI / 2; }
+  // 날개 (어깨에서 파닥여요)
+  ud.wings = [];
+  for (const s of [-1, 1]) {
+    const w = new THREE.Group(); w.position.set(s * 0.44, 0.62, -0.02); bod.add(w); ud.wings.push(w);
+    put(sph(0.17, 14, 10), body, s * 0.05, -0.1, 0, [0.42, 0.85, 0.7], w).rotation.z = s * 0.35;
+    put(sph(0.07, 10, 8), body, s * 0.1, -0.26, 0.02, [0.5, 0.8, 0.6], w);
+  }
+  // 발
+  ud.feet = [];
+  for (const s of [-1, 1]) {
+    const f = new THREE.Group(); f.position.set(s * 0.16, 0.1, 0.05); g.add(f); ud.feet.push(f);
+    put(new THREE.CylinderGeometry(0.035, 0.035, 0.14, 6), beak, 0, 0.0, 0, null, f);
+    for (const a of [-0.45, 0, 0.45]) { const toe = put(new THREE.CylinderGeometry(0.03, 0.02, 0.14, 6), beak, Math.sin(a) * 0.05, -0.06, 0.06 + Math.cos(a) * 0.02, null, f); toe.rotation.set(Math.PI / 2, 0, a); }
+  }
+  bakeFigure(g, ud); // 친구들처럼 만화 음영 + 외곽선
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.66, 36), new THREE.MeshBasicMaterial({ color: lin(0xf0cf74), transparent: true, opacity: 0.85 }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
   return g;
@@ -404,6 +432,21 @@ function stepTactician(dt) {
   const cur = tact.rotation.y, df = ((((TACT.face) - cur) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
   tact.rotation.y = cur + df * Math.min(1, dt * 8);
   tact.rotation.z = Math.sin(TACT.walk) * 0.12 * moving;
+  const ud = tact.userData;
+  if (ud.bod) {
+    // 통통: 땅에 닿을 때 살짝 납작, 뜰 때 살짝 길쭉 / 서 있을 땐 숨쉬기
+    const hop = Math.sin(TACT.walk * 2) * moving, br = Math.sin(clock3d * 2.4) * 0.025 * (1 - moving);
+    ud.bod.scale.set(1 - hop * 0.05 - br, 1 + hop * 0.07 + br, 1 - hop * 0.05 - br);
+    // 날개: 걸을 땐 파닥파닥, 서 있을 땐 가끔 살랑
+    const flap = moving ? Math.sin(TACT.walk * 1.6) * 0.6 : Math.max(0, Math.sin(clock3d * 1.3)) ** 8 * 0.5;
+    ud.wings.forEach((w, i) => (w.rotation.z = (i ? 1 : -1) * (0.1 + flap)));
+    ud.feet.forEach((f, i) => (f.rotation.x = Math.sin(TACT.walk + i * Math.PI) * 0.6 * moving));
+    // 눈 깜빡임 (3~5초에 한 번)
+    ud.blinkT = (ud.blinkT ?? 2) - dt; if (ud.blinkT < 0) ud.blinkT = 3 + Math.random() * 2;
+    const shut = ud.blinkT < 0.12 ? 0.12 : 1; ud.eyes.forEach((e) => (e.scale.y = shut));
+    // 서 있을 땐 가끔 고개를 갸웃
+    ud.bod.rotation.z = (1 - moving) * Math.sin(clock3d * 0.7) * 0.08;
+  }
 }
 // ----- 상점 카드 그림: 친구 3D 캐릭터를 미리 찍어 둬요 -----
 const PORTRAIT = {};
