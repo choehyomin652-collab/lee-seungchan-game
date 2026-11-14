@@ -12,7 +12,7 @@ const FILES = [
   ...["264e6bd68a2c650b492c1dc6323e184d", "c084b0de9c9b195fee549e8f97d9ea18", "6aee6c7bd14f060b99cc998ca9189a6d", "563237f2f1a3547d18a32898c1374476",
     "7ff0207f57255560ce6a3051f66ca17b", "845f256a22b6e9c4c39004a8eb92b5cf", "5222d38967af0784aef52d443ef0df91", "3bff9474594a6588873ad9bfe078e3de",
     "3bf362f3a07f7dbe065481282e4c0d9c", "4149220f3f8d1008942372463b05ec31", "9095b56b47d55663c996ac30108f7e12", "7d50b9e62657f7d2e5b0873b190bfc11",
-    "07017e5c1a1261fd81b005ad7e8a8c5c", "2edb14e321fc90ebea9098d6657e3d21"].map((id) => "cards/" + id + ".jpg"), // 친구 카드 사진 (photos.js 의 BUILTIN_CARDS)
+    "07017e5c1a1261fd81b005ad7e8a8c5c", "2edb14e321fc90ebea9098d6657e3d21", "64b47f57b49c563147068c86b91217d2"].map((id) => "cards/" + id + ".jpg"), // 친구 카드 사진 (photos.js 의 BUILTIN_CARDS)
 ];
 const CDN = [
   "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",

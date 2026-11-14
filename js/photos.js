@@ -18,11 +18,11 @@ const canShare = () => !!(SHARED.assets && SHARED.ref);
 const BUILTIN_CARDS = {
   "진성욱": "264e6bd68a2c650b492c1dc6323e184d", "이현": "c084b0de9c9b195fee549e8f97d9ea18", "박희찬": "6aee6c7bd14f060b99cc998ca9189a6d", "이보경": "563237f2f1a3547d18a32898c1374476",
   "최효민": "7ff0207f57255560ce6a3051f66ca17b", "임시온": "845f256a22b6e9c4c39004a8eb92b5cf", "이준희": "5222d38967af0784aef52d443ef0df91", "김현우": "3bff9474594a6588873ad9bfe078e3de",
-  "조하윤": "07017e5c1a1261fd81b005ad7e8a8c5c", "김민기": "2edb14e321fc90ebea9098d6657e3d21",
+  "조하윤": "07017e5c1a1261fd81b005ad7e8a8c5c", "김민기": "2edb14e321fc90ebea9098d6657e3d21", "이승찬": "64b47f57b49c563147068c86b91217d2",
   "전하율": "3bf362f3a07f7dbe065481282e4c0d9c", "박준서": "4149220f3f8d1008942372463b05ec31", "손태민": "9095b56b47d55663c996ac30108f7e12", "윤동욱": "7d50b9e62657f7d2e5b0873b190bfc11",
 };
 // 이 친구들은 미리 넣어 둔 사진이 게임에서 예전에 올린 공용 사진보다 먼저예요 (본인 요청)
-const BUILTIN_FIRST = new Set(["윤동욱", "최효민", "조하윤", "임시온", "김민기"]);
+const BUILTIN_FIRST = new Set(["윤동욱", "최효민", "조하윤", "임시온", "김민기", "이승찬"]);
 const BUILTIN_IDS = new Set(Object.values(BUILTIN_CARDS));
 const photoUrl = (id) => (BUILTIN_IDS.has(id) ? cardUrl(id) : blobUrl(id));
 // 카드 사진을 정해요. 사진을 못 불러오면 검은 카드 대신 원래 3D 그림으로 돌아가요
