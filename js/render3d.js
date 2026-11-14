@@ -368,47 +368,60 @@ function buildArena() {
 // ----- 내 마스코트(전술가) -----
 let tact = null;
 const TACT = { x: -6.2, z: 6.1, tx: -6.2, tz: 6.1, face: 0, walk: 0 };
-// 귀여운 병아리: 친구들처럼 만화 음영 + 외곽선, 반짝이는 큰 눈 · 분홍 볼 · 머리 깃털 · 빨간 나비넥타이
+// 영토 펭귄 기사 (우리 게임만의 새 디자인): 남색 몸 + 흰 배, 교모 모양 기사 투구와 금 배지, 초록 망토, 짧고 반짝이는 칼
 function buildTactician() {
   const g = new THREE.Group(); g.rotation.order = "YXZ";
   const ud = g.userData; ud.mats = [];
   const T = (hex) => { const m = toonMat(hex); ud.mats.push(m); return m; };
-  const body = T(0xffc21f), belly = T(0xfff0c4), beak = T(0xff9330), dark = T(0x2a1a14), white = T(0xffffff), red = T(0xe8434e), pink = T(0xff8fa3);
+  const navy = T(0x2c3b6e), belly = T(0xf6f3ea), beak = T(0xff9a3a), dark = T(0x1a1420), white = T(0xffffff), pink = T(0xff8fa3);
+  const silver = T(0xdfe5ec), gold = T(0xf2c14e), green = T(0x2f8a5a), wood = T(0x8a5a34);
+  const glowM = (hex, k) => { const m = toonMat(hex, { emissive: lin(hex), emissiveIntensity: k }); ud.mats.push(m); return m; };
   const put = (geo, mat, x, y, z, s, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (s) m.scale.set(...s); m.castShadow = true; parent.add(m); return m; };
   const sph = (r, a = 18, b2 = 14) => new THREE.SphereGeometry(r, a, b2);
-  const bod = new THREE.Group(); g.add(bod); ud.bod = bod; // 통통 튈 때 같이 찌그러지는 몸
-  put(sph(0.5, 28, 20), body, 0, 0.58, 0, [1, 0.94, 0.98], bod);
-  put(sph(0.36, 22, 16), belly, 0, 0.5, 0.2, [1, 0.95, 0.66], bod);
-  // 머리 깃털 세 가닥
-  for (const [x, rz, h] of [[-0.07, 0.45, 0.17], [0, 0, 0.22], [0.07, -0.45, 0.17]]) { const f = put(sph(0.06, 10, 8), body, x, 1.06 + h * 0.3, 0.02, [0.7, h / 0.06 * 0.5, 0.7], bod); f.rotation.z = rz; }
-  // 눈 (깜빡이려고 따로 묶어요): 크고 까만 눈 + 반짝이 두 개
+  const bod = new THREE.Group(); g.add(bod); ud.bod = bod;
+  // 몸: 달걀처럼 동글 + 흰 배
+  put(sph(0.46, 28, 20), navy, 0, 0.62, 0, [1, 1.16, 0.96], bod);
+  put(sph(0.36, 24, 18), belly, 0, 0.52, 0.2, [0.9, 1.1, 0.78], bod);
+  // 눈 (깜빡이려고 따로 묶어요) + 분홍 볼
   ud.eyes = [];
   for (const s of [-1, 1]) {
-    const e = new THREE.Group(); e.position.set(s * 0.17, 0.72, 0.41); e.rotation.y = s * 0.28; bod.add(e); ud.eyes.push(e);
-    put(sph(0.095, 16, 12), dark, 0, 0, 0, [0.85, 1.1, 0.5], e);
-    put(sph(0.035, 10, 8), white, -0.025, 0.035, 0.04, [1, 1, 0.5], e);
-    put(sph(0.016, 8, 6), white, 0.03, -0.03, 0.042, [1, 1, 0.5], e);
-    put(sph(0.075, 12, 8), pink, s * 0.3, 0.57, 0.405, [1, 0.62, 0.28], bod).rotation.y = s * 0.62; // 볼
+    const e = new THREE.Group(); e.position.set(s * 0.15, 0.86, 0.39); e.rotation.y = s * 0.3; bod.add(e); ud.eyes.push(e);
+    put(sph(0.085, 16, 12), white, 0, 0, -0.005, [1, 1.12, 0.45], e);
+    put(sph(0.062, 14, 10), dark, 0.004, -0.008, 0.02, [1, 1.1, 0.5], e);
+    put(sph(0.022, 8, 6), white, -0.018, 0.025, 0.05, [1, 1, 0.5], e);
+    put(sph(0.07, 12, 8), pink, s * 0.27, 0.72, 0.36, [1, 0.6, 0.28], bod).rotation.y = s * 0.62;
   }
-  // 작은 부리 (위아래 두 조각)
-  const bu = put(new THREE.ConeGeometry(0.065, 0.12, 8), beak, 0, 0.63, 0.5, [1, 1, 0.8], bod); bu.rotation.x = Math.PI / 2 + 0.25;
-  const bl = put(new THREE.ConeGeometry(0.05, 0.08, 8), beak, 0, 0.585, 0.47, [1, 1, 0.8], bod); bl.rotation.x = Math.PI / 2 - 0.35;
-  // 빨간 나비넥타이
-  put(sph(0.04, 10, 8), red, 0, 0.36, 0.43, null, bod);
-  for (const s of [-1, 1]) { const t = put(new THREE.ConeGeometry(0.07, 0.12, 4), red, s * 0.07, 0.36, 0.42, [1, 1, 0.45], bod); t.rotation.z = s * Math.PI / 2; }
-  // 날개 (어깨에서 파닥여요)
+  const bu = put(new THREE.ConeGeometry(0.07, 0.13, 8), beak, 0, 0.75, 0.47, [1.2, 0.8, 1], bod); bu.rotation.x = Math.PI / 2 + 0.15;
+  // 투구: 둥근 교모 모양 + 앞 챙 + 금 배지 + 뒤 깃 장식
+  const helm = new THREE.Group(); helm.position.set(0, 1.0, -0.02); bod.add(helm);
+  put(new THREE.SphereGeometry(0.4, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.5), silver, 0, 0, 0, [1.05, 0.8, 1.05], helm);
+  put(new THREE.CylinderGeometry(0.43, 0.43, 0.06, 28), navy, 0, 0.0, 0, null, helm);
+  const brim = put(new THREE.CylinderGeometry(0.28, 0.3, 0.035, 20, 1, false, -Math.PI / 2 + 0.35, Math.PI - 0.7), silver, 0, -0.01, 0.12, null, helm); brim.rotation.x = 0.15;
+  put(new THREE.CylinderGeometry(0.075, 0.075, 0.03, 16), gold, 0, 0.17, 0.34, null, helm).rotation.x = Math.PI / 2 - 0.55;
+  put(new THREE.OctahedronGeometry(0.045), glowM(0x7fe0ff, 1.2), 0, 0.17, 0.36, [1, 1, 0.5], helm).rotation.x = -0.55;
+  for (const s of [-1, 1]) { const f = put(sph(0.05, 10, 8), green, s * 0.06, 0.34, -0.06, [0.6, 1.8, 0.6], helm); f.rotation.z = s * 0.4; }
+  // 망토 (뒤에서 살랑)
+  const cape = new THREE.Group(); cape.position.set(0, 0.92, -0.32); bod.add(cape); ud.cape = cape;
+  put(new THREE.CylinderGeometry(0.28, 0.42, 0.62, 18, 1, true, Math.PI * 0.62, Math.PI * 0.76), green, 0, -0.31, 0.18, null, cape).material.side = THREE.DoubleSide;
+  put(new THREE.TorusGeometry(0.3, 0.035, 8, 20, Math.PI), gold, 0, 0.02, 0.22, [1, 1, 0.6], cape).rotation.x = Math.PI / 2;
+  // 날개(지느러미) — 오른쪽 날개에 짧고 반짝이는 칼
   ud.wings = [];
   for (const s of [-1, 1]) {
-    const w = new THREE.Group(); w.position.set(s * 0.44, 0.62, -0.02); bod.add(w); ud.wings.push(w);
-    put(sph(0.17, 14, 10), body, s * 0.05, -0.1, 0, [0.42, 0.85, 0.7], w).rotation.z = s * 0.35;
-    put(sph(0.07, 10, 8), body, s * 0.1, -0.26, 0.02, [0.5, 0.8, 0.6], w);
+    const w = new THREE.Group(); w.position.set(s * 0.42, 0.78, 0); bod.add(w); ud.wings.push(w);
+    put(sph(0.16, 14, 10), navy, s * 0.03, -0.17, 0, [0.35, 1.1, 0.6], w).rotation.z = s * 0.25;
+    if (s > 0) {
+      const sw = new THREE.Group(); sw.position.set(0.06, -0.32, 0.1); sw.rotation.set(0.5, 0, -0.15); w.add(sw); ud.sword = sw;
+      put(new THREE.CylinderGeometry(0.025, 0.025, 0.12, 8), wood, 0, 0, 0, null, sw);
+      put(new THREE.BoxGeometry(0.16, 0.03, 0.05), gold, 0, 0.07, 0, null, sw);
+      put(new THREE.BoxGeometry(0.06, 0.32, 0.015), glowM(0xdff6ff, 0.6), 0, 0.24, 0, null, sw);
+      put(new THREE.ConeGeometry(0.043, 0.07, 4), glowM(0xdff6ff, 0.6), 0, 0.43, 0, [1, 1, 0.35], sw).rotation.y = Math.PI / 4;
+    }
   }
   // 발
   ud.feet = [];
   for (const s of [-1, 1]) {
-    const f = new THREE.Group(); f.position.set(s * 0.16, 0.1, 0.05); g.add(f); ud.feet.push(f);
-    put(new THREE.CylinderGeometry(0.035, 0.035, 0.14, 6), beak, 0, 0.0, 0, null, f);
-    for (const a of [-0.45, 0, 0.45]) { const toe = put(new THREE.CylinderGeometry(0.03, 0.02, 0.14, 6), beak, Math.sin(a) * 0.05, -0.06, 0.06 + Math.cos(a) * 0.02, null, f); toe.rotation.set(Math.PI / 2, 0, a); }
+    const f = new THREE.Group(); f.position.set(s * 0.16, 0.12, 0.08); g.add(f); ud.feet.push(f);
+    put(sph(0.08, 12, 8), beak, 0, -0.06, 0.05, [1, 0.4, 1.4], f);
   }
   bakeFigure(g, ud); // 친구들처럼 만화 음영 + 외곽선
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.66, 36), new THREE.MeshBasicMaterial({ color: lin(0xf0cf74), transparent: true, opacity: 0.85 }));
@@ -446,6 +459,7 @@ function stepTactician(dt) {
     const shut = ud.blinkT < 0.12 ? 0.12 : 1; ud.eyes.forEach((e) => (e.scale.y = shut));
     // 서 있을 땐 가끔 고개를 갸웃
     ud.bod.rotation.z = (1 - moving) * Math.sin(clock3d * 0.7) * 0.08;
+    if (ud.cape) ud.cape.rotation.x = 0.1 + moving * 0.45 + Math.sin(clock3d * 2.2) * 0.05; // 걸으면 망토가 휘날려요
   }
 }
 // ----- 상점 카드 그림: 친구 3D 캐릭터를 미리 찍어 둬요 -----
