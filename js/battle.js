@@ -5,6 +5,8 @@
 // =============== 전투 엔진 ===============
 const GIVE_SHIELD = [0, 0.06, 0.22]; // 다 퍼줌 2명 · 4명일 때 보호막 (최대 체력 비율)
 const LOVER_SHIELD = 0.15, LOVER_RAGE = 1.4; // 연인: 시작 보호막 (최대 체력 비율), 짝이 쓰러지면 공격력·공격 속도 배율
+// 피의 굶주림 이현 (영웅 증강): 언제나 피흡 steal, 혼자면 solo 배율
+const LEE_BLOOD = { steal: 0.25, solo: { hp: 3, ad: 2.5, as: 1.8, steal: 0.35, ar: 0.2 } };
 function makeFighter(spec, team, r, c, cnt, buff) {
   const f = { team, r, c, X: c + (r & 1) * 0.5, Y: r, alive: true, shield: 0, mana: 0, crit: 0, amp: 1, mgain: 1,
     asStack: 0, atkCd: 0.25 + Math.random() * 0.3, moveCd: 0, sec: 0, tgt: null, flash: 0, lunge: 0, lx: 0, ly: 0, deadT: 0, items: [], star: 1 };
@@ -35,6 +37,11 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   f.crit += st.crit || 0; f.mgain *= 1 + (st.mgainPct || 0);
   for (const k of ["stackAs", "lifesteal", "splash", "skillCrit", "manaOnHit", "lowHpAs", "thorns", "manaTick", "lowShield", "regen", "teamShield", "castShield", "castHeal", "refund"]) f[k] = st[k] || 0;
   if (buff) { f.as0 *= 1 + buff.as; f.ar = Math.min(0.75, f.ar + buff.ar); f.ad *= 1 + buff.ad; f.maxHp *= 1 + buff.hp; }
+  // 영웅 증강 "피의 굶주림 이현": 이현은 항상 피흡, 혼자 필드에 있으면 피의 굶주림이 깨어나요
+  if (buff && buff.lee && def.n === "이현") {
+    f.lifesteal += LEE_BLOOD.steal; f.blood = 1;
+    if (buff.solo) { const K = LEE_BLOOD.solo; f.maxHp *= K.hp; f.ad *= K.ad; f.as0 *= K.as; f.lifesteal += K.steal; f.ar = Math.min(0.75, f.ar + K.ar); f.bloodSolo = 1; }
+  }
   f.shield += f.maxHp * GIVE_SHIELD[L("다 퍼줌")]; // 다 퍼줌: 최대 체력 비율만큼 보호막 (별·아이템이 오를수록 같이 커져요)
   if (has("연인")) { f.lover = 1; f.shield += f.maxHp * LOVER_SHIELD; } // 연인(이다연·김예균): 서로 보호막, 한 명이 쓰러지면 남은 한 명이 분노 (dealDamage)
   f.hunt = def.hunt || null; // 이다연: 상대 팀의 김예균에게 달려들어요 (stepBattle)
@@ -49,11 +56,14 @@ function teamCounts(side, P) {
 function makeBattle(sideA, sideB, visual, PA, PB) {
   const cA = teamCounts(sideA, PA), cB = teamCounts(sideB, PB);
   const f = [];
-  sideA.forEach((x) => f.push(makeFighter(x.spec, 0, 4 + x.lr, x.c, cA, PA && PA.buff)));
-  sideB.forEach((x) => f.push(makeFighter(x.spec, 1, 3 - x.lr, COLS - 1 - x.c, cB, PB && PB.buff)));
+  const buffOf = (P, side) => P && P.buff && { ...P.buff, solo: side.filter((x) => !x.spec.mon).length === 1 }; // solo: 필드에 내 친구가 혼자
+  sideA.forEach((x) => f.push(makeFighter(x.spec, 0, 4 + x.lr, x.c, cA, buffOf(PA, sideA))));
+  sideB.forEach((x) => f.push(makeFighter(x.spec, 1, 3 - x.lr, COLS - 1 - x.c, cB, buffOf(PB, sideB))));
   for (const team of [0, 1]) combineRobot(f, team, visual);
   for (const u of f) if (u.teamShield) for (const o of f) if (o !== u && o.team === u.team && hexDist(u, o) <= 1) o.shield += u.teamShield;
-  return { f, projs: [], fx: [], floats: [], zones: [], t: 0, done: false, win: null, visual };
+  const B = { f, projs: [], fx: [], floats: [], zones: [], t: 0, done: false, win: null, visual };
+  for (const u of f) if (u.bloodSolo) { addHuge(B, u, "피의 굶주림!", "#ffffff", "#e8202e", 3); addFx(B, u.X, u.Y, 2.2, "#e8202e", 0.8); }
+  return B;
 }
 function runBattle(B) { let n = 0; while (!B.done && n++ < 4000) stepBattle(B, 1 / 20); }
 const speedOf = (u) => Math.min(4, u.as0 * (1 + u.asStack + (u.asBuffT > 0 ? u.asBuff : 0) + (u.lowHpAs && u.hp < u.maxHp * 0.5 ? u.lowHpAs : 0)));

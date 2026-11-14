@@ -1827,7 +1827,7 @@ function collect(dt) {
 }
 function placeUnit(it, dt) {
   const g = useMesh(it.sp.robot ? "robot:" + (it.enemy ? 1 : 0) + (it.sp.mega ? "m" : "") + ":" + (S.battle ? S.battle.t0 || (S.battle.t0 = Math.random()) : 0) : it.key, () => buildUnit(it.sp, it.enemy)), ud = g.userData;
-  const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? (it.sp.mega ? 1.95 : 1.6) : 1.12)) * (it.bench ? 0.8 : 1); // 친구들은 12% 크게: 갑옷이 잘 보여요
+  const sc = UNIT_K * (it.sp.mon ? (it.sp.mon.boss ? 1.45 : it.sp.mon.summon ? (it.sp.mon.giant ? 1.75 : 0.85) : 1.1) : [1, 1.18, 1.32, 1.48][it.sp.star] * (it.sp.robot ? (it.sp.mega ? 1.95 : 1.6) : it.sp.bloodSolo ? 1.35 : 1.12)) * (it.bench ? 0.8 : 1); // 친구들은 12% 크게: 갑옷이 잘 보여요
   g.scale.setScalar(sc);
   // 움직임 감지 → 걷기
   const pv = ud.prev || { x: it.x, z: it.z };

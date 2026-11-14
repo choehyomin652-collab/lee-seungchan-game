@@ -19,6 +19,10 @@ const AUGS = [
   { id: "honor", n: "우등생", v: [1, 2, 3], d: (v) => `무작위 ${v}코스트 친구 ★2`, f: (P, v) => { // ★2 = 친구 3명이라 풀에서 3명을 꺼내요
     const i = P.bench.indexOf(null), cands = DEFS.map((_, j) => j).filter((j) => DEFS[j].c === v && S.pool[j] >= 3);
     if (i >= 0 && cands.length) { const d = rnd(cands); S.pool[d] -= 3; P.bench[i] = mkUnit(d, 2); } else P.gold += v * 3; } },
+  // 영웅 증강: 이현 ★2 를 받고, 이현이 피흡 + 혼자 필드에 있으면 피의 굶주림 (battle.js 의 LEE_BLOOD)
+  { id: "hero-lee", n: "피의 굶주림 이현", hero: 1, tiers: [0, 1], d: () => "이현 ★2를 받아요. 이현은 피흡 25%, 혼자 필드에 있으면 체력 ×3 · 공격력 ×2.5 · 공격 속도 +80% · 피흡 +35% · 받는 피해 -20%",
+    f: (P) => { P.buff.lee = 1; const d = DEFS.findIndex((x) => x.n === "이현"), i = P.bench.indexOf(null);
+      if (i >= 0 && S.pool[d] >= 3) { S.pool[d] -= 3; P.bench[i] = mkUnit(d, 2); } else P.gold += 3; } },
   { id: "pres", n: "신의 강림", tiers: [2], d: () => "정주환 ★1을 대기석으로", f: (P) => { const d = DEFS.findIndex((x) => x.n === "정주환"), i = P.bench.indexOf(null); if (i >= 0 && S.pool[d] > 0) { P.bench[i] = mkUnit(d); S.pool[d]--; } else P.gold += 5; } },
   ...["운동광", "지는 거 못 참음", "공부는 잘함", "다 퍼줌", "축구부"].map((t) => ({ id: "emb-" + t, n: `${t} 배지`, v: [[1, 0], [1, 4], [2, 0]],
     d: (v) => `${t} 시너지 숫자 +${v[0]}${v[1] ? `, ${v[1]}골드` : ""}`, f: (P, v) => { P.emb[t] = (P.emb[t] || 0) + v[0]; P.gold += v[1]; } })),

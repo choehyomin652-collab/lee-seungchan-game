@@ -219,7 +219,7 @@ function netPull(real) {
       P.board = netBoard(q.b);
       P.emb = q.e && typeof q.e === "object" ? Object.fromEntries(Object.entries(q.e).filter(([k, v]) => TRAITS[k] && typeof v === "number").map(([k, v]) => [k, Math.max(0, Math.min(3, v | 0))])) : {};
       const bf = q.bf || {}, num = (v) => (typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);
-      P.buff = { as: num(bf.as), ar: num(bf.ar), ad: num(bf.ad), hp: num(bf.hp) };
+      P.buff = { as: num(bf.as), ar: num(bf.ar), ad: num(bf.ad), hp: num(bf.hp), lee: bf.lee ? 1 : 0 }; // lee: 피의 굶주림 이현 증강
     }
     if (q.al === false && P.alive) {
       P.alive = false; P.place = q.pl || alivePlayers().length + 1;
