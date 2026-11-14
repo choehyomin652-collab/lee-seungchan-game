@@ -26,17 +26,29 @@ const BUILTIN_FIRST = new Set(["윤동욱", "최효민", "조하윤", "임시온
 const BUILTIN_IDS = new Set(Object.values(BUILTIN_CARDS));
 const photoUrl = (id) => (BUILTIN_IDS.has(id) ? cardUrl(id) : blobUrl(id));
 // 카드 사진을 정해요. 사진을 못 불러오면 검은 카드 대신 원래 3D 그림으로 돌아가요
-function setPortrait(d, url) {
+//  · 미리 넣은 사진(cards/): 방금 올린 사진은 기기에 따라 잠깐 못 받을 때가 있어서 2번 더 받아 봐요 (1.5초 · 3초 뒤, 캐시 없이)
+//    그래도 안 되면 3D 그림으로 (공용 저장소 /_blob/ 주소는 iPad 등에서 검게 나와서 미리 넣은 사진엔 안 써요)
+//  · 게임에서 올린 공유 사진(/_blob/): 안 되면 3D 그림으로
+//  · 8초 동안 받지도 실패하지도 않으면 실패로 봐요 (검은 카드가 계속 남지 않게)
+function setPortrait(d, url, tries = 0) {
   PORTRAIT[d] = url;
   if (!url || /^data:/.test(url)) return;
   const im = new Image();
-  im.onerror = () => {
+  let over = false;
+  const fail = () => {
+    if (over) return; over = true; clearTimeout(tm);
     if (PORTRAIT[d] !== url) return;
     const id = (url.match(/[0-9a-f]{32}/) || [])[0];
-    PORTRAIT[d] = url !== blobUrl(id) && id ? blobUrl(id) : BASE_PORTRAIT[d]; // cards/ 가 없으면 공용 저장소로, 그것도 안 되면 3D 그림
-    if (PORTRAIT[d] !== BASE_PORTRAIT[d]) setPortrait(d, PORTRAIT[d]);
+    if (/^cards\//.test(url) && id && tries < 2) { // 다시 받아 보기
+      setTimeout(() => { if (PORTRAIT[d] === url) setPortrait(d, cardUrl(id) + "?r=" + Date.now(), tries + 1); }, 1500 * (tries + 1));
+      return;
+    }
+    PORTRAIT[d] = BASE_PORTRAIT[d];
     if (S) renderUI(); if (!$("cards").hidden) openCardMenu();
   };
+  const tm = setTimeout(fail, 8000);
+  im.onload = () => { if (over) return; over = true; clearTimeout(tm); if (tries && PORTRAIT[d] === url && S) { renderUI(); if (!$("cards").hidden) openCardMenu(); } };
+  im.onerror = fail;
   im.src = url;
 }
 const sharedCard = (d) => { const n = DEFS[d].n, b = BUILTIN_CARDS[n]; return (BUILTIN_FIRST.has(n) && b) || SHARED.cards[n] || b || null; };
