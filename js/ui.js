@@ -49,11 +49,13 @@ const shopOpen = () => ["plan", "combat", "result"].includes(S.phase);
 cv.addEventListener("pointerdown", (e) => {
   TAP_PENDING = false;
   if (!S || S.phase === "over" || S.phase === "carousel") return;
+  if (pingDown(e, ...canvasPos(e))) return; // 핑 (ping.js): 핑 모드 · Alt+클릭 · 꾹 누르기
   const [x, y] = canvasPos(e), loc = toLoc(hitTest(x, y));
   drag = { loc, obj: objAt(loc), sx: x, sy: y, x, y, moved: false, wp: null };
   cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener("pointermove", (e) => {
+  pingMove(...canvasPos(e));
   if (!drag) return;
   const [x, y] = canvasPos(e); drag.x = x; drag.y = y;
   const wp = groundAt(x, y); if (wp) drag.wp = wp;
@@ -64,6 +66,7 @@ cv.addEventListener("pointermove", (e) => {
 });
 cv.addEventListener("pointerup", (e) => {
   const [x, y] = canvasPos(e);
+  if (pingUp()) { drag = null; $("shop").classList.remove("selling"); return; } // 꾹 눌러서 핑 바퀴가 열렸어요
   if (S && S.phase === "carousel") return carouselTap(x, y);
   if (!drag) return;
   const h = hitTest(x, y), loc = toLoc(h), d = drag; drag = null;
@@ -80,7 +83,7 @@ cv.addEventListener("pointerup", (e) => {
   }
   tap(h, loc);
 });
-cv.addEventListener("pointercancel", () => { drag = null; });
+cv.addEventListener("pointercancel", () => { drag = null; pingUp(); });
 function overShop(e) { const r = $("shop").getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom + 20; }
 function carouselTap(x, y) {
   const C = S.car; if (!C) return;
