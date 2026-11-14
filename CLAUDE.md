@@ -31,6 +31,7 @@
 - `node tools/preview/view.js . out game` — 게임 화면 캡처 (`out-game.png`)
 - `node tools/preview/hero.js . out.png 진성욱,이현` — 영웅 앞·옆·뒤 (끝에 `cull` 을 붙이면 면 방향 검사)
 - `node tools/preview/anim.js . out.png "이현,최효민"` — 공격 동작 6장
+- `node tools/preview/balance.js . 12000` — 무작위 팀끼리 전투를 많이 돌려 친구별·특성별 승률 (밸런스 조정할 때, `js/friends.js` 의 `TUNE` 을 고치고 다시 재요)
 - `node tools/preview/prac.js . pr` · `node tools/preview/rend2.js . rr team` — 연습장, 김예균 궁 연출
 
 ## 게임 코드 규칙
