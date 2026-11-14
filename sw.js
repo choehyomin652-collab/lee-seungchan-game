@@ -10,8 +10,9 @@ const FILES = [
   "js/friends.js", "js/skills.js", "js/augments.js", "js/constants.js", "js/game.js", "js/battle.js", "js/robot.js", "js/weapons.js",
   "js/sound.js", "js/approom.js", "js/online.js", "js/photos.js", "js/figure.js", "js/hero.js", "js/stickers.js", "js/render3d.js", "js/ui.js", "js/practice.js", "js/ping.js", "js/social.js",
   ...["264e6bd68a2c650b492c1dc6323e184d", "c084b0de9c9b195fee549e8f97d9ea18", "6aee6c7bd14f060b99cc998ca9189a6d", "563237f2f1a3547d18a32898c1374476",
-    "7ff0207f57255560ce6a3051f66ca17b", "a36ad8d9c7b6ba8c8c3bc27873c13506", "5222d38967af0784aef52d443ef0df91", "3bff9474594a6588873ad9bfe078e3de",
-    "3bf362f3a07f7dbe065481282e4c0d9c", "4149220f3f8d1008942372463b05ec31", "9095b56b47d55663c996ac30108f7e12", "7d50b9e62657f7d2e5b0873b190bfc11"].map((id) => "cards/" + id + ".jpg"), // 친구 카드 사진 (photos.js 의 BUILTIN_CARDS)
+    "7ff0207f57255560ce6a3051f66ca17b", "845f256a22b6e9c4c39004a8eb92b5cf", "5222d38967af0784aef52d443ef0df91", "3bff9474594a6588873ad9bfe078e3de",
+    "3bf362f3a07f7dbe065481282e4c0d9c", "4149220f3f8d1008942372463b05ec31", "9095b56b47d55663c996ac30108f7e12", "7d50b9e62657f7d2e5b0873b190bfc11",
+    "07017e5c1a1261fd81b005ad7e8a8c5c", "2edb14e321fc90ebea9098d6657e3d21"].map((id) => "cards/" + id + ".jpg"), // 친구 카드 사진 (photos.js 의 BUILTIN_CARDS)
 ];
 const CDN = [
   "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
