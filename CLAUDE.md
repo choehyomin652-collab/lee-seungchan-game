@@ -14,7 +14,7 @@
 - 페이지 만들기: `sh tools/make-artifact-page.sh > <스크래치패드>/uri-battle.html`
 - 올리기: Artifact publish 에 `url` = 위 주소, `file_path` = 만든 페이지, `files` = 이번에 바뀐 `style.css` · `js/*.js` 만 (published 경로와 저장소 경로가 같아요. 빠진 파일은 아티팩트에 있던 그대로 남아요)
 - 전부 다시 올리지 않는 이유: 다른 계정이 아티팩트에서 직접 `js/photos.js` 를 고친 적이 있어요. 지금 저장소의 `photos.js` 는 아티팩트 것과 맞춰 뒀지만, 올리기 전에 아티팩트의 `photos.js` 가 또 바뀌었는지 확인하고 바뀌었으면 합친 뒤 올려요
-- 미리 넣은 친구 카드 사진은 저장소의 `cards/<id>.jpg` 에 있어요 (홈 화면 앱에서도 보이게 넣었어요, 사용자가 요청). 아티팩트에도 같은 `cards/` 가 있어요. 사진을 새로 넣거나 바꾸면 `cards/` 에 넣고 `js/photos.js` 의 `BUILTIN_CARDS` · `sw.js` 의 카드 목록을 고친 뒤, 아티팩트에 올릴 때 그 사진도 `files` 에 넣어요
+- 미리 넣은 친구 카드 사진은 저장소의 `cards/<id>.jpg` 에 있어요 (홈 화면 앱에서도 보이게 넣었어요, 사용자가 요청). 아티팩트에도 같은 `cards/` 가 있어요. 사진을 새로 넣거나 바꾸면 `cards/` 에 넣고 `js/photos.js` 의 `BUILTIN_CARDS` · `sw.js` 의 카드 목록을 고친 뒤, 아티팩트에 올릴 때 그 사진도 `files` 에 넣어요. 새 사진은 `python3 tools/make-cardpics.py <id>...` 로 `js/cardpics.js` 에도 넣어요 (지금 넣은 id 들 + 새 id 를 모두 적어서 다시 만들어요). claude.ai 아티팩트에서 새로 올린 jpg 가 일부 기기에서 안 받아져서, 사진을 JS 안에 같이 보내요
 - 올리다가 "newer version" 으로 거절되면, 다른 곳에서 바뀐 파일이 내가 이번에 올리는 파일과 겹치는지 확인하고, 겹치지 않으면 그대로 다시 올려요
 - `capabilities` 는 빼고 올려요 (사진 저장 db 규칙 · 온라인 room 설정을 그대로 유지)
 - 새 JS 파일을 추가했다면 `index.html` 의 `<script>` 와 `files` 목록, 그리고 `sw.js` 의 `FILES` 에도 넣어요

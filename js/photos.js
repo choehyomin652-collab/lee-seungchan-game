@@ -11,7 +11,7 @@ const SHARED = { db: null, assets: null, ref: null, cards: {}, backdrop: null, s
 const blobUrl = (id) => "/_blob/" + id;
 // 미리 넣어 둔 카드 사진은 게임 파일과 같은 방식(아티팩트의 cards/ 폴더)으로 불러와요.
 // 공용 저장소 주소(/_blob/)는 일부 기기(iPad 등)에서 안 열릴 때가 있어서예요. 홈 화면 앱에서도 보이게 저장소의 cards/ 에도 넣어 뒀어요
-const cardUrl = (id) => "cards/" + id + ".jpg";
+const cardUrl = (id) => (typeof CARD_PICS !== "undefined" && CARD_PICS[id]) || "cards/" + id + ".jpg"; // 새로 넣은 사진은 js/cardpics.js 안에 (아티팩트에서 새 jpg 가 안 받아지는 기기가 있어서)
 // 이 사람이 올리면 모두에게 보이나요? (페이지를 고칠 수 있는 사람만)
 const canShare = () => !!(SHARED.assets && SHARED.ref);
 // 페이지에 미리 넣어 둔 친구 카드 사진 (공용 저장소 assets 의 id). 게임에서 따로 올린 사진이 있으면 그게 먼저예요
