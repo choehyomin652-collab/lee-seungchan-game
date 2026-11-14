@@ -102,6 +102,8 @@ const WEAPONS = {
     const gl = e.mk(0x2fc27a, 0.6);
     for (const arm of [e.L, e.R]) { const m = e.put(wg("glove", () => sphG(0.095)), gl, 0, -0.43, 0.02, arm); m.scale.set(1.1, 1, 1.15); }
   } },
+  "이다연": { n: "실내화 킥", anim: "kick", build(e) { // 손엔 아무것도 없어요 — 정강이를 차요
+  } },
   "김예균": { n: "소환 지팡이", anim: "staff", build(e) {
     const [tx, ty, tz] = wStick(e, e.mk(0x2a6a68, 0.5), 0.8, 0.022, 0, -0.43, 0.1, 0.4);
     const dy = Math.cos(0.4), dz = Math.sin(0.4);

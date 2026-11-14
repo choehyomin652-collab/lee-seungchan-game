@@ -1805,7 +1805,7 @@ function collect(dt) {
       let face = isFoe(u) ? 0 : Math.PI;
       if (u.alive && u.tgt) face = Math.atan2(worldX(u.tgt.X) - worldX(u.X), worldZ(u.tgt.Y) - worldZ(u.Y));
       push(u, u, x, z, { hit: u.alive ? { g: "board", r: u.r, c: u.c } : null, enemy: isFoe(u), f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, Math.min(1, u.deadT / 0.6)), face,
-        jump: u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive,
+        jump: u.leapT > 0 ? Math.sin((1 - u.leapT / 0.45) * Math.PI) * 1.3 : u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive, // leapT: 이다연이 김예균에게 달려들 때 폴짝
         lift: u.dropT > 0 ? u.dropT * u.dropT * 9 : 0 }); // 소환수가 하늘에서 떨어지는 중
     }
   } else {
@@ -2739,7 +2739,27 @@ function drawMegaSword(z, dt) {
   ud.arc.visible = k >= 0 && fade > 0;
   ud.arc.children.forEach((m) => (m.material.opacity = m.userData.op * fade));
 }
-const ZDRAW = { megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+// 이다연 깨물기: 대상 머리 높이에서 위아래 이빨이 콱! 다물렸다가 사라져요
+function drawBite(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), white = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true }), pink = additive("#ff4d8a");
+    const BG = GEO.bite || (GEO.bite = { gum: new THREE.TorusGeometry(0.42, 0.06, 6, 20, Math.PI), tooth: new THREE.ConeGeometry(0.06, 0.16, 5) }); // 모양은 한 번만 만들어 같이 써요
+    const jaw = (dir) => {
+      const j = new THREE.Group();
+      const gum = new THREE.Mesh(BG.gum, pink); gum.rotation.z = dir > 0 ? 0 : Math.PI; j.add(gum);
+      for (let i = 0; i < 7; i++) { const a = (i + 0.5) / 7 * Math.PI, tooth = new THREE.Mesh(BG.tooth, white); tooth.position.set(Math.cos(a) * 0.42 * (dir > 0 ? 1 : -1), Math.sin(a) * 0.42 * dir - dir * 0.09, 0); tooth.rotation.z = dir > 0 ? Math.PI : 0; j.add(tooth); }
+      return j;
+    };
+    grp.userData.top = jaw(1); grp.userData.bot = jaw(-1); grp.add(grp.userData.top, grp.userData.bot); grp.userData.mats = [white, pink];
+    return grp;
+  });
+  const t = z.t, snap = Math.min(1, t / 0.12), q = Math.max(0, 1 - Math.max(0, t - 0.2) / 0.25);
+  g.position.set(worldX(z.X), 1.5, worldZ(z.Y)); g.quaternion.copy(camera.quaternion); // 항상 카메라를 봐요
+  const gap = 0.55 * (1 - snap); g.userData.top.position.y = gap; g.userData.bot.position.y = -gap;
+  g.scale.setScalar(0.9 + 0.25 * Math.sin(snap * Math.PI)); g.visible = q > 0.02;
+  g.userData.mats.forEach((m) => (m.opacity = q));
+}
+const ZDRAW = { bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();

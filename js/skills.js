@@ -65,6 +65,16 @@ const SK = {
       }
       u.shield += 200 * P; addFx(B, u.X, u.Y, 0.8, C("--c3"));
     } },
+  "이다연": { s: "깨물기 · 정강이 차기", d: (P) => `대상을 콱 깨물어 공격력×1.2 + ${R0(80 * P)} 피해, 준 피해의 35% 회복. 이어서 정강이를 퍽 차서 ${R0(70 * P)} 피해 + 0.9초 기절. 기본 공격도 정강이 차기예요. 연인 김예균이 상대 팀에 있으면 전투 시작하자마자 달려들어요`,
+    run(B, u, P, t) {
+      if (!t || !t.alive) return;
+      B.zones.push({ kind: "bite", step: stepBiteKick, team: u.team, owner: u, P, tgt: t, X: t.X, Y: t.Y, t: 0, kickAt: KICK_AT, dur: KICK_AT + 0.45 });
+      const d = dealDamage(B, u, t, u.ad * 1.2 + 80 * P, "skill"); heal(B, u, d * 0.35); // 깨물기
+      const yg = t.d >= 0 && !t.robot && DEFS[t.d].n === "김예균";
+      addHuge(B, t, yg ? "♥콱!" : "콱!", "#ffffff", "#ff4d8a", 2.8);
+      addFx(B, t.X, t.Y, 0.8, "#ffffff", 0.3); addFx(B, t.X, t.Y, 1.2, "#ff4d8a", 0.45);
+      if (B.visual) { u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; S.shake = Math.max(S.shake || 0, 0.1); sfx("crit"); }
+    } },
   "윤동욱": { s: "음양의 조화", d: (P) => `태극 문양을 펼쳐요. 양(陽)의 기운으로 대상에게 공격력×2 + ${R0(120 * P)} 피해, 음(陰)의 기운으로 준 피해의 40% 회복. 기본 공격 때 동양철학 한마디`,
     run(B, u, P, t) {
       if (!t) return;
@@ -149,7 +159,7 @@ const SK = {
 
 const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", "¡Fuego!", "¡Venga!", "¡Qué fácil!"];
 const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아일체", "도(道)", "호접지몽", "지행합일"];
-const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5] };
+const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5], "이다연": [["정강이!", "에잇!", "퍽!", "앙!"], "#ff9ac0", 0.3] };
 // 소환수 이다연: 김예균 주변 빈칸에 나타나요
 const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
 function summon(B, u, P, max, opt = {}) {
@@ -249,6 +259,20 @@ function stepDunk(B, z, dt) {
       addHuge(B, z, "덩크!", "#fff1b0", "#ff8a3a", 3);
       if (B.visual) { S.shake = 0.3; sfx("boom"); }
     }
+  }
+  if (z.t >= z.dur) z.done = 1;
+}
+// 이다연 "깨물기 · 정강이 차기": 깨문 뒤(바로) KICK_AT초에 정강이를 차요
+const KICK_AT = 0.35;
+function stepBiteKick(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  const u = z.owner, t = z.tgt;
+  if (t.alive) { z.X = t.X; z.Y = t.Y; }
+  if (t0 < z.kickAt && z.t >= z.kickAt && u.alive && t.alive) {
+    dealDamage(B, u, t, 70 * z.P, "skill"); if (t.alive) t.stunT = Math.max(t.stunT || 0, 0.9);
+    addHuge(B, t, "아야!!", "#ffffff", "#ff8a3a", 2.4);
+    addFx(B, t.X, t.Y, 0.9, "#ffd36b", 0.35); addFx(B, t.X, t.Y, 1.5, "#ff8a3a", 0.5);
+    if (B.visual) { u.atkT = ATK_T; u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: "#ffe9a0", t: 0.35, t0: 0.35 }); S.shake = Math.max(S.shake || 0, 0.14); sfx("kick"); } // 발차기 동작
   }
   if (z.t >= z.dur) z.done = 1;
 }
