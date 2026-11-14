@@ -97,7 +97,7 @@ const SK = {
       addHuge(B, u, "捌", "#ffffff", "#ff2a3a", legend ? 5.2 : 4.6); // 하치: 가르다·베다
       if (B.visual) { sfx("charge"); S.shake = Math.max(S.shake || 0, 0.15); }
     } },
-  "최윤서": { s: "그물 던지기", d: (P) => `적이 가장 많이 모인 곳에 그물을 던져요. 반경 1칸 적 모두 ${R0(90 * P)} 피해 + 1.5초 동안 꼼짝 못 함, 3초 동안 받는 피해 +20%. ★2는 1.75초, ★3은 반경 2칸에 2.5초 묶고 그물 가운데로 끌어당겨요`,
+  "최윤서": { s: "그물 던지기", d: (P) => `적이 가장 많이 모인 곳에 그물을 던져요. 반경 1칸 적 모두 ${R0(90 * P)} 피해 + 1.5초 동안 꼼짝 못 함, 3초 동안 받는 피해 +20%. ★2는 1.75초, ★3은 반경 2칸에 2.5초 묶고 그물 가운데로 끌어당겨요. 박현호는 0.3초 더 묶여요`,
     run(B, u, P, t, al, fo) {
       const live = fo.filter((o) => o.alive); if (!live.length) return;
       const c = live.map((o) => [o, near(live, o, 1).length + (t && o === t ? 0.5 : 0)]).sort((a, b) => b[1] - a[1])[0][0]; // 가장 많이 모인 곳 (대상 근처 우선)
@@ -278,7 +278,8 @@ function stepNet(B, z, dt) {
   hit.sort((a, b) => hexDist(a, z) - hexDist(b, z)).forEach((o) => {
     dealDamage(B, u, o, 90 * z.P, "skill");
     if (!o.alive) return;
-    o.stunT = Math.max(o.stunT || 0, z.hold); o.vuln = Math.max(o.vuln || 0, 0.2); o.vulnT = Math.max(o.vulnT || 0, 3);
+    const extra = o.d >= 0 && !o.robot && DEFS[o.d].n === "박현호" ? 0.3 : 0; // 박현호만 0.3초 더 묶여요
+    o.stunT = Math.max(o.stunT || 0, z.hold + extra); o.vuln = Math.max(o.vuln || 0, 0.2); o.vulnT = Math.max(o.vulnT || 0, 3);
     if (z.pull && hexDist(o, z) > 0) { // 그물 가운데로 한 칸 끌어당겨요
       let best = null, bd = hexDist(o, z);
       for (const [nr, nc] of neighbors(o.r, o.c)) { const nd = hexDistRC(nr, nc, z.r, z.c); if (nd < bd && !occ.has(nr * COLS + nc)) { bd = nd; best = [nr, nc]; } }
