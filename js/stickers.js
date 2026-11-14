@@ -186,44 +186,72 @@ function drawSticker(g, k) {
   if (k === "wow") { stBang(g, 162, 52, 1.2); g.save(); g.translate(150, 92); g.rotate(-0.4); stDrop(g, 0, 0, 1, "#9fe0ff"); g.restore(); }
 }
 
-// ---------- 핑 아이콘 ----------
-// [이름표, 이름, 색, 소리]
+// ---------- 핑 (바닥에 서 있는 금빛 기호) ----------
+// [이름표, 이름, 바닥 고리 색]
 const PINGS = [
-  ["q", "물음표", "#ffc53d"],
-  ["danger", "위험!", "#ff4a4a"],
-  ["target", "노려!", "#ff8a2a"],
-  ["good", "좋아!", "#4fe08a"],
+  ["q", "물음표", "#e9f06a"],
+  ["danger", "위험!", "#ff6a52"],
+  ["target", "노려!", "#ffa040"],
+  ["good", "좋아!", "#7ff0a0"],
 ];
 const PING_COL = Object.fromEntries(PINGS.map((p) => [p[0], p[2]]));
+// 기호 색: 윗면 밝게 → 아래 진하게, 옆면(두께), 외곽선
+const PING_TONE = {
+  q: { top: "#fff6b8", mid: "#f4c836", bot: "#c07a08", side: "#6e4006", ink: "#2e1a02" },
+  danger: { top: "#ffc2b4", mid: "#ff4e3c", bot: "#b01420", side: "#5a0810", ink: "#260306" },
+  target: { top: "#ffe0b8", mid: "#ff9a34", bot: "#c45208", side: "#6a2a04", ink: "#2a1002" },
+  good: { top: "#d8ffe4", mid: "#52e08c", bot: "#16884a", side: "#0a4a26", ink: "#04220f" },
+};
 const PIC = {}, PIC_URL = {};
+// 128×160 캔버스, 아래 가운데(64, 152)가 바닥에 닿는 점
 function pingIcon(k) {
   if (PIC[k]) return PIC[k];
-  const c = document.createElement("canvas"); c.width = c.height = 128;
-  try { drawPingIcon(c.getContext("2d"), k); } catch (e) {}
+  let c = null;
+  try { c = drawPingGlyph(k); } catch (e) { c = document.createElement("canvas"); c.width = 128; c.height = 160; }
   return (PIC[k] = c);
 }
 function pingIconUrl(k) { return PIC_URL[k] || (PIC_URL[k] = pingIcon(k).toDataURL("image/png")); }
-function drawPingIcon(g, k) {
-  const C = 64; g.lineCap = "round"; g.lineJoin = "round";
-  const glyph = (txt, size, y = C + 3) => { g.font = `900 ${size}px system-ui, -apple-system, "Segoe UI", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 9; g.strokeStyle = "rgba(20,26,51,.85)"; g.strokeText(txt, C, y); g.fillStyle = "#fff"; g.fillText(txt, C, y); };
-  g.save(); g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = 10; g.shadowOffsetY = 4;
-  if (k === "q") { // 물음표: 금빛 동그라미
-    g.beginPath(); g.arc(C, C, 46, 0, Math.PI * 2); const gr = g.createLinearGradient(0, 18, 0, 110); gr.addColorStop(0, "#ffe27a"); gr.addColorStop(1, "#e08a00"); g.fillStyle = gr; g.fill();
-    g.restore(); g.lineWidth = 6; g.strokeStyle = ST_INK; g.stroke(); g.beginPath(); g.arc(C, C, 38, 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = "rgba(255,255,255,.6)"; g.stroke();
-    glyph("?", 70);
-  } else if (k === "danger") { // 위험: 빨간 세모
-    g.beginPath(); g.moveTo(C, 14); g.lineTo(116, 106); g.lineTo(12, 106); g.closePath(); const gr = g.createLinearGradient(0, 14, 0, 106); gr.addColorStop(0, "#ff7a6a"); gr.addColorStop(1, "#c41a28"); g.fillStyle = gr; g.fill();
-    g.restore(); g.lineWidth = 7; g.strokeStyle = ST_INK; g.stroke();
-    glyph("!", 62, 76);
-  } else if (k === "target") { // 노려: 과녁
-    g.beginPath(); g.arc(C, C, 44, 0, Math.PI * 2); g.fillStyle = "#fff4e6"; g.fill(); g.restore();
-    g.lineWidth = 6; g.strokeStyle = ST_INK; g.stroke();
-    g.beginPath(); g.arc(C, C, 32, 0, Math.PI * 2); g.lineWidth = 9; g.strokeStyle = "#ff6a1a"; g.stroke();
-    g.beginPath(); g.arc(C, C, 12, 0, Math.PI * 2); g.fillStyle = "#ff3a1a"; g.fill(); g.lineWidth = 3; g.strokeStyle = ST_INK; g.stroke();
-    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { g.beginPath(); g.moveTo(C + dx * 50, C + dy * 50); g.lineTo(C + dx * 22, C + dy * 22); g.lineWidth = 9; g.strokeStyle = ST_INK; g.stroke(); g.lineWidth = 4; g.strokeStyle = "#fff"; g.stroke(); }
-  } else { // 좋아: 초록 별 배지
-    g.beginPath(); g.arc(C, C, 46, 0, Math.PI * 2); const gr = g.createLinearGradient(0, 18, 0, 110); gr.addColorStop(0, "#7ff0a0"); gr.addColorStop(1, "#1f9a52"); g.fillStyle = gr; g.fill();
-    g.restore(); g.lineWidth = 6; g.strokeStyle = ST_INK; g.stroke();
-    stStar(g, C, C + 2, 30, "#fff", ST_INK);
-  }
+const PING_FONT = "900 150px Georgia, 'Times New Roman', 'Noto Serif', 'DejaVu Serif', serif";
+function pingShape(k) {
+  // how = "fill" | "stroke": 같은 모양을 채우거나 테두리만 그려요
+  if (k === "q") return (g, how) => { g.font = PING_FONT; g.textAlign = "center"; g.textBaseline = "alphabetic"; g[how === "fill" ? "fillText" : "strokeText"]("?", 64, 150); };
+  if (k === "danger") return (g, how) => { // 느낌표: 위가 넓고 아래로 좁아지는 막대 + 둥근 점 (글꼴마다 너무 가늘어서 직접 그려요)
+    g.beginPath(); g.moveTo(44, 40); g.quadraticCurveTo(64, 30, 84, 40); g.lineTo(72, 112); g.quadraticCurveTo(64, 118, 56, 112); g.closePath();
+    g.moveTo(79, 136); g.arc(64, 136, 15, 0, Math.PI * 2);
+    how === "fill" ? g.fill() : g.stroke();
+  };
+  if (k === "target") return (g, how) => { // 과녁: 고리 + 십자 (세워서)
+    g.beginPath(); g.moveTo(104, 92); g.arc(64, 92, 40, 0, Math.PI * 2); g.closePath(); g.moveTo(88, 92); g.arc(64, 92, 24, 0, Math.PI * 2, true); g.closePath();
+    for (const [x, y, w, h] of [[57, 26, 14, 24], [57, 134, 14, 20], [2, 85, 20, 14], [106, 85, 20, 14]]) g.rect(x, y, w, h); // 팔은 고리 바깥에만 (겹치면 안쪽에 선이 보여요)
+    g.moveTo(64 + 9, 92); g.arc(64, 92, 9, 0, Math.PI * 2);
+    how === "fill" ? g.fill("nonzero") : g.stroke();
+  };
+  return (g, how) => { // 좋아: 별
+    g.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 22 : 54; g.lineTo(64 + Math.cos(a) * r, 96 + Math.sin(a) * r); }
+    g.closePath(); how === "fill" ? g.fill() : g.stroke();
+  };
+}
+function drawPingGlyph(k) {
+  const W = 128, H = 160, T = PING_TONE[k], shape = pingShape(k);
+  const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; };
+  const c = mk(), g = c.getContext("2d"), F = mk(), f = F.getContext("2d");
+  g.lineJoin = f.lineJoin = "round";
+  // 앞면: 위→아래 금빛 그라데이션 + 왼쪽 위 반짝 + 오른쪽 아래 그늘
+  const fg = f.createLinearGradient(0, 30, 0, 152); fg.addColorStop(0, T.top); fg.addColorStop(0.45, T.mid); fg.addColorStop(1, T.bot);
+  f.fillStyle = fg; shape(f, "fill");
+  f.globalCompositeOperation = "source-atop";
+  const hl = f.createLinearGradient(20, 20, 90, 110); hl.addColorStop(0, "rgba(255,255,255,.75)"); hl.addColorStop(0.35, "rgba(255,255,255,.12)"); hl.addColorStop(0.55, "rgba(255,255,255,0)");
+  f.fillStyle = hl; f.fillRect(0, 0, W, H);
+  const sh = f.createLinearGradient(60, 70, 120, 150); sh.addColorStop(0, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(60,30,0,.35)");
+  f.fillStyle = sh; f.fillRect(0, 0, W, H);
+  // 안쪽 테두리 빛 (얇게)
+  f.globalCompositeOperation = "source-over"; f.lineWidth = 2; f.strokeStyle = "rgba(255,255,240,.55)"; f.save(); f.translate(-1, -1.5); shape(f, "stroke"); f.restore();
+  // 두께(옆면): 오른쪽 아래로 여러 번 겹쳐 그려 입체감
+  g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 8; g.shadowOffsetY = 4;
+  g.fillStyle = T.side; for (let i = 7; i >= 1; i--) { g.save(); g.translate(i * 0.55, i * 0.85); shape(g, "fill"); g.restore(); }
+  g.restore();
+  g.lineWidth = 6; g.strokeStyle = T.ink; shape(g, "stroke");
+  g.drawImage(F, 0, 0);
+  return c;
 }
