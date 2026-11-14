@@ -24,6 +24,13 @@ function pracSetHero(star) {
   for (const [r, c] of [[0, 3], [0, 2], [0, 4], [1, 3], [1, 2], [0, 1], [0, 5]]) if (!P.board[r][c]) { P.board[r][c] = mkUnit(d, star); break; }
   S.pracStar = star; renderUI();
 }
+// 초합체로봇 보기: 보드를 비우고 합체로봇 네 명을 모두 ★3으로 놓아요 (실제 게임에서는 9장씩 모아야 해서 보기 어려워요)
+function pracMegaRobot() {
+  const P = human(); P.board = P.board.map((row) => row.map(() => null));
+  [["조하윤", 0, 2], ["박희찬", 0, 4], ["윤동욱", 1, 2], ["이보경", 1, 4]].forEach(([n, r, c]) => (P.board[r][c] = mkUnit(pracIdx(n), 3)));
+  S.pracStar = 0; renderUI();
+  toast("합체로봇 네 명을 ★3으로 놓았어요. 시작을 누르면 초합체!");
+}
 function practiceStart() {
   if (NET.joined) netLeave();
   NET.on = false; NET.done = true;
@@ -85,7 +92,7 @@ function pracUI() {
   $("pracmana").classList.toggle("on", !!S.pracMana);
   $("pracmana").textContent = S.pracMana ? "바로 스킬 켜짐" : "바로 스킬 꺼짐";
   const plan = S.phase === "plan";
-  el.querySelectorAll("[data-star],[data-foe]").forEach((b) => (b.disabled = !plan));
+  el.querySelectorAll("[data-star],[data-foe],#pracmega").forEach((b) => (b.disabled = !plan));
   $("pracstop").disabled = S.phase !== "combat";
   const rt = $("rtype"); if (rt) { rt.textContent = "연습장"; rt.className = "rtype"; }
 }
@@ -93,5 +100,6 @@ tapButton($("practice"), practiceStart);
 document.querySelectorAll("#prac [data-star]").forEach((b) => tapButton(b, () => { if (S.phase === "plan") pracSetHero(+b.dataset.star); }));
 document.querySelectorAll("#prac [data-foe]").forEach((b) => tapButton(b, () => { if (S.phase === "plan") { S.pracFoe = b.dataset.foe; renderUI(); } }));
 tapButton($("pracmana"), () => { S.pracMana = !S.pracMana; renderUI(); });
+tapButton($("pracmega"), () => { if (S.phase === "plan") pracMegaRobot(); });
 tapButton($("pracexit"), practiceExit);
 tapButton($("pracstop"), () => { const B = S.battle; if (S.phase === "combat" && B && !B.done) { B.done = true; if (B.win == null) B.win = -1; } }); // 전투를 바로 끝내고 준비로 돌아가요

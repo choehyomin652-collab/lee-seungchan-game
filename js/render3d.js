@@ -433,7 +433,25 @@ function makePortraits() {
   } catch (e) { /* 그림 없이도 카드는 보여요 */ }
 }
 let composer = null, bloomPass = null, HQ = true, pollen = null;
-try { HQ = localStorage.getItem("uri-hq") !== "0"; } catch (e) {}
+// 화질: 직접 고른 게 있으면 그대로. 없으면 휴대폰(작은 화면)은 "보통"으로 시작하고, 큰 화면은 "높음"으로 시작해서 느리면 자동으로 낮춰요 (autoQualityStep)
+const HQ_PICKED = (() => { try { return localStorage.getItem("uri-hq"); } catch (e) { return null; } })();
+try { HQ = HQ_PICKED ? HQ_PICKED !== "0" : localStorage.getItem("uri-hq-auto") !== "0" && Math.min(screen.width, screen.height) >= 500; } catch (e) {}
+// 게임 화면이 보이는 동안 1초를 건너뛰고 4초 동안 프레임 수를 세요. 초당 35프레임이 안 나오면 "보통"으로 (다음 실행도 보통으로 시작)
+const AUTOQ = { t0: 0, n: 0, done: !!HQ_PICKED };
+function autoQualityStep() {
+  if (AUTOQ.done || !HQ) return;
+  const now = performance.now();
+  if (!AUTOQ.t0) AUTOQ.t0 = now;
+  const el = now - AUTOQ.t0;
+  if (el < 1000) return; // 처음 막 열렸을 때의 끊김은 빼고
+  AUTOQ.n++;
+  if (el < 5000) return;
+  AUTOQ.done = true;
+  if (AUTOQ.n / ((el - 1000) / 1000) < 35) {
+    HQ = false; try { localStorage.setItem("uri-hq-auto", "0"); } catch (e) {}
+    resize(); if (S) renderUI(); toast("기기가 버거워해서 화질을 '보통'으로 바꿨어요 (설정에서 다시 바꿀 수 있어요)");
+  }
+}
 const FINAL_SHADER = {
   uniforms: { tDiffuse: { value: null } },
   vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
@@ -2970,6 +2988,7 @@ function loop(now) {
   if (S && HAS3D) {
     const paused = !$("ov").hidden;
     const dt = paused ? 0 : real * S.speed;
+    if (!paused && !document.hidden) autoQualityStep();
     if (!paused) {
       if (S.phase === "plan") { if (S.augPending && !S.fast) { S.augT -= real; $("augtier").dataset.t = Math.max(0, Math.ceil(S.augT)); if (S.augT <= 0 && S.augChoose) S.augChoose(); } if (S.augPending && S.fast) { const b = $("augs").querySelector(".augcard"); if (b) b.click(); } if (!S.augPending) { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); } }
       else if (S.phase === "combat") {

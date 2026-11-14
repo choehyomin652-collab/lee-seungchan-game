@@ -3,6 +3,7 @@
 // ============================================================
 "use strict";
 // =============== 전투 엔진 ===============
+const GIVE_SHIELD = [0, 0.06, 0.22]; // 다 퍼줌 2명 · 4명일 때 보호막 (최대 체력 비율)
 function makeFighter(spec, team, r, c, cnt, buff) {
   const f = { team, r, c, X: c + (r & 1) * 0.5, Y: r, alive: true, shield: 0, mana: 0, crit: 0, amp: 1, mgain: 1,
     asStack: 0, atkCd: 0.25 + Math.random() * 0.3, moveCd: 0, sec: 0, tgt: null, flash: 0, lunge: 0, lx: 0, ly: 0, deadT: 0, items: [], star: 1 };
@@ -33,7 +34,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   f.crit += st.crit || 0; f.mgain *= 1 + (st.mgainPct || 0);
   for (const k of ["stackAs", "lifesteal", "splash", "skillCrit", "manaOnHit", "lowHpAs", "thorns", "manaTick", "lowShield", "regen", "teamShield", "castShield", "castHeal", "refund"]) f[k] = st[k] || 0;
   if (buff) { f.as0 *= 1 + buff.as; f.ar = Math.min(0.75, f.ar + buff.ar); f.ad *= 1 + buff.ad; f.maxHp *= 1 + buff.hp; }
-  f.shield += f.maxHp * [0, 0.15, 0.5][L("다 퍼줌")]; // 다 퍼줌: 최대 체력 비율만큼 보호막 (별·아이템이 오를수록 같이 커져요)
+  f.shield += f.maxHp * GIVE_SHIELD[L("다 퍼줌")]; // 다 퍼줌: 최대 체력 비율만큼 보호막 (별·아이템이 오를수록 같이 커져요)
   f.hp = f.maxHp; f.mana = Math.min(f.mana, f.mm - 1);
   return f;
 }
