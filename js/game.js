@@ -216,7 +216,7 @@ window.addEventListener("error", (e) => reportError(e.error || e.message));
 // 등급(ti)에 맞는 숫자를 넣은 증강 3개 (등급 전용 증강은 그 등급에서만)
 function augOptions(P, ti) {
   return shuffle(AUGS.filter((a) => (ITEMS_ON || !["supplies", "complete"].includes(a.id)) && (a.id.startsWith("emb-") || !P.augs.includes(a.id)) && (!a.tiers || a.tiers.includes(ti))))
-    .slice(0, 3).map((a) => { const v = a.v ? a.v[ti] : undefined; return { id: a.id, n: a.n, d: a.d(v), f: (Q) => a.f(Q, v) }; });
+    .slice(0, 3).map((a) => { const v = a.v ? a.v[ti] : undefined; return { id: a.id, n: a.n, hero: !!a.hero, d: a.d(v), f: (Q) => a.f(Q, v) }; });
 }
 function showAugments(tier, rerolled) {
   const P = human(), opts = augOptions(P, TIER_IX[tier]);
@@ -225,7 +225,7 @@ function showAugments(tier, rerolled) {
   tapButton($("augre"), () => { if (S.augPending) showAugments(tier, true); });
   $("augtier").textContent = `${tier} 증강`;
   $("augtier").className = "augtier t-" + tier;
-  $("augs").innerHTML = opts.map((a, i) => `<button class="augcard t-${tier}" data-i="${i}"><span class="augicon">${a.n[0]}</span><b>${a.n}</b><span>${a.d}</span></button>`).join("");
+  $("augs").innerHTML = opts.map((a, i) => `<button class="augcard t-${tier}${a.hero ? " hero" : ""}" data-i="${i}"><span class="augicon">${a.n[0]}</span><b>${a.n}</b><span>${a.d}</span></button>`).join("");
   const choose = (i) => {
     if (!S.augPending) return;
     const a = opts[i]; S.augPending = false; $("aug").hidden = true;

@@ -195,6 +195,10 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .augicon { width: calc(var(--u) * 9); height: calc(var(--u) * 10); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: grid; place-items: center; background: linear-gradient(#e6edf2, #6f7f8a); color: #10181c; font-family: var(--display); font-size: calc(var(--u) * 4); }
 .augcard.t-골드 .augicon { background: linear-gradient(#ffe88a, #b98a33); }
 .augcard.t-프리즘 .augicon { background: linear-gradient(135deg, #ff9ad5, #9ad5ff, #c6ff9a); }
+/* 영웅 증강 (예: 피의 굶주림 이현): 붉은 카드 + "영웅" 표시 */
+.augcard.hero { background: linear-gradient(170deg, #6a0f1a, #2a060b) !important; border-color: #ff5a5a !important; box-shadow: 0 0 calc(var(--u) * 3.5) rgba(255,70,80,.55) !important; position: relative; }
+.augcard.hero .augicon { background: linear-gradient(#ff8a8a, #b0101e) !important; color: #fff; }
+.augcard.hero::before { content: "영웅"; position: absolute; top: calc(var(--u) * 1); right: calc(var(--u) * 1.2); padding: 1px 8px; border-radius: 999px; background: #e8202e; color: #fff; font-size: calc(var(--u) * 1.5); font-weight: 700; }
 @media (orientation: portrait) { #rotate:not(.dismissed) { display: flex; } }
 /* 다듬기: 카드 아래쪽 그늘(글씨가 잘 보이게), 눌림·올림 반응 */
 .card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, .5)); pointer-events: none; }
