@@ -314,7 +314,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .pingwheel { position: fixed; z-index: 45; width: 0; height: 0; --r: 90px; }
 .pingwheel button { position: absolute; transform: translate(-50%, -50%); width: 76px; height: 76px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0;
   background: radial-gradient(circle at 50% 35%, rgba(40, 70, 86, .97), rgba(8, 20, 28, .97)); border: 2px solid var(--edge); color: #fff; font: 13px var(--display); box-shadow: 0 6px 18px rgba(0, 0, 0, .55); animation: pwin .18s ease-out both; }
-.pingwheel button img { width: 44px; height: 44px; }
+.pingwheel button img { width: 44px; height: 44px; object-fit: contain; }
 .pingwheel button:active { transform: translate(-50%, -50%) scale(.92); }
 .pingwheel .pw0 { left: 0; top: calc(var(--r) * -1); }
 .pingwheel .pw1 { left: calc(var(--r) * -1); top: 0; animation-delay: .03s; }

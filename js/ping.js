@@ -60,9 +60,9 @@ function pingTargetAt(x, y) {
   }
   return { kind: "w", x: h.p.x, z: h.p.z, rd };
 }
-// 핑이 지금 화면 어디에 있나요? → [x, 아이콘 높이, z] (지금 화면에 없으면 null)
+// 핑이 지금 화면 어디에 있나요? → [x, 기호 높이(0 = 땅에 서 있기), z] (지금 화면에 없으면 null)
 function pingAnchor(p) {
-  if (p.kind === "w") return [p.x, 1.0, p.z];
+  if (p.kind === "w") return [p.x, 0, p.z];
   if (p.rd !== netRound()) return null;
   if (p.kind === "p") {
     if (!inPlanView()) return null;
@@ -71,12 +71,12 @@ function pingAnchor(p) {
     else if (S.scout != null && riOf(S.players[S.scout]) === p.owner) { row = 3 - p.lr; col = COLS - 1 - p.c; owner = S.players[S.scout]; }
     else return null;
     const u = owner.board[p.lr] && owner.board[p.lr][p.c];
-    return [worldX(gridX(row, col)), u ? 3.3 + (u.star - 1) * 0.3 : 1.0, worldZ(row)]; // 친구가 있으면 이름표 위로
+    return [worldX(gridX(row, col)), u ? 3.3 + (u.star - 1) * 0.3 : 0, worldZ(row)]; // 친구가 있으면 이름표 위로, 빈 칸이면 땅에 세워요
   }
   if (!inBattleView() || p.key !== pingBattleKey()) return null;
   const f = p.fi >= 0 ? S.battle.f[p.fi] : null;
   if (f && (f.alive || f.deadT > 0)) return [worldX(f.X), f.robot ? 4.6 : f.mon && f.mon.boss ? 3.8 : 3.3 + ((f.star || 1) - 1) * 0.3, worldZ(f.Y)];
-  return [worldX(p.X), 1.0, worldZ(p.Y)];
+  return [worldX(p.X), 0, worldZ(p.Y)];
 }
 
 // 핑 찍기
@@ -148,6 +148,8 @@ function pingParse(e) {
 }
 
 // ---------- 화면에 그리기 (render3d.js 의 drawOverlay 가 불러요) ----------
+// 바닥: 빛나는 고리 세 겹(끊어진 호가 서로 반대로 돌아요) + 처음 찍힐 때 퍼지는 물결
+// 기호: 빈 땅이면 고리 가운데에 금빛 기호가 서 있고, 친구 위에 찍으면 고리는 발밑 · 기호는 머리 위
 function drawPings(u0) {
   if (!PING.list.length) return;
   const now = performance.now();
@@ -155,31 +157,45 @@ function drawPings(u0) {
   for (const p of PING.list) {
     const A = pingAnchor(p);
     if (!A) continue;
-    const age = (now - p.at) / 1000, out = Math.min(1, (PING.life - age) / 0.4), col = PING_COL[p.k];
-    const [x, top, z] = A;
-    ctx.save(); ctx.globalAlpha = out;
-    // 바닥 고리: 퍼져 나가는 물결 2개 + 가운데 고리
-    const ring = (rad, alpha, lw) => {
-      ctx.beginPath();
-      for (let i = 0; i <= 28; i++) { const a = (i / 28) * Math.PI * 2, [sx, sy] = proj(x + Math.cos(a) * rad, 0.06, z + Math.sin(a) * rad); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); }
-      ctx.globalAlpha = out * alpha; ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
+    const age = (now - p.at) / 1000, out = Math.min(1, (PING.life - age) / 0.45), col = PING_COL[p.k];
+    const [x, top, z] = A, onGround = top < 0.3;
+    ctx.save(); ctx.lineCap = "round";
+    const pt = (r, a) => proj(x + Math.cos(a) * r, 0.04, z + Math.sin(a) * r);
+    const arc = (r, a0, a1, lw, alpha, stroke, glow) => {
+      const n = Math.max(6, Math.ceil(Math.abs(a1 - a0) / 0.1));
+      ctx.beginPath(); for (let i = 0; i <= n; i++) { const [sx, sy] = pt(r, a0 + ((a1 - a0) * i) / n); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); }
+      ctx.globalAlpha = out * alpha; ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.shadowColor = col; ctx.shadowBlur = glow; ctx.stroke();
     };
-    for (let w = 0; w < 2; w++) { const ph = ((age + w * 0.45) % 0.9) / 0.9; ring(0.3 + ph * 0.9, (1 - ph) * 0.9, u0 * 0.35); }
-    ring(0.45, 0.95, u0 * 0.3);
-    // 기둥 + 아이콘 (위에서 톡 떨어져서 통통)
-    const [gx, gy] = proj(x, 0.06, z), [ix, iy0] = proj(x, top, z);
-    const drop = age < 0.25 ? (1 - age / 0.25) ** 2 * u0 * 5 : 0, bounce = age >= 0.25 && age < 0.55 ? Math.sin((age - 0.25) / 0.3 * Math.PI) * u0 * 0.8 : 0;
-    const iy = iy0 - drop - bounce - Math.sin(age * 4) * u0 * 0.15, sz = u0 * 3.9 * (age < 0.25 ? 1.3 - age * 1.2 : 1);
-    ctx.globalAlpha = out * 0.8; ctx.strokeStyle = col; ctx.lineWidth = u0 * 0.22; ctx.setLineDash([u0 * 0.4, u0 * 0.3]);
-    ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(ix, iy + sz * 0.4); ctx.stroke(); ctx.setLineDash([]);
-    ctx.globalAlpha = out;
-    const glow = ctx.createRadialGradient(ix, iy, sz * 0.2, ix, iy, sz * 0.9); glow.addColorStop(0, col + "88"); glow.addColorStop(1, col + "00");
-    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(ix, iy, sz * 0.9, 0, Math.PI * 2); ctx.fill();
-    ctx.drawImage(pingIcon(p.k), ix - sz / 2, iy - sz / 2, sz, sz);
-    if (p.who) { // 친구가 찍은 핑엔 이름표
+    // 끊어진 고리: 빛나는 색 + 가운데 하얀 심
+    const ring = (r, segs, len, rot, lw) => { for (let i = 0; i < segs; i++) { const a0 = rot + (i * Math.PI * 2) / segs; arc(r, a0, a0 + len, lw, 0.95, col, u0 * 1.1); arc(r, a0 + 0.05, a0 + len - 0.05, lw * 0.4, 0.85, "#fffbe0", 0); } };
+    const grow = 1 - (1 - Math.min(1, age / 0.3)) ** 3, gs = 0.55 + 0.45 * grow; // 처음에 고리가 펼쳐지며 커져요
+    // 바닥 은은한 빛
+    const [gx, gy] = proj(x, 0.04, z), [ex] = proj(x + 1.2 * gs, 0.04, z), [, ey] = proj(x, 0.04, z + 1.2 * gs);
+    const rx = Math.max(4, Math.abs(ex - gx)), ry = Math.max(2, Math.abs(ey - gy));
+    ctx.save(); ctx.translate(gx, gy); ctx.scale(1, ry / rx);
+    const bg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx); bg.addColorStop(0, col + "66"); bg.addColorStop(0.6, col + "22"); bg.addColorStop(1, col + "00");
+    ctx.globalAlpha = out; ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ring(0.98 * gs, 3, 1.55, age * 0.9, u0 * 0.26); // 바깥 고리: 긴 호 3개
+    ring(0.68 * gs, 2, 2.3, -age * 1.4 + 0.6, u0 * 0.22); // 가운데 고리: 반대로
+    ring(0.4 * gs, 3, 1.2, age * 2 + 1.1, u0 * 0.17); // 안쪽 작은 고리
+    if (age < 0.6) arc(0.4 + age * 1.9, 0, Math.PI * 2, u0 * 0.3 * (1 - age / 0.6), (1 - age / 0.6) * 0.9, col, u0); // 찍는 순간 퍼지는 물결
+    const ph = (age % 1.2) / 1.2; arc(1.02 + ph * 0.5, 0, Math.PI * 2, u0 * 0.12, (1 - ph) * 0.35, col, 0); // 천천히 퍼지는 숨결
+    // 기호: 위에서 떨어져 땅(또는 머리 위)에 착! 닿을 때 살짝 찌그러져요
+    const [bx, by0] = onGround ? [gx, gy] : proj(x, top, z);
+    const H = u0 * (onGround ? 5.4 : 4.6), Wd = H * 0.8;
+    const fall = age < 0.28 ? (1 - age / 0.28) ** 2 * u0 * 8 : 0;
+    const sq = age >= 0.28 && age < 0.52 ? Math.sin(((age - 0.28) / 0.24) * Math.PI) : 0;
+    const hover = onGround ? 0 : Math.sin(age * 3.5) * u0 * 0.25;
+    const by = by0 - fall - hover, h2 = H * (1 - sq * 0.18), w2 = Wd * (1 + sq * 0.14);
+    if (onGround) { ctx.globalAlpha = out * 0.45; ctx.shadowBlur = 0; ctx.fillStyle = "#000"; ctx.beginPath(); ctx.ellipse(gx, gy, w2 * 0.28 * (fall ? 0.6 : 1), w2 * 0.09, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = out; ctx.shadowColor = col; ctx.shadowBlur = u0 * (0.8 + 0.4 * Math.sin(age * 5));
+    ctx.drawImage(pingIcon(p.k), bx - w2 / 2, by - h2 * (152 / 160), w2, h2);
+    ctx.shadowBlur = 0;
+    if (p.who) { // 친구가 찍은 핑엔 이름표 (고리 아래)
       ctx.font = font(u0 * 0.95); const w = ctx.measureText(p.who).width + u0;
-      ctx.fillStyle = "rgba(7,16,22,.85)"; roundRect(ix - w / 2, iy + sz * 0.5, w, u0 * 1.4, u0 * 0.5); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.who, ix, iy + sz * 0.5 + u0 * 0.72);
+      const ly = onGround ? gy + ry + u0 * 0.3 : by + u0 * 0.4;
+      ctx.globalAlpha = out; ctx.fillStyle = "rgba(7,16,22,.85)"; roundRect(bx - w / 2, ly, w, u0 * 1.4, u0 * 0.5); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.who, bx, ly + u0 * 0.72);
     }
     ctx.restore();
   }
