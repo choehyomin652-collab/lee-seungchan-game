@@ -81,8 +81,8 @@ function toggleHistory() {
 }
 
 // ---------- 감정 표현 버튼 ----------
-const EMOTES = [["dance", "💃", "춤추기"], ["cry", "😢", "울기"], ["cheer", "👍", "최고!"], ["angry", "😠", "화내기"]];
-const EMO_SAY = { dance: "의 펭귄이 춤춰요 💃", cry: "의 펭귄이 울어요 😢", cheer: "의 펭귄: 최고! 👍", angry: "의 펭귄이 화났어요 😠" };
+// 스티커 그림 · 목록은 stickers.js (EMOTES)
+const EMO_SAY = { dance: "의 펭귄이 춤춰요", cheer: "의 펭귄: 최고!", laugh: "의 펭귄: ㅋㅋㅋ", love: "의 펭귄이 하트를 보내요", wow: "의 펭귄이 깜짝 놀랐어요", cry: "의 펭귄이 울어요", angry: "의 펭귄이 화났어요", tease: "의 펭귄: 메롱~" };
 let emoAt = 0;
 function doEmote(k) {
   $("emomenu").hidden = true; $("emobtn").setAttribute("aria-expanded", "false");
@@ -110,12 +110,13 @@ function chatSend(text, em) {
   chatAdd(NET.name || "나", m, true);
 }
 function chatAdd(name, [, text, em], mine) {
-  const line = em && EMO_SAY[em] ? { n: name, t: EMO_SAY[em], em: 1 } : { n: name, t: text };
+  const line = em && EMO_SAY[em] ? { n: name, t: EMO_SAY[em], em: 1, stk: em } : { n: name, t: text };
   line.mine = mine; CHAT.log.push(line); CHAT.log = CHAT.log.slice(-40);
   if (!CHAT.open && !mine) { CHAT.unread++; chatFeed(line); }
   chatRender();
 }
-const chatLine = (l) => l.em ? `<li class="em${l.mine ? " me" : ""}"><b>${esc(l.n)}</b>${esc(l.t)}</li>` : `<li class="${l.mine ? "me" : ""}"><b>${esc(l.n)}</b>${esc(l.t)}</li>`;
+const stkImg = (k) => (k && EMO_SAY[k] ? `<img class="stk" src="${stickerUrl(k)}" alt="">` : "");
+const chatLine = (l) => l.em ? `<li class="em${l.mine ? " me" : ""}">${stkImg(l.stk)}<span><b>${esc(l.n)}</b>${esc(l.t)}</span></li>` : `<li class="${l.mine ? "me" : ""}"><b>${esc(l.n)}</b>${esc(l.t)}</li>`;
 function chatRender() {
   const log = $("chatlog");
   log.innerHTML = CHAT.log.length ? CHAT.log.map(chatLine).join("") : `<li class="sys">같은 방 친구들과 이야기해요. 방 코드 ${esc(NET.code)}</li>`;
@@ -125,7 +126,7 @@ function chatRender() {
 }
 // 채팅창을 닫아 두었을 때: 새 메시지를 잠깐 띄워요
 function chatFeed(line) {
-  const el = document.createElement("div"); el.className = "feedline"; el.innerHTML = `<b>${esc(line.n)}</b>${line.em ? "" : " "}${esc(line.t)}`;
+  const el = document.createElement("div"); el.className = "feedline"; el.innerHTML = `${stkImg(line.stk)}<b>${esc(line.n)}</b>${line.em ? "" : " "}${esc(line.t)}`;
   const box = $("chatfeed"); box.appendChild(el);
   while (box.children.length > 3) box.firstChild.remove();
   setTimeout(() => el.remove(), 6000);
@@ -159,7 +160,7 @@ function chatTick() {
 }
 
 // ---------- 버튼 연결 ----------
-$("emomenu").innerHTML = EMOTES.map(([k, i, n]) => `<button data-k="${k}"><span class="ei">${i}</span>${n}</button>`).join("");
+$("emomenu").innerHTML = EMOTES.map(([k, n]) => `<button data-k="${k}"><img class="ei" src="${stickerUrl(k)}" alt="">${n}</button>`).join("");
 $("emomenu").querySelectorAll("button").forEach((b) => tapButton(b, () => doEmote(b.dataset.k)));
 $("emobtn").onclick = (e) => { e.stopPropagation(); const m = $("emomenu"); m.hidden = !m.hidden; $("emobtn").setAttribute("aria-expanded", String(!m.hidden)); $("menu").hidden = true; };
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest || !e.target.closest(".mini")) { $("emomenu").hidden = true; $("emobtn").setAttribute("aria-expanded", "false"); } });
