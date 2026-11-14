@@ -4,6 +4,7 @@
 "use strict";
 // =============== 전투 엔진 ===============
 const GIVE_SHIELD = [0, 0.06, 0.22]; // 다 퍼줌 2명 · 4명일 때 보호막 (최대 체력 비율)
+const LOVER_SHIELD = 0.15, LOVER_RAGE = 1.4; // 연인: 시작 보호막 (최대 체력 비율), 짝이 쓰러지면 공격력·공격 속도 배율
 function makeFighter(spec, team, r, c, cnt, buff) {
   const f = { team, r, c, X: c + (r & 1) * 0.5, Y: r, alive: true, shield: 0, mana: 0, crit: 0, amp: 1, mgain: 1,
     asStack: 0, atkCd: 0.25 + Math.random() * 0.3, moveCd: 0, sec: 0, tgt: null, flash: 0, lunge: 0, lx: 0, ly: 0, deadT: 0, items: [], star: 1 };
@@ -22,7 +23,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   f.amp = 1; f.power *= [1, 1.6, 2.1, 2.8][has("공부는 잘함")]; // 공부는 잘함: 스킬 세기(피해·회복·보호막 모두) 증가
   f.as0 *= [1, 1.3, 1.55, 1.65][has("축구부")];
   if (has("수학왕")) f.mgain = 1.6;
-  if (has("댄스부")) { f.dance = 1; f.as0 *= 1.12; } // 댄스부(은혜린·최윤서) 2명: 공격 속도 +12%, 은혜린 춤추기 무대 1초 더
+  if (has("댄스부")) { f.dance = 1; f.as0 *= [1, 1.12, 1.22][has("댄스부")]; } // 댄스부(은혜린·최윤서·이다연) 2명/3명: 공격 속도 +12%/+22%, 은혜린 춤추기 무대 1초 더
   if (has("프로게이머")) f.as0 *= 1.3;
   if (has("전교 1등")) f.amp += 0.4;
   if (L("신") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
@@ -35,6 +36,8 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   for (const k of ["stackAs", "lifesteal", "splash", "skillCrit", "manaOnHit", "lowHpAs", "thorns", "manaTick", "lowShield", "regen", "teamShield", "castShield", "castHeal", "refund"]) f[k] = st[k] || 0;
   if (buff) { f.as0 *= 1 + buff.as; f.ar = Math.min(0.75, f.ar + buff.ar); f.ad *= 1 + buff.ad; f.maxHp *= 1 + buff.hp; }
   f.shield += f.maxHp * GIVE_SHIELD[L("다 퍼줌")]; // 다 퍼줌: 최대 체력 비율만큼 보호막 (별·아이템이 오를수록 같이 커져요)
+  if (has("연인")) { f.lover = 1; f.shield += f.maxHp * LOVER_SHIELD; } // 연인(이다연·김예균): 서로 보호막, 한 명이 쓰러지면 남은 한 명이 분노 (dealDamage)
+  f.hunt = def.hunt || null; // 이다연: 상대 팀의 김예균에게 달려들어요 (stepBattle)
   f.hp = f.maxHp; f.mana = Math.min(f.mana, f.mm - 1);
   return f;
 }
@@ -58,6 +61,22 @@ function nearest(B, u) {
   let best = null, bd = 1e9;
   for (const o of B.f) if (o.alive && o.team !== u.team) { const d = hexDist(u, o) + Math.random() * 0.1; if (d < bd) { bd = d; best = o; } }
   return best;
+}
+// 이다연: 상대 팀의 김예균(가장 가까운) — 없으면 null
+function huntTarget(B, u) {
+  let best = null, bd = 1e9;
+  for (const o of B.f) if (o.alive && o.team !== u.team && !o.robot && o.d >= 0 && DEFS[o.d].n === u.hunt) { const d = hexDist(u, o); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+// 전투 시작하자마자 대상 옆 빈칸으로 폴짝 달려들어요 (빈칸이 없으면 그냥 걸어가요)
+function leapTo(B, u, h) {
+  const occ = new Set(B.f.filter((o) => o.alive && o !== u).map((o) => o.r * COLS + o.c));
+  let best = null, bd = 1e9;
+  for (const [nr, nc] of neighbors(h.r, h.c)) { if (occ.has(nr * COLS + nc)) continue; const d = hexDistRC(nr, nc, u.r, u.c); if (d < bd) { bd = d; best = [nr, nc]; } }
+  if (!best) return;
+  u.r = best[0]; u.c = best[1]; u.tgt = h; u.leapT = 0.45; u.atkCd = Math.min(u.atkCd, 0.3);
+  addHuge(B, u, "예균아!!", "#ffffff", "#ff4d8a", 2.8);
+  if (B.visual) { for (let i = 1; i <= 3; i++) B.fx.push({ kind: "puff", X: u.X + (h.X - u.X) * i / 4, Y: u.Y + (h.Y - u.Y) * i / 4, t: 0.3 + i * 0.07, t0: 0.3 + i * 0.07 }); sfx("kick"); }
 }
 function nextStep(B, u, t) {
   const occ = new Set(B.f.filter((o) => o.alive && o !== u).map((o) => o.r * COLS + o.c));
@@ -101,6 +120,10 @@ function dealDamage(B, src, t, amt, kind) {
   if (crit && B.visual) { addFx(B, t.X, t.Y, 0.9, TOK["--accent"], 0.3); S.shake = Math.max(S.shake || 0, 0.08); sfx("crit"); }
   if (t.hp <= 0) {
     t.alive = false; t.hp = 0; t.deadT = 0.6;
+    if (t.lover) for (const o of B.f) if (o !== t && o.alive && o.lover && o.team === t.team && !o.rage) { // 연인: 짝이 쓰러지면 분노
+      o.rage = 1; o.ad *= LOVER_RAGE; o.as0 *= LOVER_RAGE;
+      addHuge(B, o, "복수할 거야!", "#ffffff", "#ff4d8a", 2.8); addFx(B, o.X, o.Y, 1.4, "#ff4d8a", 0.6);
+    }
     if (B.visual) { // 쓰러질 때: 펑 하는 연기와 별
       const boss = t.mon && t.mon.boss;
       B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: "#ffffff", t: 0.5, t0: 0.5 }, { kind: "spark", X: t.X, Y: t.Y, col: "#ffe66b", t: 0.65, t0: 0.65 }, { kind: "puff", X: t.X, Y: t.Y, t: 0.55, t0: 0.55 });
@@ -197,11 +220,12 @@ function stepBattle(B, dt) {
     u.X += (u.c + (u.r & 1) * 0.5 - u.X) * k; u.Y += (u.r - u.Y) * k;
     if (!u.alive) continue;
     u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, u.lunge - dt); u.castT = Math.max(0, (u.castT || 0) - dt); u.atkT = Math.max(0, (u.atkT || 0) - dt);
-    u.asBuffT = Math.max(0, (u.asBuffT || 0) - dt); u.vulnT = Math.max(0, (u.vulnT || 0) - dt);
+    u.asBuffT = Math.max(0, (u.asBuffT || 0) - dt); u.vulnT = Math.max(0, (u.vulnT || 0) - dt); u.leapT = Math.max(0, (u.leapT || 0) - dt);
     if (u.stunT > 0) { u.stunT -= dt; continue; }
+    if (u.hunt && !u.leapt) { u.leapt = 1; const h = huntTarget(B, u); if (h) leapTo(B, u, h); } // 이다연: 시작하자마자 김예균에게
     u.sec += dt;
     if (u.sec >= 1) { u.sec -= 1; if (u.manaTick) gainMana(B, u, u.manaTick); if (u.regen) heal(B, u, u.maxHp * u.regen); }
-    if (!u.tgt || !u.tgt.alive || hexDist(u, u.tgt) > u.rg) u.tgt = nearest(B, u);
+    if (!u.tgt || !u.tgt.alive || hexDist(u, u.tgt) > u.rg) u.tgt = (u.hunt && huntTarget(B, u)) || nearest(B, u); // 이다연은 김예균만 쫓아가요
     const t = u.tgt; if (!t) continue;
     if (hexDist(u, t) <= u.rg) {
       u.atkCd -= dt;
