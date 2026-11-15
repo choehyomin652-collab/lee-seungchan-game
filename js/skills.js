@@ -145,6 +145,17 @@ const SK = {
       B.zones.push({ kind: "mathrain", step: stepMathRain, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, dur: drops[drops.length - 1].at + 0.4, drops });
       if (B.visual) sfx("charge");
     } },
+  "문주호": { s: "화학식 조립", d: (P) => `원소들을 끌어모아 화학식을 조립한 뒤, 적이 가장 많이 모인 곳에 플라스크를 던져 반응시켜요 (반경 2칸 — 화학왕 효과로 1칸 넓어요). 쓸 때마다 반응이 바뀌어요: ① 수소 폭발 ${R0(CHEM.boom * P)} 피해 → ② 염산 비 ${R0(CHEM.acid * P)} 피해 + 3초 동안 ${R0(CHEM.acidTick * 6 * P)} 더, 받는 피해 +20% → ③ 액체 질소 ${R0(CHEM.ice * P)} 피해 + ${CHEM.iceStun}초 얼림. ★3이 되면 세 반응이 한꺼번에 터지는 연쇄 반응! 기본 공격도 플라스크 던지기예요`,
+    run(B, u, P, t, al, fo) {
+      const live = fo.filter((o) => o.alive); if (!live.length) return;
+      // 적이 가장 많이 모인 곳 (같으면 먼저 찾은 적) — 정해진 순서라 온라인에서도 모두 같아요
+      let best = live[0], bn = -1;
+      for (const o of live) { const n = live.filter((x) => hexDist(x, o) <= 1).length; if (n > bn) { bn = n; best = o; } }
+      const rx = u.star >= 3 ? 3 : (u.chemN = ((u.chemN ?? -1) + 1) % 3); // 0 폭발 → 1 염산 → 2 액체 질소 → 다시 폭발, ★3 은 연쇄 반응(3)
+      const R = CHEM_RX[rx]; // 조립한 화학식은 render3d.js 의 drawChem 이 머리 위 판으로 보여 줘요
+      B.zones.push({ kind: "chem", step: stepChem, team: u.team, owner: u, P, tgt: best, X: best.X, Y: best.Y, r: best.r, c: best.c, t: 0, rx, rad: 1 + (u.chemKing ? 1 : 0) + (rx === 3 ? 1 : 0), dur: CHEM.hit + (rx === 1 || rx === 3 ? 3.1 : 0.7), els: R.els });
+      if (B.visual) sfx("charge");
+    } },
   "조하윤": { s: "¡Adiós!", d: (P) => `체력 비율이 가장 낮은 적을 조준한 뒤 스페인어로 "잘 가!" 하며 저격해 공격력×1.5 + ${R0(180 * P)} 피해, 처치하면 "¡Olé!"와 함께 마나 절반 회복. 기본 공격 때도 스페인어로 외쳐요`,
     run(B, u, P, t, al, fo) { const o = fo.slice().sort(byHp)[0]; if (!o) return; B.zones.push({ kind: "snipe", step: stepSnipe, team: u.team, owner: u, P, tgt: o, X: u.X, Y: u.Y, t: 0, dur: 0.4 }); } },
   "손태민": { s: "블랙홀", d: (P) => `대상 자리에 블랙홀을 열어 2.5초 동안 주변 3칸의 적을 빨아들이고, 0.25초마다 ${R0(16 * P)} 피해. 마지막에 폭발해 ${R0(100 * P)} 피해`,
@@ -159,7 +170,7 @@ const SK = {
 
 const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", "¡Fuego!", "¡Venga!", "¡Qué fácil!"];
 const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아일체", "도(道)", "호접지몽", "지행합일"];
-const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5], "이다연": [["정강이!", "에잇!", "퍽!", "앙!"], "#ff9ac0", 0.3] };
+const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5], "이다연": [["정강이!", "에잇!", "퍽!", "앙!"], "#ff9ac0", 0.3], "문주호": [["H₂O!", "NaCl!", "반응해라!", "펑!", "몰(mol)!", "촉매 투입!"], "#9affc0", 0.3] };
 // 소환수 이다연: 김예균 주변 빈칸에 나타나요
 const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
 function summon(B, u, P, max, opt = {}) {
@@ -410,6 +421,34 @@ function stepMathRain(B, z, dt) {
   if (z.t >= z.dur) z.done = 1;
 }
 
+// 문주호 "화학식 조립": ① 원소 구슬이 머리 위에서 모여 화학식이 돼요 → ② 플라스크를 던져요 → ③ 반응!
+const CHEM = { asm: 0.5, hit: 0.85, boom: 200, acid: 80, acidTick: 21, ice: 130, iceStun: 1.2 };
+const CHEM_RX = [ // els: 머리 위에서 모이는 원소 구슬, col: 반응 색
+  { f: "2H₂ + O₂ → 2H₂O", n: "수소 폭발!", els: ["H", "H", "O"], col: "#ff8a2a" },
+  { f: "H₂ + Cl₂ → 2HCl", n: "염산 비!", els: ["H", "Cl", "Cl"], col: "#7aff5a" },
+  { f: "N₂ (−196℃)", n: "액체 질소!", els: ["N", "N"], col: "#7ad8ff" },
+  { f: "Na + H₂O + N₂ → ???", n: "연쇄 반응!!", els: ["Na", "H", "O", "N", "Cl"], col: "#ffe04a" },
+];
+function stepChem(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  if (!z.hit && z.tgt.alive) { z.X = z.tgt.X; z.Y = z.tgt.Y; z.r = z.tgt.r; z.c = z.tgt.c; } // 던지기 전까지는 대상을 따라가요
+  const inR = () => foesOf(B, z.team).filter((o) => hexDistRC(o.r, o.c, z.r, z.c) <= z.rad);
+  if (!z.hit && z.t >= CHEM.hit) {
+    z.hit = 1; const all = z.rx === 3, R = CHEM_RX[z.rx];
+    if (z.rx === 0 || all) inR().forEach((o) => dealDamage(B, z.owner, o, CHEM.boom * z.P, "skill"));
+    if (z.rx === 1 || all) inR().forEach((o) => { dealDamage(B, z.owner, o, CHEM.acid * z.P, "skill"); o.vuln = Math.max(o.vuln || 0, 0.2); o.vulnT = Math.max(o.vulnT || 0, 3.5); });
+    if (z.rx === 2 || all) inR().forEach((o) => { dealDamage(B, z.owner, o, CHEM.ice * z.P, "skill"); o.stunT = Math.max(o.stunT || 0, all ? 1 : CHEM.iceStun); });
+    addHuge(B, z, R.n, "#ffffff", R.col, all ? 3.4 : 2.6);
+    addFx(B, z.X, z.Y, 1 + z.rad, R.col, 0.6); addFx(B, z.X, z.Y, 0.9, "#ffffff", 0.35);
+    if (B.visual) { S.shake = Math.max(S.shake || 0, all ? 0.4 : z.rx === 0 ? 0.25 : 0.12); sfx("boom"); }
+  }
+  // 염산 웅덩이: 0.5초마다 지글지글
+  if (z.hit && (z.rx === 1 || z.rx === 3)) {
+    const k0 = Math.floor((t0 - CHEM.hit) / 0.5), k1 = Math.floor((z.t - CHEM.hit) / 0.5);
+    if (k1 > k0 && k1 >= 1 && k1 <= 6) inR().forEach((o) => dealDamage(B, z.owner, o, CHEM.acidTick * z.P, "skill"));
+  }
+  if (z.t >= z.dur) z.done = 1;
+}
 // 정주환 "천벌": ① 먹구름이 몰려오며 번개 기운을 모아요 → ② 적마다 번개가 하나씩 → ③ 마지막 거대한 심판의 번개
 const SMITE_CHARGE = 0.7; // 번개를 모으는 시간(초)
 const MEGA_R = 2; // ★3 큰 번개가 크게 맞히는 범위(칸)

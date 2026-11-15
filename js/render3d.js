@@ -2034,7 +2034,7 @@ const champOfUnit = (f) => (f && !f.robot && !f.mon && f.d >= 0 && typeof CHAMPS
 function projKind(CH) {
   if (!CH) return null;
   const w = CH.weapon;
-  return w === "bow" ? "arrow" : w === "crossbow" ? "bolt" : w === "rifle" ? "bullet" : w === "spear" ? (CH.kit === "god" ? "lightning" : "javelin") : w === "horn" ? "wave" : w === "pizzabox" ? null : "magic"; // 피자 상자는 weapons.js 의 피자 조각을 던져요
+  return w === "bow" ? "arrow" : w === "crossbow" ? "bolt" : w === "rifle" ? "bullet" : w === "spear" ? (CH.kit === "god" ? "lightning" : "javelin") : w === "horn" ? "wave" : w === "pizzabox" || w === "flask" ? null : "magic"; // 피자 상자는 weapons.js 의 피자 조각을 던져요
 }
 // ----- 영웅 원거리 공격 모양: 화살 · 석궁 볼트 · 총알 · 마법탄 · 투창 · 번개 · 음파 -----
 function champProj(kind, col) {
@@ -2759,7 +2759,81 @@ function drawBite(z, dt) {
   g.scale.setScalar(0.9 + 0.25 * Math.sin(snap * Math.PI)); g.visible = q > 0.02;
   g.userData.mats.forEach((m) => (m.opacity = q));
 }
-const ZDRAW = { bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+// 문주호 "화학식 조립": 머리 위에서 원소 구슬이 모여 → 플라스크가 포물선으로 날아가 → 반응 (폭발 · 염산 웅덩이 · 얼음 가시)
+function elemTex(el, col) {
+  return textTex("el" + el + col, 128, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    const gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.45, col); gr.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = gr; g.beginPath(); g.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2); g.fill();
+    g.font = `bold ${el.length > 1 ? 50 : 62}px sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineWidth = 7; g.strokeStyle = "rgba(0,30,10,.85)"; g.strokeText(el, w / 2, h / 2 + 3); g.fillStyle = "#ffffff"; g.fillText(el, w / 2, h / 2 + 3);
+  });
+}
+const EL_COL = { H: "#9fe8ff", O: "#ff6a5a", Cl: "#8aff5a", N: "#7a9aff", Na: "#ffd04a" };
+function drawChem(z, dt) {
+  const t = z.t, R = CHEM_RX[z.rx], all = z.rx === 3, o = z.owner, ox = worldX(o.X), oy = worldZ(o.Y), tx = worldX(z.X), ty = worldZ(z.Y);
+  const hexW = worldX(1) - worldX(0), rr = (z.rad + 0.45) * hexW;
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), ud = grp.userData;
+    ud.board = new THREE.Sprite(new THREE.SpriteMaterial({ map: symTex(R.f, all ? "255,224,74" : "90,255,138", all ? "220,140,20" : "20,160,80"), transparent: true, depthWrite: false })); grp.add(ud.board); // 조립된 화학식 판
+    ud.els = z.els.map((el) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: elemTex(el, EL_COL[el] || "#ffffff"), transparent: true, depthWrite: false })); grp.add(sp); return sp; });
+    const glass = new THREE.MeshStandardMaterial({ color: lin(0xdff4ff), roughness: 0.15, transparent: true, opacity: 0.5 });
+    ud.flask = new THREE.Group(); grp.add(ud.flask);
+    const b = new THREE.Mesh(GEO.ball, glass); b.scale.setScalar(2.2); ud.flask.add(b);
+    const l = new THREE.Mesh(GEO.ball, additive(R.col)); l.scale.setScalar(1.8); ud.flask.add(l);
+    const n = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.28, 8), glass); n.position.y = 0.32; ud.flask.add(n);
+    ud.rx = new THREE.Group(); grp.add(ud.rx);
+    ud.boom = new THREE.Mesh(GEO.ball, additive(all ? "#ffe04a" : "#ff8a2a")); ud.rx.add(ud.boom);
+    ud.boom2 = new THREE.Mesh(GEO.ball, additive("#fff4c0")); ud.rx.add(ud.boom2);
+    ud.ring = new THREE.Mesh(GEO.ringFx, additive(R.col)); ud.ring.rotation.x = -Math.PI / 2; ud.rx.add(ud.ring);
+    ud.pool = new THREE.Mesh(new THREE.CircleGeometry(1, 40), additive("#4adf3a")); ud.pool.rotation.x = -Math.PI / 2; ud.rx.add(ud.pool);
+    ud.bub = []; for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(GEO.ball, additive(i % 2 ? "#b0ff8a" : "#6aff5a")); ud.rx.add(m); ud.bub.push(m); }
+    ud.ice = []; const iceM = new THREE.MeshStandardMaterial({ color: lin(0xc8f0ff), emissive: lin(0x5ac8ff), emissiveIntensity: 1.1, roughness: 0.1, transparent: true, opacity: 0.9 });
+    ud.frost = new THREE.Mesh(new THREE.CircleGeometry(1, 40), additive("#7ad8ff")); ud.frost.rotation.x = -Math.PI / 2; ud.rx.add(ud.frost); // 얼어붙은 바닥
+    for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(new THREE.ConeGeometry(0.24, 1, 5), iceM); ud.rx.add(m); ud.ice.push(m); }
+    ud.mats = [glass, iceM];
+    return grp;
+  });
+  const ud = g.userData; g.position.set(0, 0, 0);
+  // ① 원소 구슬: 머리 위를 돌다가 가운데로 모여 하나가 돼요
+  const asm = Math.min(1, t / CHEM.asm), show = t < CHEM.asm + 0.05;
+  ud.els.forEach((sp, i) => {
+    sp.visible = show; if (!show) return;
+    const a = (i / ud.els.length) * Math.PI * 2 + t * 9, r = 0.9 * (1 - asm * asm);
+    sp.position.set(ox + Math.cos(a) * r, 2.7 + Math.sin(a * 0.5) * 0.15 * (1 - asm), oy + Math.sin(a) * r * 0.6);
+    sp.scale.setScalar(0.55 * (1 - asm * 0.5)); sp.material.opacity = 1;
+  });
+  // 화학식 판: 원소가 모이면서 나타나 플라스크를 던질 때까지 머리 위에 떠 있어요
+  const bv = Math.min(1, Math.max(0, (t - CHEM.asm * 0.5) / 0.15)) * Math.max(0, Math.min(1, (CHEM.hit + 0.35 - t) / 0.25));
+  ud.board.visible = bv > 0.02; ud.board.position.set(ox, 3.55, oy); const bs = all ? 1.15 : 0.95; ud.board.scale.set(bs * 4, bs, 1); ud.board.material.opacity = bv;
+  // ② 플라스크: 모인 자리에서 대상에게 포물선으로
+  const fl = (t - CHEM.asm) / (CHEM.hit - CHEM.asm);
+  ud.flask.visible = fl > -0.15 && fl < 1;
+  if (ud.flask.visible) { const k = Math.max(0, fl); ud.flask.position.set(ox + (tx - ox) * k, 2.7 + (1.1 - 2.7) * k + Math.sin(k * Math.PI) * 1.6, oy + (ty - oy) * k); ud.flask.rotation.set(t * 14, 0, t * 6); ud.flask.scale.setScalar(fl < 0 ? 1 + fl * 4 : 1); }
+  // ③ 반응
+  const h = t - CHEM.hit; ud.rx.visible = h >= 0; ud.rx.position.set(tx, 0, ty);
+  if (h < 0) return;
+  const boomOn = z.rx === 0 || all, acidOn = z.rx === 1 || all, iceOn = z.rx === 2 || all;
+  const bq = Math.min(1, h / 0.18), bf = Math.max(0, 1 - h / 0.5);
+  ud.boom.visible = ud.boom2.visible = boomOn && bf > 0;
+  if (ud.boom.visible) { ud.boom.position.y = 0.6; ud.boom.scale.setScalar((rr / 0.11) * (0.4 + 0.75 * bq)); ud.boom.material.opacity = 0.55 * bf; ud.boom2.position.y = 0.6; ud.boom2.scale.setScalar((rr / 0.11) * 0.55 * bq); ud.boom2.material.opacity = 0.7 * bf; }
+  ud.ring.position.y = 0.25; ud.ring.scale.setScalar(rr * (0.5 + 0.7 * Math.min(1, h / 0.3))); ud.ring.material.opacity = Math.max(0, 1 - h / 0.6);
+  const left = z.dur - t, pf = Math.max(0, Math.min(1, left / 0.4));
+  ud.pool.visible = acidOn; ud.bub.forEach((m) => (m.visible = acidOn));
+  if (acidOn) {
+    ud.pool.position.y = 0.21; ud.pool.scale.setScalar(rr * Math.min(1, h / 0.25)); ud.pool.material.opacity = 0.55 * pf * (0.85 + Math.sin(clock3d * 6) * 0.15);
+    ud.bub.forEach((m, i) => { const ph = (clock3d * 1.3 + i * 0.37) % 1, a = i * 2.4; m.position.set(Math.cos(a) * rr * 0.75 * ((i % 3) + 1) / 3, 0.25 + ph * 0.8, Math.sin(a) * rr * 0.75 * ((i % 3) + 1) / 3); m.scale.setScalar(1.4 + (1 - ph) * 1.2); m.material.opacity = (1 - ph) * pf; });
+  }
+  const iq = Math.min(1, h / 0.15), ifade = Math.max(0, Math.min(1, (CHEM.iceStun + 0.2 - h) / 0.4));
+  ud.ice.forEach((m, i) => {
+    m.visible = iceOn && ifade > 0; if (!m.visible) return;
+    const a = (i / ud.ice.length) * Math.PI * 2 + i, r = i === 0 ? 0 : rr * (0.35 + 0.5 * ((i * 7) % 5) / 5), ht = (i === 0 ? 2.1 : 0.9 + ((i * 3) % 4) * 0.3) * iq;
+    m.position.set(Math.cos(a) * r, ht / 2 + 0.15, Math.sin(a) * r); m.scale.set(1, Math.max(0.01, ht), 1); m.rotation.set(Math.sin(a) * 0.25, 0, Math.cos(a) * 0.25);
+  });
+  ud.mats[1].opacity = 0.9 * ifade;
+  ud.frost.visible = iceOn && ifade > 0; ud.frost.position.y = 0.22; ud.frost.scale.setScalar(rr * Math.min(1, h / 0.15)); ud.frost.material.opacity = 0.45 * ifade;
+}
+const ZDRAW = { chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -2802,7 +2876,8 @@ function render3D(dt) {
         : new THREE.Mesh(GEO.chalkP, new THREE.MeshStandardMaterial({ color: new THREE.Color(p.col).convertSRGBToLinear(), roughness: 0.9 })));
       m.position.set(worldX(p.X), 1.05, worldZ(p.Y));
       m.lookAt(worldX(p.t.X), 1.05, worldZ(p.t.Y));
-      if (p.shape === "pizza") m.rotation.y += clock3d * 10; // 피자 조각은 빙글빙글 돌며 날아가요
+      if (p.shape === "pizza") m.rotation.y += clock3d * 10;
+      else if (p.shape === "flask") { m.rotation.set(clock3d * 12, 0, clock3d * 5); m.position.y += 0.25; } // 플라스크는 빙글빙글 돌며 포물선으로 // 피자 조각은 빙글빙글 돌며 날아가요
       else if (!p.trail) m.rotateX(Math.PI / 2); else m.rotateZ(Math.sin(clock3d * 20) * 0.2);
       if (p.trail && !p.fire && (p.fxT = (p.fxT || 0) - dt) <= 0) { p.fxT = 0.05; B.fx.push({ X: p.X, Y: p.Y, r: 0.28, col: p.col || "#ffe66b", t: 0.22, t0: 0.22 }); }
       if (p.fire) { // 무회전 불공: 좌우로 흔들리며 불꽃 꼬리를 남겨요

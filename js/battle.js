@@ -28,6 +28,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   if (has("댄스부")) { f.dance = 1; f.as0 *= [1, 1.12, 1.22][has("댄스부")]; } // 댄스부(은혜린·최윤서·이다연) 2명/3명: 공격 속도 +12%/+22%, 은혜린 춤추기 무대 1초 더
   if (has("프로게이머")) f.as0 *= 1.3;
   if (has("전교 1등")) f.amp += 0.4;
+  if (has("화학왕")) f.chemKing = 1; // 문주호: 화학 반응 범위 +1칸 (skills.js)
   if (L("신") > 0) { f.maxHp *= 1.12; f.ad *= 1.12; }
   const st = {};
   for (const id of f.items) for (const [k, v] of Object.entries(ITEMS[id].st)) st[k] = (st[k] || 0) + v;
