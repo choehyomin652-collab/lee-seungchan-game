@@ -328,10 +328,10 @@ function stepChorus(B, z, dt) {
       for (const o of B.f) {
         if (!o.alive || hexDist(o, u) > z.rad) continue;
         if (o.team === z.team) { o.asBuff = Math.max(o.asBuff || 0, 0.35); o.asBuffT = Math.max(o.asBuffT || 0, 0.6); }
-        else { dealDamage(B, u, o, 30 * z.P, "skill"); addFloat(B, { X: o.X, Y: o.Y - 0.3 }, CHORUS_NOTES[z.n % 4], "#ffd36b", true); }
+        else { dealDamage(B, u, o, 30 * z.P, "skill"); addFloat(B, { X: o.X, Y: o.Y - 0.3 }, CHORUS_NOTES[z.n % 4] + SOLFEGE[(z.n - 1) % 8], "#ffd36b", true); }
       }
       addFx(B, u.X, u.Y, z.all ? 4 : 2.2, z.n % 2 ? "#ffd36b" : "#ffffff", 0.35);
-      if (B.visual) sfx("place");
+      if (B.visual) playNote(z.n - 1); // 도레미파솔라시도 (보이고 들리는 것만)
     }
   } else if (t0 < CHORUS_T) { // 포르테!
     const occ = new Set(B.f.filter((o) => o.alive).map((o) => o.r * COLS + o.c));
@@ -345,7 +345,7 @@ function stepChorus(B, z, dt) {
     });
     addHuge(B, u, "포르테!", "#fff1b0", "#ff8a2a", 3.6);
     addFx(B, u.X, u.Y, z.all ? 6 : 3, "#ffd36b", 0.6); addFx(B, u.X, u.Y, z.all ? 4 : 2, "#ffffff", 0.4);
-    if (B.visual) { S.shake = Math.max(S.shake || 0, 0.3); sfx("boom"); }
+    if (B.visual) { S.shake = Math.max(S.shake || 0, 0.3); sfx("boom"); playNote(0, true); } // 포르테 화음
   }
   if (z.t >= z.dur) z.done = 1;
 }

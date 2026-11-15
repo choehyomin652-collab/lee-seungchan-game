@@ -5,6 +5,21 @@
 // =============== 소리 ===============
 let AC = null, muted = false, lastHit = 0, noiseSeed = 12345;
 try { muted = localStorage.getItem("uri-mute") === "1"; } catch (e) {}
+// 배성쌤 "합창 지휘": 박자마다 도레미파솔라시도 (종소리처럼 맑게), 포르테는 화음
+const SOLFEGE = ["도", "레", "미", "파", "솔", "라", "시", "도"], SOLFEGE_HZ = [523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5];
+function playNote(i, chord) {
+  if (muted || !AC) return;
+  const now = AC.currentTime;
+  const bell = (f, d, v, delay = 0) => { // 기본음 + 한 옥타브 위를 살짝 섞어 맑게
+    for (const [mul, k, type] of [[1, 1, "triangle"], [2, 0.35, "sine"], [3, 0.12, "sine"]]) {
+      const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f * mul, now + delay);
+      g.gain.setValueAtTime(0.0001, now + delay); g.gain.linearRampToValueAtTime(v * k, now + delay + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, now + delay + d);
+      o.connect(g).connect(AC.destination); o.start(now + delay); o.stop(now + delay + d + 0.02);
+    }
+  };
+  if (chord) [0, 2, 4, 7].forEach((k, j) => bell(SOLFEGE_HZ[k], 1.3, 0.06, j * 0.03)); // 도 · 미 · 솔 · 높은 도
+  else bell(SOLFEGE_HZ[i % 8], 0.5, 0.07);
+}
 function sfx(name) {
   if (muted || !AC) return;
   const now = AC.currentTime;
