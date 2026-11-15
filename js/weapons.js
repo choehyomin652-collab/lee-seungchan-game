@@ -152,6 +152,15 @@ const WEAPONS = {
     const sc = e.put(wg("scr", () => cylG(0.05, 0.05, 0.32, 14)), e.mk(0xf4ecd0, 0.7), 0, -0.46, 0.1, e.R); sc.rotation.z = 1.2;
     const rb = e.put(wg("scrr", () => new THREE.TorusGeometry(0.053, 0.012, 6, 16)), e.mk(0xc8323a, 0.5), 0, 0, 0, sc); rb.rotation.x = Math.PI / 2;
   } },
+  "문주호": { n: "반응 플라스크", anim: "throw", pr: { col: "#5aff8a", shape: "flask" }, build(e) {
+    // 오른손엔 초록 용액이 든 둥근 플라스크, 왼손엔 노란 시험관
+    const glass = e.mk(0xdff4ff, 0.15, { transparent: true, opacity: 0.45 }), liq = e.mk(0x5aff8a, 0.3, { emissive: new THREE.Color(0x2adf6a), emissiveIntensity: 1.1 });
+    e.put(wg("fkb", () => sphG(0.1)), glass, 0, -0.5, 0.1, e.R);
+    e.put(wg("fkl", () => sphG(0.08)), liq, 0, -0.51, 0.1, e.R);
+    e.put(wg("fkn", () => cylG(0.03, 0.035, 0.14)), glass, 0, -0.36, 0.1, e.R);
+    const tube = e.put(wg("tbe", () => cylG(0.025, 0.025, 0.2)), glass, 0, -0.46, 0.08, e.L); tube.rotation.x = 0.3;
+    e.put(wg("tbl", () => cylG(0.02, 0.02, 0.1)), e.mk(0xffe04a, 0.3, { emissive: new THREE.Color(0xffc81a), emissiveIntensity: 1 }), 0, -0.04, 0, tube);
+  } },
   "정주환": { n: "신의 번개", anim: "zeus", pr: { col: "#9fdcff", shape: "orb" }, build(e) {
     // 손에 쥔 지그재그 번개
     const m = e.mk(0xffe66b, 0.3, { emissive: new THREE.Color(0xffd23a), emissiveIntensity: 1.4 });
@@ -169,6 +178,14 @@ function projSpecial(p) {
     const cr = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.07, 12, 1, true, -0.35, 0.7), M2(0xc8843a)); cr.material.side = THREE.DoubleSide; g.add(cr);
     for (const [x, z] of [[0.05, 0.16], [-0.04, 0.24], [0.02, 0.08]]) { const pp = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 10), M2(0xc8322a)); pp.position.set(x, 0.03, z); g.add(pp); }
     g.children.forEach((c) => (c.position.z -= 0.15)); return g;
+  }
+  if (p.shape === "flask") { // 문주호: 빙글빙글 돌며 날아가는 플라스크 (빛나는 초록 용액)
+    const g = new THREE.Group(), glass = new THREE.MeshStandardMaterial({ color: lin(0xdff4ff), roughness: 0.15, transparent: true, opacity: 0.5 });
+    const liq = new THREE.MeshStandardMaterial({ color: lin(0x5aff8a), emissive: lin(0x2adf6a), emissiveIntensity: 1.3, roughness: 0.3 });
+    const b = new THREE.Mesh(GEO.ball, glass); b.scale.setScalar(1.6); g.add(b);
+    const l = new THREE.Mesh(GEO.ball, liq); l.scale.setScalar(1.3); l.position.y = -0.02; g.add(l);
+    const n = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.2, 8), glass); n.position.y = 0.24; g.add(n);
+    return g;
   }
   if (p.shape === "dart") { const m = new THREE.Mesh(GEO.spike, new THREE.MeshStandardMaterial({ color: lin(0xe8402e), roughness: 0.5 })); m.scale.set(1.2, 1.7, 1.2); return m; }
   return null;

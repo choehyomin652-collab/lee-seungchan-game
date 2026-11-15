@@ -34,6 +34,7 @@ const DEFS = [
   // 5코스트
   { n: "정주환", c: 5, k: "신",     t: ["신", "다 퍼줌", "운동광"] },
   { n: "김예균", c: 5, k: "수호자", t: ["운동광", "다 퍼줌", "지는 거 못 참음", "축구부", "연인"] },
+  { n: "문주호", c: 5, k: "천재",   t: ["공부는 잘함", "화학왕", "지는 거 못 참음"], s: "화학식 조립" },
 ];
 const TRAITS = {
   "운동광":   { t: [2, 4, 6], d: "운동광 체력 +20% / +40% / +50%" },
@@ -44,6 +45,7 @@ const TRAITS = {
   "수학왕":   { t: [1],       d: "박준서 마나 회복 +60%" },
   "댄스부":   { t: [2, 3],    d: "은혜린·최윤서·이다연 중 2명 / 3명: 댄스부 공격 속도 +12% / +22%, 은혜린 춤추기 무대가 1초 더 오래 가요" },
   "연인":     { t: [2],       d: "이다연·김예균 둘 다 있으면: 서로 최대 체력 15% 보호막을 두르고 시작해요. 한 명이 쓰러지면 남은 한 명이 분노해 공격력·공격 속도 +40%" },
+  "화학왕":   { t: [1],       d: "문주호의 화학 반응 범위 +1칸" },
   "프로게이머": { t: [1],     d: "조하윤 공격 속도 +30%" },
   "전교 1등": { t: [1],      d: "손태민 스킬 피해 +40%" },
   "합체로봇": { t: [4],      d: "조하윤·박희찬·윤동욱·이보경 4명이 모두 보드에 있으면 전투 시작 때 4인 합체로봇으로 합체! 4명 모두 ★3이면 초합체로봇이 하늘에서 내려와 빛의 대검으로 전장 전체를 베어요" },
@@ -74,6 +76,7 @@ const OUTFITS = {
   "진성욱": { type: "tank", top: 0x5a5f66, bottom: 0x1e2126, accent: 0xe8402e, print: "GYM" },
   "박준서": { type: "vest", top: 0x7a2a3a, bottom: 0x4a4e57, accent: 0xf2f0ea },
   "손태민": { type: "uniform", top: 0x1f2a44, bottom: 0x343a44 },
+  "문주호": { type: "robe", top: 0xf4f6f8, bottom: 0x2b303b, accent: 0x3fdf7a }, // 하얀 실험 가운
   "정주환": { type: "robe", top: 0xf8f6f0, bottom: 0xf8f6f0, accent: 0xffcf4a },
 };
 // ---------- 생김새(스킨) ----------
@@ -108,6 +111,7 @@ const LOOKS = {
   "진성욱": { hair: "buzz", hc: 0x141414, skin: 3, tall: 1.07, wide: 1.24, mouth: "pout", brow: 1.4, acc: [["towel", 0xf4f4f4], ["wristband", 0xe8402e], ["bandage", "nose"]] },
   "박준서": { hair: "bowl", hc: 0x1c1612, skin: 0, tall: 0.94, wide: 0.95, eye: 1.05, mouth: "smile", acc: [["glasses", "square", 0x1d1d1d], ["bowtie", 0xffcf4a], ["badge", "π", "#ffffff", "#7a2a3a"], ["pencil"], ["backpack", 0x7a2a3a]] },
   "손태민": { hair: "slick", hc: 0x16110e, skin: 2, tall: 1.01, wide: 0.96, mouth: "flat", acc: [["glasses", "rimless", 0xd8b45a], ["armband", 0xc8323a], ["backpack", 0x1f2a44]] },
+  "문주호": { hair: "messy", hc: 0x1c1612, tip: 0x3fdf7a, skin: 1, tall: 1.03, wide: 0.98, eye: 1.05, mouth: "grin", acc: [["glasses", "sport", 0x3fdf7a], ["pendant", 0x7affb0], ["badge", "H₂O", "#ffffff", "#1f8a4a"]] },
   "정주환": { hair: "slick", hc: 0xe8c25a, tip: 0xfff0b0, skin: 0, tall: 1.1, wide: 1.1, head: 1.0, mouth: "flat", brow: 1.2, acc: [["laurel"], ["wings"]] },
 };
 // ---------- 판타지 영웅 모습 (CHAMPS) ----------
@@ -137,6 +141,7 @@ const CHAMPS = {
   "손태민": { title: "심연 마도사", kit: "mage", top: 0x1e1838, bottom: 0x14121e, accent: 0xb06aff, metal: "dark", hair: "slick", hc: 0x16110e, skin: 2, head: "crown", weapon: "abyssorb", coat: 1 },
   "정주환": { title: "천벌의 심판자", kit: "god", top: 0xf4ecd8, bottom: 0xe8e0c8, accent: 0xffd86b, metal: "gold", hair: "slick", hc: 0xe8c25a, tip: 0xfff0b0, skin: 0, head: "crown", weapon: "spear", acc: [["wings"]] },
   "이다연": { title: "정강이 사냥꾼", kit: "monk", top: 0xc8304e, bottom: 0x2e1622, accent: 0xffb0d0, metal: "gold", hair: "long", hc: 0x2a1a14, skin: 1, head: "band", weapon: "none" },
+  "문주호": { title: "원소 연금술사", kit: "mage", top: 0xe8ecef, bottom: 0x1e2a26, accent: 0x5aff8a, metal: "steel", hair: "messy", hc: 0x1c1612, tip: 0x3fdf7a, skin: 1, head: "visor", weapon: "flask", coat: 1 },
   "김예균": { title: "심연의 마왕", kit: "guard", top: 0x3a0c16, bottom: 0x180a10, accent: 0xff3a4a, metal: "dark", hair: "messy", hc: 0x141014, tip: 0xc8202a, skin: 0, head: "circlet", weapon: "crystalstaff" },
 };
 // ---------- 밸런스 표 ----------
@@ -163,7 +168,8 @@ const TUNE = {
   "진성욱": { hp: 1.12, ad: 1.12, sk: 1.12 },
   "박준서": { hp: 0.88, ad: 0.88, sk: 0.88 },
   "손태민": { hp: 0.98, ad: 0.98, sk: 0.98 },
-  "정주환": { hp: 1.05, ad: 1.05, sk: 1.05 }, // 김예균이 연인 시너지를 얻은 만큼 (★3 전설은 LEGEND_FOR 에서 따로)
+  "정주환": { hp: 1.09, ad: 1.09, sk: 1.09 }, // 김예균이 연인 시너지를 얻은 만큼 (★3 전설은 LEGEND_FOR 에서 따로)
+  "문주호": { hp: 2.5, ad: 1.6, sk: 1.95 }, // 천재(뒷줄 마법사)라 체력이 낮아서 체력을 많이 올렸어요
 };
 const tuneOf = (def) => TUNE[def.n] || { hp: 1, ad: 1, sk: 1 };
 // 5코스트 ★3 = 전설. 만들기 아주 어려운 대신, 만들면 거의 무조건 이겨요 (체력·공격력·스킬에 곱하는 숫자)

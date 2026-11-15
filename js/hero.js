@@ -701,6 +701,19 @@ const HERO = (() => {
       } break;
       case "horn": { const w = holder(L, 0.6); add(w, lathe([[0.09, 0.24], [0.075, 0.2], [0.04, 0.08], [0.025, -0.05], [0.02, -0.12]], { seg: 14, pal: pal(0xe8dcc0), col: (a, j) => (j === 0 || j === 2 ? GOLD.c : mul(lc(0xe8dcc0), 0.7 + 0.4 * Math.max(0, Math.cos(a)))) }), 0, 0.12, 0.05, 0, 0, Math.PI); const ws = holder(R); grip(ws, 0.13); cross(ws, 0.07, 0.17); add(ws, swordBlade(0.5, 0.034), 0, 0.08, 0); break; }
       case "astrolabe": { const w = holder(R, Math.PI / 2 - 0.85, "up", "up"); add(w, rod(1.3, 0.022, W, -0.33)); const top = 0.97; const r1 = add(w, new THREE.TorusGeometry(0.15, 0.012, 6, 32), 0, top + 0.06, 0, 0, 0, 0, C.mk(0xd8b45a, 0.3)); const r2 = add(w, new THREE.TorusGeometry(0.12, 0.012, 6, 32), 0, top + 0.06, 0, 0, Math.PI / 2, 0, C.mk(0xd8b45a, 0.3)); add(w, new THREE.SphereGeometry(0.06, 14, 10), 0, top + 0.06, 0, 0, 0, 0, glow(CH.accent)); for (const s of [-1, 1]) add(w, blade(0.18, (u) => 0.02 * (1 - u), { th: 0.012, pal: GOLD, cv: (u) => s * 0.08 * u, n: 6 }), 0, top - 0.12, 0); r1.userData.keep = r2.userData.keep = true; C.ud.spin = [r1, r2]; break; }
+      case "flask": { // 문주호: 오른손엔 빛나는 초록 용액 플라스크, 왼손엔 노란 시험관, 둘레엔 원소 구슬이 돌아요
+        const glass = C.mk(0xdff4ff, 0.15, { transparent: true, opacity: 0.42 }), w = holder(R, 0);
+        add(w, new THREE.SphereGeometry(0.13, 16, 12), 0, 0.12, 0.12, 0, 0, 0, glass);
+        add(w, new THREE.SphereGeometry(0.105, 16, 12), 0, 0.11, 0.12, 0, 0, 0, glow(0x5aff8a, 1.4));
+        add(w, new THREE.CylinderGeometry(0.035, 0.045, 0.16, 10), 0, 0.3, 0.12, 0, 0, 0, glass);
+        add(w, new THREE.TorusGeometry(0.04, 0.01, 6, 14), 0, 0.38, 0.12, Math.PI / 2, 0, 0, C.mk(0xc9d1cc, 0.3));
+        const wl = holder(L, 0.2);
+        add(wl, new THREE.CylinderGeometry(0.03, 0.03, 0.26, 10), 0, 0.08, 0.06, 0, 0, 0, glass);
+        add(wl, new THREE.CylinderGeometry(0.025, 0.025, 0.12, 10), 0, 0.02, 0.06, 0, 0, 0, glow(0xffe04a, 1.3));
+        const ring = add(w, new THREE.TorusGeometry(0.24, 0.006, 5, 28), 0, 0.12, 0.12, 1.2, 0, 0, glow(CH.accent)); ring.userData.keep = true;
+        for (const [i, hex] of [[0, 0xff8a2a], [1, 0x7ad8ff], [2, 0xffe04a]]) { const a2 = (i / 3) * TAU; add(ring, new THREE.SphereGeometry(0.03, 10, 8), Math.cos(a2) * 0.24, Math.sin(a2) * 0.24, 0, 0, 0, 0, glow(hex, 2)); }
+        C.ud.spin = [ring]; break;
+      }
       case "abyssorb": { const w = holder(R, 0); add(w, new THREE.SphereGeometry(0.1, 16, 12), 0, 0.1, 0.12, 0, 0, 0, C.mk(0x1a0a2a, 0.2, { emissive: lin(0x4a1a8a), emissiveIntensity: 1.2 })); for (let i = 0; i < 5; i++) { const a = (i / 5) * TAU; add(w, blade(0.14, (u) => 0.018 * (1 - u), { th: 0.01, pal: METAL.dark(), cv: (u) => 0.03 * u, n: 5 }), Math.cos(a) * 0.09, 0.02, 0.12 + Math.sin(a) * 0.09, Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); } const r = add(w, new THREE.TorusGeometry(0.16, 0.008, 5, 28), 0, 0.1, 0.12, 1.2, 0, 0, glow(CH.accent)); r.userData.keep = true; C.ud.spin = [r]; break; }
       case "spear": if (C.ud.divine) { // 천벌의 창: 더 길고, 해 모양 날개 + 떠 있는 고리
         const w = holder(R, Math.PI / 2 - 0.85, "up", "fwd"), G2 = pal(0xd8a840, 0xfff4c0);
