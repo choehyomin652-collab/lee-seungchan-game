@@ -2767,8 +2767,9 @@ function render3D(dt) {
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const sel = S.phase === "plan" && S.sel && S.sel.w === "b" && S.sel.r + 4 === r && S.sel.c === c;
     const t = tiles[r][c], on = sel || (holding && r >= 4);
-    t.fill.material.opacity = sel ? 0.35 : on ? 0.12 : 0.04; t.fill.material.color.setHex(sel ? 0xffd75a : 0xffffff);
-    t.line.material.opacity = on ? 0.65 : S.phase === "carousel" ? 0 : 0.16;
+    const spy = S.phase === "plan" && S.scout != null && !sel && !on; // 정찰 중: 위쪽(그 반)은 빨갛게, 아래(우리 반)는 초록으로 나눠 보여요
+    t.fill.material.opacity = sel ? 0.35 : on ? 0.12 : spy ? (r < 4 ? 0.2 : 0.07) : 0.04; t.fill.material.color.setHex(sel ? 0xffd75a : spy ? (r < 4 ? 0xff4a3a : 0x3fdf8a) : 0xffffff);
+    t.line.material.opacity = on ? 0.65 : spy ? (r < 4 ? 0.7 : 0.3) : S.phase === "carousel" ? 0 : 0.16; t.line.material.color.setHex(spy && r < 4 ? 0xff8a7a : 0xfff1cc);
   }
   pads.forEach((p, i) => p.material.emissive.setHex(S.sel && S.sel.w === "n" && S.sel.i === i ? 0x5a4a08 : 0));
   stepTactician(dt);
@@ -2930,8 +2931,9 @@ function drawOverlay(dt, R) {
     }
     ctx.font = font(fs); ctx.textBaseline = "middle";
     const tw = ctx.measureText(name).width + fs * 0.6;
-    ctx.fillStyle = it.enemy ? "rgba(90,30,26,.85)" : "rgba(16,32,26,.8)";
+    ctx.fillStyle = it.enemy ? "rgba(140,34,28,.92)" : "rgba(16,32,26,.8)"; // 상대 이름표는 진한 빨강 + 테두리
     roundRect(sx - tw / 2, sy - fs * 1.1, tw, fs * 1.15, fs * 0.35); ctx.fill();
+    if (it.enemy && !sp.mon) { ctx.strokeStyle = "#ff9a88"; ctx.lineWidth = 1.2; ctx.stroke(); }
     ctx.fillStyle = TOK["--chalk"]; ctx.fillText(name, sx, sy - fs * 0.5);
     if (it.f && (it.f.stunT > 0 || it.f.vulnT > 0) && it.f.alive) {
       ctx.font = font(fs * 0.8); ctx.fillStyle = it.f.stunT > 0 ? TOK["--accent"] : TOK["--c4"]; ctx.textBaseline = "bottom";
