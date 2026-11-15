@@ -2020,6 +2020,8 @@ function glowSprite(key, draw) {
   const tex = textTex(key, 96, 96, draw);
   return new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
 }
+// 음 이름이 붙은 음표 (합창 지휘): 위에 ♪, 아래에 "도" 같은 음 이름
+const solfegeSprite = (i, col) => glowSprite("solf" + i + col, (g, w, h) => { g.clearRect(0, 0, w, h); g.textAlign = "center"; g.textBaseline = "middle"; g.shadowColor = col; g.shadowBlur = 12; g.fillStyle = col; g.font = "bold 46px serif"; g.fillText(["♪", "♫", "♩", "♬"][i % 4], w / 2, h * 0.34); g.font = "900 30px sans-serif"; g.fillStyle = "#ffffff"; g.fillText(SOLFEGE[i % 8], w / 2, h * 0.78); });
 const noteSprite = (ch, col) => glowSprite("note" + ch + col, (g, w, h) => { g.clearRect(0, 0, w, h); g.font = "bold 64px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.shadowColor = col; g.shadowBlur = 16; g.fillStyle = col; g.fillText(ch, w / 2, h / 2); g.fillStyle = "#ffffff"; g.shadowBlur = 0; g.globalAlpha = 0.7; g.fillText(ch, w / 2, h / 2); });
 const bubbleSprite = (col) => glowSprite("bubble" + col, (g, w, h) => { g.clearRect(0, 0, w, h); const gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2 - 4); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.7, col + "55"); gr.addColorStop(0.92, col); gr.addColorStop(1, col + "00"); g.fillStyle = gr; g.beginPath(); g.arc(w / 2, h / 2, w / 2 - 2, 0, Math.PI * 2); g.fill(); g.fillStyle = "rgba(255,255,255,.9)"; g.beginPath(); g.arc(w * 0.38, h * 0.36, 7, 0, Math.PI * 2); g.fill(); });
 function heroAura(g, ud, name, star, dt) {
@@ -2905,7 +2907,7 @@ function drawChorus(z, dt) {
   U.sig.scale.setScalar(sigS); U.sig.rotation.z += dt * 0.8; U.sig.material.opacity = fade * (0.55 + 0.35 * beatK);
   if (z.n !== U.n && z.t < CHORUS_T) { // 박자마다 음표가 솟아올라요
     U.n = z.n;
-    for (let i = 0; i < (z.all ? 6 : 4); i++) { const s = noteSprite(["♪", "♫", "♩", "♬"][(z.n + i) % 4], i % 2 ? "#ffd36b" : "#fff3c4"); const a = Math.random() * Math.PI * 2, r = Math.random() * (z.all ? 6 : 2.6); s.position.set(Math.cos(a) * r, 0.4, Math.sin(a) * r); s.userData.life = 1; s.userData.vy = 1.6 + Math.random(); g.add(s); U.notes.push(s); }
+    for (let i = 0; i < (z.all ? 6 : 4); i++) { const s = i === 0 ? solfegeSprite(z.n - 1, "#ffd36b") : noteSprite(["♪", "♫", "♩", "♬"][(z.n + i) % 4], i % 2 ? "#ffd36b" : "#fff3c4"); /* 첫 음표엔 이번 박자 음 이름 (도·레·미…) */ const a = Math.random() * Math.PI * 2, r = Math.random() * (z.all ? 6 : 2.6); s.position.set(Math.cos(a) * r, 0.4, Math.sin(a) * r); s.userData.life = 1; s.userData.vy = 1.6 + Math.random(); g.add(s); U.notes.push(s); }
   }
   U.notes = U.notes.filter((s) => { s.userData.life -= dt * 1.1; s.position.y += s.userData.vy * dt; s.material.opacity = Math.max(0, s.userData.life) * fade; s.scale.setScalar(0.45 + (1 - s.userData.life) * 0.3); if (s.userData.life <= 0) { g.remove(s); s.material.dispose(); return false; } return true; });
   const ft = z.t - CHORUS_T; // 포르테: 금빛 음파 세 겹이 퍼져요
