@@ -94,7 +94,7 @@ function carouselTap(x, y) {
   if (best) carouselPick(cur, best);
 }
 function tap(h, loc) {
-  const P = human();
+  const P = human(); S.traitSel = null;
   if (!loc) {
     const hadSel = S.sel; S.sel = null; renderUI();
     let shown = false;
@@ -230,15 +230,18 @@ function showItem(id) {
   else html += `<br><span class="guide">재료: ${it.parts.map((p) => ITEMS[p].n).join(" + ")}</span>`;
   $("info").innerHTML = html + `<br><span class="guide">친구를 탭하면 장착돼요</span></div>`;
 }
+function showTrait(t) {
+  $("info").innerHTML = `<div class="txt"><b>${t}</b> (${TRAITS[t].t.join(" / ")})<br>${TRAITS[t].d}<br><span class="guide">${DEFS.filter((d) => d.t.includes(t)).map((d) => d.n).join(", ")}</span><br><span class="guide">특성을 다시 누르면 닫혀요</span></div>`;
+}
 function updateMeter() {
-  if (!S.battle || S.sel || (S.infoHold || 0) > performance.now() || !["combat", "result"].includes(S.phase)) return;
+  if (!S.battle || S.sel || S.traitSel || (S.infoHold || 0) > performance.now() || !["combat", "result"].includes(S.phase)) return;
   const list = S.battle.f.filter((f) => f.team === 0 && !f.mon && !f.merged).sort((a, b) => (b.dmg || 0) - (a.dmg || 0)).slice(0, 6);
   if (!list.length) return;
   const mx = Math.max(1, ...list.map((f) => f.dmg || 0));
   $("info").innerHTML = `<div class="txt"><b>피해량</b>${list.map((f) => `<div class="dm"><span>${f.robot ? (f.mega ? "초합체로봇" : "합체로봇") : short(DEFS[f.d].n)}${"★".repeat(f.star)}</span><i style="width:${((f.dmg || 0) / mx) * 100}%"></i><em>${Math.round(f.dmg || 0)}</em></div>`).join("")}</div>`;
 }
 function showFighter(f) {
-  S.infoHold = performance.now() + 3000;
+  S.traitSel = null; S.infoHold = performance.now() + 3000;
   if (f.mon) { $("info").innerHTML = `<div class="txt"><b>${f.mon.summon ? (f.mon.giant ? "거대 이다연" : "이다연") : f.mon.mn}</b> ${f.mon.summon ? "소환수 (김예균이 불러냄)" : "몬스터"} · 체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)}</div>`; return; }
   const def = DEFS[f.d];
   $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${f.robot ? (f.mega ? "초합체로봇 (모두 ★3)" : ROBOT_NAME) : def.n}</b> ${"★".repeat(f.star)} ${f.team ? "<span style='color:var(--danger)'>상대</span>" : ""}<br>
@@ -274,6 +277,14 @@ function renderUI() {
     if (S.phase !== "plan" || i === 0 || !S.players[i].alive) return toast(i === 0 ? "내 반이에요" : "계획 단계에서만 정찰할 수 있어요");
     S.scout = S.scout === i ? null : i; renderUI();
   }));
+  // 정찰 중 안내: 지금 보이는 게 누구 배치인지 확실하게
+  const sb = $("scoutbar"), sq = S.phase === "plan" && S.scout != null ? S.players[S.scout] : null;
+  sb.hidden = !sq;
+  if (sq && sb.dataset.k !== sq.i + ":" + sq.name) {
+    sb.dataset.k = sq.i + ":" + sq.name;
+    sb.innerHTML = `<span>🔍 <b>${esc(sq.name)}</b> 배치 보는 중</span><span class="hint"><i class="sw" style="background:#e0483c"></i> 위쪽 빨간 칸 = ${esc(sq.name)} · <i class="sw" style="background:#3fbf7a"></i> 아래 = 우리 반</span><button type="button">닫기</button>`;
+    tapButton(sb.querySelector("button"), () => { S.scout = null; renderUI(); });
+  }
   // 시너지
   const cnt = teamCounts(unitsOf(P).filter((x) => x.w === "b").map((x) => ({ spec: x.u })), P);
   const keys = Object.keys(cnt).sort((a, b) => traitLvl(b, cnt[b]) - traitLvl(a, cnt[a]) || cnt[b] - cnt[a]);
@@ -281,12 +292,12 @@ function renderUI() {
     ? keys.map((k) => {
         const on = traitLvl(k, cnt[k]) > 0, th = TRAITS[k].t, next = th.find((x) => x > cnt[k]) ?? th.at(-1);
         const lv = traitLvl(k, cnt[k]), tier = lv === 0 ? "" : lv >= th.length && th.length > 1 ? " l3" : lv >= 2 ? " l2" : " l1";
-        return `<button class="trait${tier}" data-t="${k}"><span class="hx">${cnt[k]}</span><span><b>${k}</b>${cnt[k]} / ${next}</span></button>`;
+        return `<button class="trait${tier}${S.traitSel === k ? " sel" : ""}" data-t="${k}" aria-pressed="${S.traitSel === k}"><span class="hx">${cnt[k]}</span><span><b>${k}</b>${cnt[k]} / ${next}</span></button>`;
       }).join("")
     : "";
   $("traits").querySelectorAll("[data-t]").forEach((el) => tapButton(el, () => {
-    const t = el.dataset.t;
-    $("info").innerHTML = `<div class="txt"><b>${t}</b> (${TRAITS[t].t.join(" / ")})<br>${TRAITS[t].d}<br><span class="guide">${DEFS.filter((d) => d.t.includes(t)).map((d) => d.n).join(", ")}</span></div>`;
+    // 특성 설명은 다시 누르거나 다른 걸 누를 때까지 열려 있어요 (전투 중 피해량 표·화면 갱신에 덮이지 않게)
+    const t = el.dataset.t; S.traitSel = S.traitSel === t ? null : t; S.sel = null; S.infoHold = 0; renderUI();
   }));
   // 상점
   const ownCount = {};
@@ -317,11 +328,12 @@ function renderUI() {
     if (u) return showUnit(u, false);
     S.sel = null;
   }
+  if (S.traitSel && TRAITS[S.traitSel]) return showTrait(S.traitSel);
   let guide;
   if (S.phase === "carousel") guide = "급식 줄: 체력이 낮은 반부터 하나씩 골라요. 내 차례가 오면 돌아가는 친구를 탭하세요. 친구는 아이템을 들고 있어요.";
   else if (S.phase === "plan") {
-    const act = keys.filter((k) => traitLvl(k, cnt[k]) > 0).map((k) => TRAITS[k].d);
-    guide = act.length ? "적용 중: " + act.join(" · ") : S.type === "pve" ? "몬스터 라운드! 이기면 골드 구슬이 떨어져요. 친구를 탭해서 고르고 놓을 칸을 탭하세요." : "다른 반 이름을 누르면 그 반 배치를 정찰할 수 있어요. 시간이 끝나면 자동으로 전투가 시작돼요.";
+    const act = keys.filter((k) => traitLvl(k, cnt[k]) > 0); // 휴대폰에서 판을 가리지 않게 이름만 (설명은 왼쪽 특성을 누르면 나와요)
+    guide = act.length ? "적용 중: " + act.join(" · ") + " — 왼쪽 특성을 누르면 설명이 나와요" : S.type === "pve" ? "몬스터 라운드! 이기면 골드 구슬이 떨어져요. 친구를 탭해서 고르고 놓을 칸을 탭하세요." : "다른 반 이름을 누르면 그 반 배치를 정찰할 수 있어요. 시간이 끝나면 자동으로 전투가 시작돼요.";
   } else if (S.phase === "wait") guide = "준비 완료! 다른 반이 준비를 마치면 전투가 시작돼요.";
   else guide = "전투 중… 친구를 탭하면 실시간 상태를 볼 수 있어요. 대기석 정리와 상점 구매는 지금도 할 수 있어요.";
   $("info").innerHTML = S.stage === 1 || S.phase === "carousel" ? `<div class="txt guide">${guide}</div>` : "";

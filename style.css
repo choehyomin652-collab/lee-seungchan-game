@@ -84,6 +84,21 @@ button:disabled { opacity: .45; }
 .pl .hpn { min-width: calc(var(--u) * 4); text-align: right; font-variant-numeric: tabular-nums; }
 .pl.me .av { border-color: var(--gold); } .pl.opp .av { border-color: var(--danger); } .pl.scout .av { box-shadow: 0 0 0 calc(var(--u) * .4) var(--c3); }
 .pl.dead { opacity: .35; }
+/* 고른 특성: 설명이 열려 있다는 표시 */
+.trait.sel > span:last-child { background: rgba(214, 178, 106, .32); box-shadow: inset 0 0 0 1px rgba(255, 220, 140, .85); }
+/* 다른 반 정찰 중: 위쪽 빨간 칸이 그 반, 아래가 우리 반 */
+.scoutbar { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 6.2); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: calc(var(--u) * 1); padding: calc(var(--u) * .5) calc(var(--u) * .6) calc(var(--u) * .5) calc(var(--u) * 1.4); border-radius: 999px; background: linear-gradient(180deg, rgba(150, 38, 32, .95), rgba(92, 20, 18, .95)); border: 1px solid #ff9a88; box-shadow: 0 calc(var(--u) * .5) calc(var(--u) * 1.6) rgba(0, 0, 0, .5); color: #fff; font-size: calc(var(--u) * 1.6); white-space: nowrap; }
+.scoutbar b { font-family: var(--display); font-weight: 400; font-size: 1.2em; color: #ffe0a0; }
+.scoutbar .sw { display: inline-block; width: .8em; height: .8em; border-radius: .2em; vertical-align: -.05em; }
+.scoutbar button { -webkit-appearance: none; appearance: none; font: inherit; font-family: var(--display); color: #fff; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .5); border-radius: 999px; padding: calc(var(--u) * .3) calc(var(--u) * 1.2); }
+.pl.scout .av { border-color: #ff5a4a; }
+.pl.scout::after { content: "정찰"; font-size: .8em; color: #ffb0a4; }
+@media (max-height: 430px) {
+  /* 휴대폰 가로: 오른쪽 반 목록이 상점 칸에 겹치지 않게 조금 작게 */
+  .players { gap: calc(var(--u) * .3); }
+  .pl .av { width: calc(var(--u) * 4.1); height: calc(var(--u) * 4.1); font-size: calc(var(--u) * 1.45); }
+  .scoutbar .hint { display: none; }
+}
 /* 버튼: 어두운 유리판 + 얇은 금테로 통일, 누르면 살짝 눌리는 느낌 */
 .cbtn, .tbtn, .lockbtn, .gearbtn, .menu button {
   -webkit-appearance: none; appearance: none; color: #f3f1ea; font-family: var(--display);
