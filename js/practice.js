@@ -1,11 +1,12 @@
 // ============================================================
 //  practice.js — 연습장: 김예균(또는 아무 친구)을 마음껏 써 보는 곳
 //   · 골드 999 · 레벨 9 · 시간 제한 없음 · 체력이 깎이지 않아요
-//   · 위쪽 연습 패널: 예균 별 바꾸기 · 상대(허수아비 / 강한 적 팀) · 시작하자마자 스킬 · 전투 멈추기 · 나가기
+//   · 위쪽 연습 패널: 주인공(예균 · 선생님) 별 바꾸기 · 상대(허수아비 / 강한 적 팀) · 시작하자마자 스킬 · 전투 멈추기 · 나가기
 //   · 게임 규칙 함수를 감싸서(S.practice 일 때만) 다르게 동작해요. 보통 게임에는 영향이 없어요
 // ============================================================
 "use strict";
 const PRAC_HERO = "김예균";
+const pracHeroes = () => (S && S.pracHero) || [PRAC_HERO]; // 지금 연습 주인공들 (선생님 버튼이면 세세쌤 · 배성쌤)
 const PRAC_TEAM = [["정주환", 2, 1, 3], ["진성욱", 2, 0, 2], ["임시온", 2, 0, 4], ["이보경", 2, 0, 3], ["손태민", 2, 2, 2], ["박준서", 2, 2, 4], ["조하윤", 2, 3, 3]];
 const pracIdx = (n) => DEFS.findIndex((d) => d.n === n);
 function pracDummies() { // 허수아비: 체력이 아주 많고 거의 때리지 않아요
@@ -19,16 +20,26 @@ function pracFoes() {
 }
 // 보드에서 연습 주인공을 찾아 별을 바꾸거나, 없으면 맨 앞 가운데에 놓아요
 function pracSetHero(star) {
-  const P = human(), d = pracIdx(PRAC_HERO);
-  for (let r = 0; r < 4; r++) for (let c = 0; c < COLS; c++) { const u = P.board[r][c]; if (u && u.d === d) { u.star = star; S.pracStar = star; renderUI(); return; } }
-  for (const [r, c] of [[0, 3], [0, 2], [0, 4], [1, 3], [1, 2], [0, 1], [0, 5]]) if (!P.board[r][c]) { P.board[r][c] = mkUnit(d, star); break; }
+  const P = human();
+  for (const n of pracHeroes()) {
+    const d = pracIdx(n); let found = false;
+    for (let r = 0; r < 4; r++) for (let c = 0; c < COLS; c++) { const u = P.board[r][c]; if (u && u.d === d) { u.star = star; found = true; } }
+    if (!found) for (const [r, c] of [[0, 3], [0, 2], [0, 4], [1, 3], [1, 2], [0, 1], [0, 5]]) if (!P.board[r][c]) { P.board[r][c] = mkUnit(d, star); break; }
+  }
   S.pracStar = star; renderUI();
+}
+// 선생님 연습: 보드를 비우고 세세쌤(뒷줄) · 배성쌤(뒷줄)에 앞줄 지킴이 둘 — 둘이 함께라 '선생님' 시너지(수업 시작!)도 켜져요
+function pracTeachers() {
+  const P = human(), star = S.pracStar || 2; P.board = P.board.map((row) => row.map(() => null));
+  [["세세쌤", 3, 2, star], ["배성쌤", 3, 4, star], ["이보경", 0, 2, 2], ["진성욱", 0, 4, 2]].forEach(([n, r, c, st]) => (P.board[r][c] = mkUnit(pracIdx(n), st)));
+  S.pracHero = ["세세쌤", "배성쌤"]; S.pracStar = star; renderUI();
+  toast("세세쌤 · 배성쌤을 놓았어요. 별 버튼으로 선생님 별을 바꿔요");
 }
 // 초합체로봇 보기: 보드를 비우고 합체로봇 네 명을 모두 ★3으로 놓아요 (실제 게임에서는 9장씩 모아야 해서 보기 어려워요)
 function pracMegaRobot() {
   const P = human(); P.board = P.board.map((row) => row.map(() => null));
   [["조하윤", 0, 2], ["박희찬", 0, 4], ["윤동욱", 1, 2], ["이보경", 1, 4]].forEach(([n, r, c]) => (P.board[r][c] = mkUnit(pracIdx(n), 3)));
-  S.pracStar = 0; renderUI();
+  S.pracStar = 0; S.pracHero = []; renderUI();
   toast("합체로봇 네 명을 ★3으로 놓았어요. 시작을 누르면 초합체!");
 }
 function practiceStart() {
@@ -37,7 +48,7 @@ function practiceStart() {
   if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
   $("ov").hidden = true;
   newGame();
-  S.practice = 1; S.pracFoe = S.pracFoe || "dummy"; S.pracMana = true; S.pracStar = 2;
+  S.practice = 1; S.pracFoe = S.pracFoe || "dummy"; S.pracMana = true; S.pracStar = 2; S.pracHero = null;
   S.stage = 4; S.k = 3; S.car = null; S.orbs = [];
   const P = human(); P.level = 9; P.xp = 0; P.gold = 999;
   refreshShop(P);
@@ -62,7 +73,7 @@ startCombatNow = function () {
   collectOrbs(true);
   S.sel = null; S.scout = null; drag = null;
   const P = human(), B = makeBattle(sideOf(P), pracFoes(), true, P, null);
-  if (S.pracMana) B.f.forEach((f) => { if (f.d >= 0 && ((f.team === 0 && DEFS[f.d].n === PRAC_HERO) || (f.team === 1 && S.pracFoe === "juhwan"))) f.mana = f.mm; }); // 시작하자마자 스킬 (1대1이면 주환도 같이)
+  if (S.pracMana) B.f.forEach((f) => { if (f.d >= 0 && ((f.team === 0 && pracHeroes().includes(DEFS[f.d].n)) || (f.team === 1 && S.pracFoe === "juhwan"))) f.mana = f.mm; }); // 시작하자마자 스킬 (1대1이면 주환도 같이)
   S.battle = B; S.results = [{ kind: "prac", a: P, B }]; S.opp = null;
   S.phase = "combat"; sfx("start"); renderUI();
 };
@@ -70,11 +81,11 @@ finishCombat = function () {
   if (!S || !S.practice) return _finishCombat();
   S.phase = "result";
   const B = S.battle, win = B.win === 0;
-  const hero = B.f.filter((f) => f.team === 0 && f.d >= 0 && DEFS[f.d].n === PRAC_HERO);
+  const hero = B.f.filter((f) => f.team === 0 && f.d >= 0 && pracHeroes().includes(DEFS[f.d].n));
   const dmg = Math.round(hero.reduce((s, f) => s + (f.dmg || f.dealt || 0), 0));
   S.banner = { text: win ? "승리!" : S.pracFoe === "dummy" ? "연습 끝" : "패배", col: win ? TOK["--accent"] : TOK["--chalk"], t: 1.8 };
   if (S.pracFoe === "juhwan") { const foe = B.f.find((f) => f.team === 1 && f.d >= 0); toast(win ? `김예균 승리! 남은 체력 ${Math.round(hero.reduce((s, f) => s + Math.max(0, f.hp), 0))}` : `정주환 승리! 남은 체력 ${Math.round(foe ? Math.max(0, foe.hp) : 0)}`); }
-  else if (dmg) toast(`${PRAC_HERO} 피해량 ${dmg}`);
+  else if (dmg) toast(`${pracHeroes().join(" · ")} 피해량 ${dmg}`);
   sfx(win ? "win" : "lose");
   S.resultT = 2; renderUI();
 };
@@ -92,7 +103,8 @@ function pracUI() {
   $("pracmana").classList.toggle("on", !!S.pracMana);
   $("pracmana").textContent = S.pracMana ? "바로 스킬 켜짐" : "바로 스킬 꺼짐";
   const plan = S.phase === "plan";
-  el.querySelectorAll("[data-star],[data-foe],#pracmega").forEach((b) => (b.disabled = !plan));
+  el.querySelectorAll("[data-star],[data-foe],#pracmega,#practeach").forEach((b) => (b.disabled = !plan));
+  $("prachero").textContent = pracHeroes().length ? pracHeroes().join(" · ") : "주인공 없음";
   $("pracstop").disabled = S.phase !== "combat";
   const rt = $("rtype"); if (rt) { rt.textContent = "연습장"; rt.className = "rtype"; }
 }
@@ -101,5 +113,6 @@ document.querySelectorAll("#prac [data-star]").forEach((b) => tapButton(b, () =>
 document.querySelectorAll("#prac [data-foe]").forEach((b) => tapButton(b, () => { if (S.phase === "plan") { S.pracFoe = b.dataset.foe; renderUI(); } }));
 tapButton($("pracmana"), () => { S.pracMana = !S.pracMana; renderUI(); });
 tapButton($("pracmega"), () => { if (S.phase === "plan") pracMegaRobot(); });
+tapButton($("practeach"), () => { if (S.phase === "plan") pracTeachers(); });
 tapButton($("pracexit"), practiceExit);
 tapButton($("pracstop"), () => { const B = S.battle; if (S.phase === "combat" && B && !B.done) { B.done = true; if (B.win == null) B.win = -1; } }); // 전투를 바로 끝내고 준비로 돌아가요
