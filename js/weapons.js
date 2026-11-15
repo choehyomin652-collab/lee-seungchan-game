@@ -104,6 +104,12 @@ const WEAPONS = {
   } },
   "이다연": { n: "실내화 킥", anim: "kick", build(e) { // 손엔 아무것도 없어요 — 정강이를 차요
   } },
+  "세세쌤": { n: "영어 단어 카드", anim: "throw", pr: { col: "#ffffff", shape: "plane" }, build(e) {
+    const c = e.put(wg("wcard", () => new THREE.BoxGeometry(0.16, 0.11, 0.008)), e.mk(0xf6f4ee, 0.6), 0, -0.45, 0.06, e.R); c.rotation.x = 0.4;
+  } },
+  "배성쌤": { n: "지휘봉", anim: "wave", pr: { col: "#ffd36b", shape: "orb" }, build(e) {
+    wStick(e, e.mk(0xf2ead8, 0.4), 0.42, 0.01, 0, -0.43, 0.1, 0.5);
+  } },
   "김예균": { n: "소환 지팡이", anim: "staff", build(e) {
     const [tx, ty, tz] = wStick(e, e.mk(0x2a6a68, 0.5), 0.8, 0.022, 0, -0.43, 0.1, 0.4);
     const dy = Math.cos(0.4), dz = Math.sin(0.4);

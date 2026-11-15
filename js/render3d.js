@@ -2833,7 +2833,18 @@ function drawChem(z, dt) {
   ud.mats[1].opacity = 0.9 * ifade;
   ud.frost.visible = iceOn && ifade > 0; ud.frost.position.y = 0.22; ud.frost.scale.setScalar(rr * Math.min(1, h / 0.15)); ud.frost.material.opacity = 0.45 * ifade;
 }
-const ZDRAW = { chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+// 배성쌤 합창 지휘: 바닥에 오선지 다섯 줄이 흐르고, 박자마다 살짝 커졌다 작아져요
+function drawChorus(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group();
+    grp.userData.lines = [-2, -1, 0, 1, 2].map((k) => { const m = new THREE.Mesh(zgeo().bar, additive(k === 0 ? "#ffffff" : "#ffd36b")); m.userData.k = k; grp.add(m); return m; });
+    return grp;
+  });
+  const fade = Math.min(1, z.t / 0.25, Math.max(0, (z.dur - z.t) / 0.4)), len = z.all ? 16 : 6.5, pulse = 1 + 0.08 * Math.max(0, 1 - (z.beat || 0) / 0.2);
+  g.position.set(worldX(z.X), 0.26, worldZ(z.Y)); g.rotation.y = -0.35;
+  g.userData.lines.forEach((m) => { m.scale.set(len * pulse, 1, 0.045); m.position.z = m.userData.k * 0.24 * pulse; m.material.opacity = fade * (m.userData.k === 0 ? 0.8 : 0.6); });
+}
+const ZDRAW = { repeat: () => {}, chorus: drawChorus, chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
