@@ -193,6 +193,10 @@ function projSpecial(p) {
     const n = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.2, 8), glass); n.position.y = 0.24; g.add(n);
     return g;
   }
+  if (p.shape === "letter") { // 세세쌤: 날아가는 알파벳 (빛나는 글자)
+    const tex = textTex("letter" + p.ch + p.col, 96, 96, (g, w, h) => { g.clearRect(0, 0, w, h); g.font = "900 72px Georgia, 'Times New Roman', serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.shadowColor = "#4fa8ff"; g.shadowBlur = 18; g.lineWidth = 6; g.strokeStyle = "#163a7a"; g.strokeText(p.ch, w / 2, h / 2 + 4); g.fillStyle = p.col; g.fillText(p.ch, w / 2, h / 2 + 4); });
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); s.scale.setScalar(0.75); return s;
+  }
   if (p.shape === "dart") { const m = new THREE.Mesh(GEO.spike, new THREE.MeshStandardMaterial({ color: lin(0xe8402e), roughness: 0.5 })); m.scale.set(1.2, 1.7, 1.2); return m; }
   return null;
 }

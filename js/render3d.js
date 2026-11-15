@@ -1966,6 +1966,7 @@ function placeUnit(it, dt) {
   if (ud.jellyMats) for (const m of ud.jellyMats) { m.transparent = true; m.opacity = a * m.userData.op; if (m.userData.e0 === undefined) m.userData.e0 = m.emissive.getHex(); m.emissive.setHex(it.flash ? 0x3a3a3a : m.userData.e0); }
   if (it.f) unitStatus(g, ud, it.f, dt);
   if (!it.sp.mon && it.sp.star >= 2) starFlair(g, ud, it.sp.star, dt);
+  if (!it.sp.mon && !it.sp.robot && AURA_DEF[DEFS[it.sp.d].n]) heroAura(g, ud, DEFS[it.sp.d].n, it.sp.star, dt);
   it.g = g;
 }
 // 보호막 방울 · 기절 별 · 공격 속도 버프 고리
@@ -1986,6 +1987,57 @@ function unitStatus(g, ud, f, dt) {
     if (!ud.buff) { ud.buff = new THREE.Mesh(GEO.ringFx, additive("#ffb43a")); ud.buff.rotation.x = -Math.PI / 2; ud.buff.position.y = 0.23; g.add(ud.buff); }
     ud.buff.visible = true; ud.buff.scale.setScalar(0.72 + Math.sin(clock3d * 9) * 0.06); ud.buff.rotation.z += dt * 5; ud.buff.material.opacity = 0.75;
   } else if (ud.buff) ud.buff.visible = false;
+}
+// ----- 특별한 친구의 오라 (배성쌤 · 문주호): 발밑 마법진 + 빛기둥 + 떠다니는 음표/거품 -----
+const AURA_DEF = {
+  "배성쌤": { col: "#ffd36b", col2: "#fff3c4", sig: "music", part: "note" },
+  "문주호": { col: "#5aff8a", col2: "#d4ffe4", sig: "chem", part: "bubble" },
+};
+const FLATG = () => GEO.flat || (GEO.flat = new THREE.PlaneGeometry(1, 1));
+// 발밑 마법진 그림 (캔버스)
+function auraSigil(kind) {
+  return textTex("sigil-" + kind, 512, 512, (g, w, h) => {
+    const c = w / 2; g.clearRect(0, 0, w, h); g.strokeStyle = "#ffffff"; g.fillStyle = "#ffffff"; g.lineCap = "round";
+    const ring = (r, lw) => { g.lineWidth = lw; g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.stroke(); };
+    ring(240, 8); ring(222, 3); ring(150, 5);
+    if (kind === "music") {
+      for (let k = 0; k < 5; k++) ring(160 + k * 13, 2.2); // 둥근 오선지
+      g.font = "bold 46px serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      const notes = ["♪", "♫", "♩", "♬"];
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; g.save(); g.translate(c + Math.cos(a) * 186, c + Math.sin(a) * 186); g.rotate(a + Math.PI / 2); g.fillText(notes[i % 4], 0, 0); g.restore(); }
+      g.lineWidth = 4; for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.beginPath(); g.moveTo(c + Math.cos(a) * 228, c + Math.sin(a) * 228); g.lineTo(c + Math.cos(a) * 240, c + Math.sin(a) * 240); g.stroke(); }
+      g.font = "bold 120px serif"; g.fillText("♫", c, c + 6);
+    } else {
+      g.lineWidth = 6; g.beginPath(); for (let i = 0; i <= 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; g[i ? "lineTo" : "moveTo"](c + Math.cos(a) * 110, c + Math.sin(a) * 110); } g.stroke(); // 벤젠 고리
+      ring(68, 4);
+      g.font = "bold 40px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      ["H", "O", "C", "N", "Na", "Cl"].forEach((el, i) => { const a = (i / 6) * Math.PI * 2 - Math.PI / 2; g.fillText(el, c + Math.cos(a) * 186, c + Math.sin(a) * 186); });
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; g.beginPath(); g.arc(c + Math.cos(a) * 110, c + Math.sin(a) * 110, 10, 0, Math.PI * 2); g.fill(); }
+    }
+  });
+}
+function glowSprite(key, draw) {
+  const tex = textTex(key, 96, 96, draw);
+  return new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+}
+const noteSprite = (ch, col) => glowSprite("note" + ch + col, (g, w, h) => { g.clearRect(0, 0, w, h); g.font = "bold 64px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.shadowColor = col; g.shadowBlur = 16; g.fillStyle = col; g.fillText(ch, w / 2, h / 2); g.fillStyle = "#ffffff"; g.shadowBlur = 0; g.globalAlpha = 0.7; g.fillText(ch, w / 2, h / 2); });
+const bubbleSprite = (col) => glowSprite("bubble" + col, (g, w, h) => { g.clearRect(0, 0, w, h); const gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2 - 4); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.7, col + "55"); gr.addColorStop(0.92, col); gr.addColorStop(1, col + "00"); g.fillStyle = gr; g.beginPath(); g.arc(w / 2, h / 2, w / 2 - 2, 0, Math.PI * 2); g.fill(); g.fillStyle = "rgba(255,255,255,.9)"; g.beginPath(); g.arc(w * 0.38, h * 0.36, 7, 0, Math.PI * 2); g.fill(); });
+function heroAura(g, ud, name, star, dt) {
+  const A = AURA_DEF[name], k = star >= 3 ? 1.35 : star === 2 ? 1.15 : 1;
+  if (!ud.aura2) {
+    const grp = (ud.aura2 = new THREE.Group()); g.add(grp);
+    const sm = new THREE.MeshBasicMaterial({ map: auraSigil(A.sig), color: new THREE.Color(A.col), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const sig = new THREE.Mesh(FLATG(), sm); sig.rotation.x = -Math.PI / 2; sig.position.y = 0.235; grp.add(sig); grp.userData.sig = sig;
+    const pil = new THREE.Mesh(GEO.auraPil || (GEO.auraPil = new THREE.CylinderGeometry(0.42, 0.58, 2.8, 24, 1, true)), additive(A.col)); pil.position.y = 1.4; pil.material.opacity = 0.1; grp.add(pil); grp.userData.pil = pil;
+    grp.userData.parts = Array.from({ length: A.part === "note" ? 5 : 7 }, (_, i) => { const s = A.part === "note" ? noteSprite(["♪", "♫", "♩", "♬"][i % 4], i % 2 ? A.col : A.col2) : bubbleSprite(A.col); grp.add(s); return s; });
+  }
+  const U = ud.aura2.userData, t = clock3d;
+  U.sig.scale.setScalar(1.9 * k * (1 + Math.sin(t * 2.2) * 0.03)); U.sig.rotation.z += dt * 0.5; U.sig.material.opacity = 0.85 + 0.15 * Math.sin(t * 2.2);
+  U.pil.material.opacity = (0.14 + 0.06 * Math.sin(t * 3)) * k; U.pil.rotation.y += dt;
+  U.parts.forEach((s, i) => {
+    if (A.part === "note") { const a = t * 1.1 + (i / U.parts.length) * Math.PI * 2; s.position.set(Math.cos(a) * 0.75 * k, 1.0 + Math.sin(t * 2 + i * 1.7) * 0.45 + i * 0.12, Math.sin(a) * 0.75 * k); s.scale.setScalar(0.32 + 0.06 * Math.sin(t * 4 + i)); }
+    else { const ph = (t * 0.35 + i / U.parts.length) % 1, a = i * 2.4; s.position.set(Math.cos(a) * (0.35 + 0.25 * Math.sin(i)) * k, 0.3 + ph * 2.4, Math.sin(a) * (0.35 + 0.25 * Math.cos(i)) * k); s.scale.setScalar((0.12 + 0.1 * (i % 3) * 0.5) * (1 - ph * 0.3)); s.material.opacity = Math.sin(ph * Math.PI); }
+  });
 }
 // ★2는 은빛, ★3은 금빛 고리와 반짝이가 따라다녀요
 function starFlair(g, ud, star, dt) {
@@ -2836,15 +2888,48 @@ function drawChem(z, dt) {
 // 배성쌤 합창 지휘: 바닥에 오선지 다섯 줄이 흐르고, 박자마다 살짝 커졌다 작아져요
 function drawChorus(z, dt) {
   const g = useMesh(z, () => {
-    const grp = new THREE.Group();
-    grp.userData.lines = [-2, -1, 0, 1, 2].map((k) => { const m = new THREE.Mesh(zgeo().bar, additive(k === 0 ? "#ffffff" : "#ffd36b")); m.userData.k = k; grp.add(m); return m; });
+    const grp = new THREE.Group(), U = grp.userData;
+    U.staff = new THREE.Group(); grp.add(U.staff);
+    U.lines = [-2, -1, 0, 1, 2].map((k) => { const m = new THREE.Mesh(zgeo().bar, additive(k === 0 ? "#ffffff" : "#ffd36b")); m.userData.k = k; U.staff.add(m); return m; });
+    const sm = new THREE.MeshBasicMaterial({ map: auraSigil("music"), color: new THREE.Color("#ffd36b"), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    U.sig = new THREE.Mesh(FLATG(), sm); U.sig.rotation.x = -Math.PI / 2; U.sig.position.y = 0.02; grp.add(U.sig); // 큰 금빛 음악 마법진
+    U.waves = [0, 1, 2].map(() => { const m = new THREE.Mesh(GEO.ringFx, additive("#ffd36b")); m.rotation.x = -Math.PI / 2; m.visible = false; grp.add(m); return m; }); // 포르테 음파
+    U.notes = []; U.n = -1;
     return grp;
   });
-  const fade = Math.min(1, z.t / 0.25, Math.max(0, (z.dur - z.t) / 0.4)), len = z.all ? 16 : 6.5, pulse = 1 + 0.08 * Math.max(0, 1 - (z.beat || 0) / 0.2);
-  g.position.set(worldX(z.X), 0.26, worldZ(z.Y)); g.rotation.y = -0.35;
-  g.userData.lines.forEach((m) => { m.scale.set(len * pulse, 1, 0.045); m.position.z = m.userData.k * 0.24 * pulse; m.material.opacity = fade * (m.userData.k === 0 ? 0.8 : 0.6); });
+  const U = g.userData, fade = Math.min(1, z.t / 0.25, Math.max(0, (z.dur - z.t) / 0.4)), len = z.all ? 16 : 6.5, beatK = Math.max(0, 1 - (z.beat || 0) / 0.2), pulse = 1 + 0.08 * beatK;
+  g.position.set(worldX(z.X), 0.24, worldZ(z.Y));
+  U.staff.rotation.y = -0.35;
+  U.lines.forEach((m) => { m.scale.set(len * pulse, 1, 0.045); m.position.z = m.userData.k * 0.24 * pulse; m.material.opacity = fade * (m.userData.k === 0 ? 0.8 : 0.6); });
+  const sigS = (z.all ? 15 : 6.2) * (0.6 + 0.4 * Math.min(1, z.t / 0.3)) * (1 + 0.05 * beatK);
+  U.sig.scale.setScalar(sigS); U.sig.rotation.z += dt * 0.8; U.sig.material.opacity = fade * (0.55 + 0.35 * beatK);
+  if (z.n !== U.n && z.t < CHORUS_T) { // 박자마다 음표가 솟아올라요
+    U.n = z.n;
+    for (let i = 0; i < (z.all ? 6 : 4); i++) { const s = noteSprite(["♪", "♫", "♩", "♬"][(z.n + i) % 4], i % 2 ? "#ffd36b" : "#fff3c4"); const a = Math.random() * Math.PI * 2, r = Math.random() * (z.all ? 6 : 2.6); s.position.set(Math.cos(a) * r, 0.4, Math.sin(a) * r); s.userData.life = 1; s.userData.vy = 1.6 + Math.random(); g.add(s); U.notes.push(s); }
+  }
+  U.notes = U.notes.filter((s) => { s.userData.life -= dt * 1.1; s.position.y += s.userData.vy * dt; s.material.opacity = Math.max(0, s.userData.life) * fade; s.scale.setScalar(0.45 + (1 - s.userData.life) * 0.3); if (s.userData.life <= 0) { g.remove(s); s.material.dispose(); return false; } return true; });
+  const ft = z.t - CHORUS_T; // 포르테: 금빛 음파 세 겹이 퍼져요
+  U.waves.forEach((m, i) => { const q = ft - i * 0.1; m.visible = q > 0 && q < 0.6; if (m.visible) { m.scale.setScalar(1 + q * (z.all ? 26 : 9)); m.material.opacity = (1 - q / 0.6) * 0.9; } });
 }
-const ZDRAW = { repeat: () => {}, chorus: drawChorus, chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+// 세세쌤 침묵: 대상 머리 위에 파란 말풍선 "Repeat after me…" + 발밑에 도는 파란 고리
+function drawRepeat(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group();
+    const tex = textTex("repeatBubble", 512, 192, (c, w, h) => {
+      c.clearRect(0, 0, w, h); c.fillStyle = "rgba(20,60,140,.92)"; c.strokeStyle = "#9fd0ff"; c.lineWidth = 8;
+      c.beginPath(); c.moveTo(40, 12); c.lineTo(w - 40, 12); c.quadraticCurveTo(w - 8, 12, w - 8, 44); c.lineTo(w - 8, 116); c.quadraticCurveTo(w - 8, 148, w - 40, 148); c.lineTo(w / 2 + 26, 148); c.lineTo(w / 2, 184); c.lineTo(w / 2 - 26, 148); c.lineTo(40, 148); c.quadraticCurveTo(8, 148, 8, 116); c.lineTo(8, 44); c.quadraticCurveTo(8, 12, 40, 12); c.closePath(); c.fill(); c.stroke();
+      c.font = "italic 900 56px Georgia, serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#ffffff"; c.fillText("Repeat after me…", w / 2, 80);
+    });
+    const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); b.scale.set(2.2, 0.82, 1); grp.add(b); grp.userData.b = b;
+    const r = new THREE.Mesh(GEO.ringFx, additive("#4fa8ff")); r.rotation.x = -Math.PI / 2; grp.add(r); grp.userData.r = r;
+    return grp;
+  });
+  const q = Math.min(1, z.t / 0.2, Math.max(0, (z.dur - z.t) / 0.3));
+  g.position.set(worldX(z.X), 0, worldZ(z.Y));
+  g.userData.b.position.y = 3.0 + Math.sin(z.t * 4) * 0.08; g.userData.b.material.opacity = q;
+  g.userData.r.position.y = 0.24; g.userData.r.scale.setScalar(0.85 + Math.sin(z.t * 6) * 0.06); g.userData.r.rotation.z += dt * 3; g.userData.r.material.opacity = 0.8 * q;
+}
+const ZDRAW = { repeat: drawRepeat, chorus: drawChorus, chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
@@ -3249,6 +3334,24 @@ function drawOverlay(dt, R) {
     ctx.font = font(u0 * 2.6); ctx.fillText(S.banner.text, W / 2, my);
     ctx.globalAlpha = 1;
     if (S.banner.t <= 0) S.banner = null;
+  }
+  // 배성쌤 "포르테!": 화면이 금빛으로 한 번 번쩍
+  const fz = S.battle && S.battle.zones.find((z) => z.kind === "chorus" && z.t >= CHORUS_T);
+  if (fz) { const q = 1 - (fz.t - CHORUS_T) / 0.35; if (q > 0) { ctx.fillStyle = `rgba(255,214,110,${0.28 * q})`; ctx.fillRect(0, 0, W, H); } }
+  // 스킬 알림 띠 (4·5코스트가 스킬을 쓰면 화면 위쪽에 크게): 누가 무슨 스킬을 썼는지 한눈에
+  const co = S.battle && S.battle.callout;
+  if (co && co.t > 0 && S.phase === "combat") {
+    co.t -= dt;
+    const age = co.t0 - co.t, inK = Math.min(1, age / 0.18), outK = Math.min(1, co.t / 0.3), foe = co.team !== (FLIP ? 1 : 0);
+    const col = foe ? "#ff6a5a" : co.c >= 5 ? "#ffd36b" : "#c08aff", y = H3 * 0.15, h = u0 * 4.2, x0 = W / 2, slide = (1 - inK) * W * 0.3 * (foe ? 1 : -1);
+    ctx.save(); ctx.globalAlpha = outK;
+    const gr = ctx.createLinearGradient(x0 - W * 0.32, 0, x0 + W * 0.32, 0); gr.addColorStop(0, "rgba(6,12,18,0)"); gr.addColorStop(0.18, "rgba(6,12,18,.82)"); gr.addColorStop(0.82, "rgba(6,12,18,.82)"); gr.addColorStop(1, "rgba(6,12,18,0)");
+    ctx.translate(slide, 0); ctx.fillStyle = gr; ctx.fillRect(x0 - W * 0.32, y - h / 2, W * 0.64, h);
+    ctx.fillStyle = col; ctx.fillRect(x0 - W * 0.24, y - h / 2, W * 0.48, u0 * 0.18); ctx.fillRect(x0 - W * 0.24, y + h / 2 - u0 * 0.18, W * 0.48, u0 * 0.18);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.shadowColor = col; ctx.shadowBlur = u0 * 1.2;
+    ctx.font = font(u0 * 1.15); ctx.fillStyle = col; ctx.fillText((foe ? "상대 " : "") + co.name, x0, y - h * 0.24);
+    ctx.font = font(u0 * 2.1); ctx.fillStyle = "#ffffff"; ctx.fillText(co.skill, x0, y + h * 0.14, W * 0.6);
+    ctx.restore();
   }
   if (typeof drawPings === "function") drawPings(u0); // ping.js (ui.js 가 그리기를 먼저 시작해서, 불러오기 전 첫 장면에는 없을 수 있어요)
 }

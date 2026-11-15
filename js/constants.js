@@ -70,7 +70,7 @@ const LAND = "(orientation: landscape) and (min-width: 700px)";
 const $ = (id) => document.getElementById(id);
 const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const short = (n) => (n.length === 3 ? n.slice(1) : n);
+const short = (n) => (n.length === 3 && !n.endsWith("쌤") ? n.slice(1) : n); // 세 글자 이름은 성을 빼고 (선생님은 "세세쌤"처럼 그대로)
 const TOK = {};
 function readTokens() {
   const cs = getComputedStyle(document.documentElement);

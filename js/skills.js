@@ -82,6 +82,7 @@ const SK = {
       const list = [t, ...((u.star || 1) >= 3 ? near(fo.filter((o) => o.alive), t, 1).filter((o) => o !== t) : [])];
       list.forEach((o) => { if (!o.alive) return; o.silenceT = Math.max(o.silenceT || 0, REPEAT_T); B.zones.push({ kind: "repeat", step: stepRepeat, team: u.team, owner: u, tgt: o, X: o.X, Y: o.Y, t: 0, n: 0, dur: REPEAT_T }); });
       addHuge(B, u, "Repeat after me!", "#ffffff", "#4fa8ff", 2.6);
+      if (B.visual) "REPEAT".split("").forEach((ch, i) => B.projs.push({ X: u.X - (t.X - u.X) * i * 0.06, Y: u.Y - (t.Y - u.Y) * i * 0.06, t, sp: 11, shape: "letter", ch, col: i % 2 ? "#9fd0ff" : "#ffffff", hit: () => addFx(B, t.X, t.Y, 0.5, "#9fd0ff", 0.25) })); // 보여 주기만
       addFx(B, t.X, t.Y, 1.2, "#9fd0ff", 0.5); addFx(B, t.X, t.Y, 0.7, "#ffffff", 0.3);
       if (B.visual) { u.atkT = ATK_T; sfx("cast"); }
     } },
