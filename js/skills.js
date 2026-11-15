@@ -75,6 +75,23 @@ const SK = {
       addFx(B, t.X, t.Y, 0.8, "#ffffff", 0.3); addFx(B, t.X, t.Y, 1.2, "#ff4d8a", 0.45);
       if (B.visual) { u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; S.shake = Math.max(S.shake || 0, 0.1); sfx("crit"); }
     } },
+  "세세쌤": { s: "Repeat after me!", d: (P) => `대상에게 "Repeat after me!" 공격력×1.4 + ${R0(200 * P)} 피해. 대상은 3초 동안 따라 말하느라 마나가 안 차서 스킬을 못 써요. ★3은 대상 주변 1칸 적도 같이 따라 말해요`,
+    run(B, u, P, t, al, fo) {
+      if (!t || !t.alive) return;
+      dealDamage(B, u, t, u.ad * 1.4 + 200 * P, "skill");
+      const list = [t, ...((u.star || 1) >= 3 ? near(fo.filter((o) => o.alive), t, 1).filter((o) => o !== t) : [])];
+      list.forEach((o) => { if (!o.alive) return; o.silenceT = Math.max(o.silenceT || 0, REPEAT_T); B.zones.push({ kind: "repeat", step: stepRepeat, team: u.team, owner: u, tgt: o, X: o.X, Y: o.Y, t: 0, n: 0, dur: REPEAT_T }); });
+      addHuge(B, u, "Repeat after me!", "#ffffff", "#4fa8ff", 2.6);
+      addFx(B, t.X, t.Y, 1.2, "#9fd0ff", 0.5); addFx(B, t.X, t.Y, 0.7, "#ffffff", 0.3);
+      if (B.visual) { u.atkT = ATK_T; sfx("cast"); }
+    } },
+  "배성쌤": { s: "합창 지휘", d: (P) => `지휘봉을 들면 4초 동안 오선지 무대가 깔려요 (반경 3칸). 0.5초 박자마다 무대 위 아군은 공격 속도 +35%, 무대 위 적은 음표에 맞아 ${R0(30 * P)} 피해. 마지막 마디 "포르테!" 반경 2칸 적에게 ${R0(160 * P)} 피해 + 한 칸 밀쳐내기 + 0.6초 기절. ★3은 전장 전체가 무대예요`,
+    run(B, u, P) {
+      const all = (u.star || 1) >= 3;
+      B.zones.push({ kind: "chorus", step: stepChorus, team: u.team, owner: u, P, X: u.X, Y: u.Y, t: 0, beat: 0, n: 0, dur: CHORUS_T + 0.5, rad: all ? 99 : 3, frad: all ? 99 : 2, all });
+      addHuge(B, u, all ? "♪ 전교 합창! ♪" : "♪ 합창 시작! ♪", "#ffffff", "#ffb43a", all ? 3.2 : 2.6);
+      if (B.visual) sfx("charge");
+    } },
   "윤동욱": { s: "음양의 조화", d: (P) => `태극 문양을 펼쳐요. 양(陽)의 기운으로 대상에게 공격력×2 + ${R0(120 * P)} 피해, 음(陰)의 기운으로 준 피해의 40% 회복. 기본 공격 때 동양철학 한마디`,
     run(B, u, P, t) {
       if (!t) return;
@@ -170,7 +187,7 @@ const SK = {
 
 const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", "¡Fuego!", "¡Venga!", "¡Qué fácil!"];
 const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아일체", "도(道)", "호접지몽", "지행합일"];
-const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5], "이다연": [["정강이!", "에잇!", "퍽!", "앙!"], "#ff9ac0", 0.3], "문주호": [["H₂O!", "NaCl!", "반응해라!", "펑!", "몰(mol)!", "촉매 투입!"], "#9affc0", 0.3] };
+const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5], "이다연": [["정강이!", "에잇!", "퍽!", "앙!"], "#ff9ac0", 0.3], "문주호": [["H₂O!", "NaCl!", "반응해라!", "펑!", "몰(mol)!", "촉매 투입!"], "#9affc0", 0.3], "세세쌤": [["Good!", "Excellent!", "Hello~", "Listen!"], "#9fd0ff", 0.3], "배성쌤": [["♪", "도레미~", "♫", "한 번 더!"], "#ffd36b", 0.3] };
 // 소환수 이다연: 김예균 주변 빈칸에 나타나요
 const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
 function summon(B, u, P, max, opt = {}) {
@@ -284,6 +301,50 @@ function stepBiteKick(B, z, dt) {
     addHuge(B, t, "아야!!", "#ffffff", "#ff8a3a", 2.4);
     addFx(B, t.X, t.Y, 0.9, "#ffd36b", 0.35); addFx(B, t.X, t.Y, 1.5, "#ff8a3a", 0.5);
     if (B.visual) { u.atkT = ATK_T; u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: "#ffe9a0", t: 0.35, t0: 0.35 }); S.shake = Math.max(S.shake || 0, 0.14); sfx("kick"); } // 발차기 동작
+  }
+  if (z.t >= z.dur) z.done = 1;
+}
+// 세세쌤 "Repeat after me!": 따라 말하는 동안 머리 위에 더듬더듬 글자가 떠요 (보여 주기만)
+const REPEAT_T = 3, REPEAT_SAY = ["R-repeat…", "a-af-ter…", "m-me…", "Re-re…"];
+function stepRepeat(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  const o = z.tgt; if (!o.alive) { z.done = 1; return; }
+  z.X = o.X; z.Y = o.Y;
+  if (Math.floor(t0 / 0.75) !== Math.floor(z.t / 0.75)) addFloat(B, { X: o.X, Y: o.Y - 0.2 }, REPEAT_SAY[z.n++ % REPEAT_SAY.length], "#9fd0ff", true);
+  if (z.t >= z.dur) z.done = 1;
+}
+// 배성쌤 "합창 지휘": 박자(0.5초)마다 아군 공격 속도 · 적 음표 피해, 마지막에 포르테
+const CHORUS_T = 4, CHORUS_BEAT = 0.5, CHORUS_NOTES = ["♩", "♪", "♫", "♬"];
+function stepChorus(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  const u = z.owner;
+  if (!u.alive) { z.done = 1; return; }
+  z.X = u.X; z.Y = u.Y;
+  if (z.t < CHORUS_T) {
+    z.beat += dt;
+    if (z.beat >= CHORUS_BEAT) {
+      z.beat -= CHORUS_BEAT; z.n++;
+      for (const o of B.f) {
+        if (!o.alive || hexDist(o, u) > z.rad) continue;
+        if (o.team === z.team) { o.asBuff = Math.max(o.asBuff || 0, 0.35); o.asBuffT = Math.max(o.asBuffT || 0, 0.6); }
+        else { dealDamage(B, u, o, 30 * z.P, "skill"); addFloat(B, { X: o.X, Y: o.Y - 0.3 }, CHORUS_NOTES[z.n % 4], "#ffd36b", true); }
+      }
+      addFx(B, u.X, u.Y, z.all ? 4 : 2.2, z.n % 2 ? "#ffd36b" : "#ffffff", 0.35);
+      if (B.visual) sfx("place");
+    }
+  } else if (t0 < CHORUS_T) { // 포르테!
+    const occ = new Set(B.f.filter((o) => o.alive).map((o) => o.r * COLS + o.c));
+    foesOf(B, z.team).filter((o) => hexDist(o, u) <= z.frad).sort((a, b) => hexDist(a, u) - hexDist(b, u)).forEach((o) => {
+      const d = hexDist(o, u);
+      dealDamage(B, u, o, 160 * z.P, "skill");
+      if (!o.alive) return;
+      o.stunT = Math.max(o.stunT || 0, 0.6);
+      const back = neighbors(o.r, o.c).find(([nr, nc]) => hexDistRC(nr, nc, u.r, u.c) === d + 1 && !occ.has(nr * COLS + nc));
+      if (back) { occ.delete(o.r * COLS + o.c); o.r = back[0]; o.c = back[1]; occ.add(o.r * COLS + o.c); o.moveCd = 0.5; }
+    });
+    addHuge(B, u, "포르테!", "#fff1b0", "#ff8a2a", 3.6);
+    addFx(B, u.X, u.Y, z.all ? 6 : 3, "#ffd36b", 0.6); addFx(B, u.X, u.Y, z.all ? 4 : 2, "#ffffff", 0.4);
+    if (B.visual) { S.shake = Math.max(S.shake || 0, 0.3); sfx("boom"); }
   }
   if (z.t >= z.dur) z.done = 1;
 }

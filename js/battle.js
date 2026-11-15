@@ -4,6 +4,7 @@
 "use strict";
 // =============== 전투 엔진 ===============
 const GIVE_SHIELD = [0, 0.06, 0.22]; // 다 퍼줌 2명 · 4명일 때 보호막 (최대 체력 비율)
+const TEACHER_AD = 1.1, TEACHER_STUN = 1; // 선생님(세세쌤·배성쌤) 2명: 우리 팀 공격력 배율, 상대 팀 멈춤(초)
 const LOVER_SHIELD = 0.15, LOVER_RAGE = 1.4; // 연인: 시작 보호막 (최대 체력 비율), 짝이 쓰러지면 공격력·공격 속도 배율
 // 피의 굶주림 이현 (영웅 증강): 언제나 피흡 steal, 혼자면 solo 배율
 const LEE_BLOOD = { steal: 0.25, solo: { hp: 3, ad: 2.5, as: 1.8, steal: 0.35, ar: 0.2 } };
@@ -45,6 +46,7 @@ function makeFighter(spec, team, r, c, cnt, buff) {
   }
   f.shield += f.maxHp * GIVE_SHIELD[L("다 퍼줌")]; // 다 퍼줌: 최대 체력 비율만큼 보호막 (별·아이템이 오를수록 같이 커져요)
   if (has("연인")) { f.lover = 1; f.shield += f.maxHp * LOVER_SHIELD; } // 연인(이다연·김예균): 서로 보호막, 한 명이 쓰러지면 남은 한 명이 분노 (dealDamage)
+  if (has("선생님")) f.teacher = 1; // 선생님: 전투 시작 때 효과 (makeBattle)
   f.hunt = def.hunt || null; // 이다연: 상대 팀의 김예균에게 달려들어요 (stepBattle)
   f.hp = f.maxHp; f.mana = Math.min(f.mana, f.mm - 1);
   return f;
@@ -64,6 +66,12 @@ function makeBattle(sideA, sideB, visual, PA, PB) {
   for (const u of f) if (u.teamShield) for (const o of f) if (o !== u && o.team === u.team && hexDist(u, o) <= 1) o.shield += u.teamShield;
   const B = { f, projs: [], fx: [], floats: [], zones: [], t: 0, done: false, win: null, visual };
   for (const u of f) if (u.bloodSolo) { addHuge(B, u, "피의 굶주림!", "#ffffff", "#e8202e", 3); addFx(B, u.X, u.Y, 2.2, "#e8202e", 0.8); }
+  for (const team of [0, 1]) { // 선생님: "수업 시작!" 상대 팀 모두 잠깐 멈추고, 우리 팀 모두 공격력 증가
+    const tc = f.find((u) => u.team === team && u.teacher);
+    if (!tc) continue;
+    for (const o of f) { if (o.team === team) o.ad *= TEACHER_AD; else o.stunT = Math.max(o.stunT || 0, TEACHER_STUN); }
+    addHuge(B, tc, "수업 시작!", "#ffffff", "#4fa8ff", 3); addFx(B, tc.X, tc.Y, 2.4, "#9fd0ff", 0.7);
+  }
   return B;
 }
 function runBattle(B) { let n = 0; while (!B.done && n++ < 4000) stepBattle(B, 1 / 20); }
@@ -124,7 +132,7 @@ function dealDamage(B, src, t, amt, kind) {
   }
   t.flash = 0.12;
   if (src && !src.mon) src.dmg = (src.dmg || 0) + amt;
-  if (t.mm !== Infinity && kind !== "thorn") t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
+  if (t.mm !== Infinity && kind !== "thorn" && !(t.silenceT > 0)) t.mana = Math.min(t.mm, t.mana + 3 * t.mgain);
   if (t.lowShield && !t.lsUsed && t.hp > 0 && t.hp < t.maxHp * 0.4) { t.lsUsed = 1; t.shield += t.lowShield; addFx(B, t.X, t.Y, 0.7, TOK["--c3"]); }
   if (B.visual && kind !== "thorn" && kind !== "splash") B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : "#ffe9c0", t: 0.3, t0: 0.3 });
   addFloat(B, t, crit ? amt + "!" : String(amt), crit ? TOK["--accent"] : kind === "skill" ? TOK["--c4"] : TOK["--chalk"], crit ? 2 : kind === "skill");
@@ -152,6 +160,7 @@ function heal(B, t, amt) {
   if (amt >= 8) addFloat(B, t, "+" + amt, TOK["--c2"], false);
 }
 function gainMana(B, u, n) {
+  if (u.silenceT > 0) return; // 세세쌤 "Repeat after me!": 따라 말하는 동안 마나가 안 차요
   if (u.mm === Infinity || !u.alive) return;
   u.mana += n * u.mgain;
   if (u.mana >= u.mm) { u.mana = u.refund || 0; cast(B, u); }
@@ -231,7 +240,7 @@ function stepBattle(B, dt) {
     u.X += (u.c + (u.r & 1) * 0.5 - u.X) * k; u.Y += (u.r - u.Y) * k;
     if (!u.alive) continue;
     u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, u.lunge - dt); u.castT = Math.max(0, (u.castT || 0) - dt); u.atkT = Math.max(0, (u.atkT || 0) - dt);
-    u.asBuffT = Math.max(0, (u.asBuffT || 0) - dt); u.vulnT = Math.max(0, (u.vulnT || 0) - dt); u.leapT = Math.max(0, (u.leapT || 0) - dt);
+    u.asBuffT = Math.max(0, (u.asBuffT || 0) - dt); u.vulnT = Math.max(0, (u.vulnT || 0) - dt); u.leapT = Math.max(0, (u.leapT || 0) - dt); u.silenceT = Math.max(0, (u.silenceT || 0) - dt);
     if (u.stunT > 0) { u.stunT -= dt; continue; }
     if (u.hunt && !u.leapt) { u.leapt = 1; const h = huntTarget(B, u); if (h) leapTo(B, u, h); } // 이다연: 시작하자마자 김예균에게
     u.sec += dt;
