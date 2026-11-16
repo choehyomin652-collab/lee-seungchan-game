@@ -250,7 +250,8 @@ function showFighter(f) {
 function updateTimer() {
   let frac = 1;
   if (S.phase === "plan" || (S.phase === "carousel" && S.car && S.car.order[S.car.turn]?.human)) frac = Math.max(0, S.timer / S.timerMax);
-  else if (S.phase === "combat" && S.battle) frac = Math.max(0, 1 - S.battle.t / 30);
+  else if (S.phase === "combat" && S.battle) frac = S.battle.ot ? Math.max(0, 1 - (S.battle.t - OT_AT) / (OT_END - OT_AT)) : Math.max(0, 1 - S.battle.t / OT_AT);
+  $("timerfill").parentNode.classList.toggle("ot", !!(S.battle && S.battle.ot && S.phase === "combat")); // 연장전: 빨간 시간 막대
   $("timerfill").style.width = (frac * 100).toFixed(1) + "%";
 }
 function renderUI() {
