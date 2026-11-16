@@ -237,6 +237,12 @@ function stepBattle(B, dt) {
   const cr = B.f.find((u) => u.combo && u.combo.t < u.combo.dur);
   if (cr) { stepCombo(B, cr, dt); return; }
   B.t += dt;
+  // 이수아 "어색한 사이": 잠깐 우리 편이 된 적은 시간이 끝나면(또는 원래 팀에 혼자 남으면) 돌아가요
+  for (const u of B.f) if (u.charmT > 0) {
+    u.charmT -= dt;
+    const home = 1 - u.team;
+    if (u.charmT <= 0 || !u.alive || !B.f.some((o) => o !== u && o.alive && o.team === home)) { u.charmT = 0; u.team = home; u.tgt = null; }
+  }
   for (const u of B.f) {
     const k = Math.min(1, dt * 9);
     u.X += (u.c + (u.r & 1) * 0.5 - u.X) * k; u.Y += (u.r - u.Y) * k;
@@ -247,7 +253,7 @@ function stepBattle(B, dt) {
     if (u.hunt && !u.leapt) { u.leapt = 1; const h = huntTarget(B, u); if (h) leapTo(B, u, h); } // 이다연: 시작하자마자 김예균에게
     u.sec += dt;
     if (u.sec >= 1) { u.sec -= 1; if (u.manaTick) gainMana(B, u, u.manaTick); if (u.regen) heal(B, u, u.maxHp * u.regen); }
-    if (!u.tgt || !u.tgt.alive || hexDist(u, u.tgt) > u.rg) u.tgt = (u.hunt && huntTarget(B, u)) || nearest(B, u); // 이다연은 김예균만 쫓아가요
+    if (!u.tgt || !u.tgt.alive || u.tgt.team === u.team || hexDist(u, u.tgt) > u.rg) u.tgt = (u.hunt && huntTarget(B, u)) || nearest(B, u); // 이다연은 김예균만 쫓아가요
     const t = u.tgt; if (!t) continue;
     if (hexDist(u, t) <= u.rg) {
       u.atkCd -= dt;

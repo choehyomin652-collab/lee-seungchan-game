@@ -2931,7 +2931,21 @@ function drawRepeat(z, dt) {
   g.userData.b.position.y = 3.0 + Math.sin(z.t * 4) * 0.08; g.userData.b.material.opacity = q;
   g.userData.r.position.y = 0.24; g.userData.r.scale.setScalar(0.85 + Math.sin(z.t * 6) * 0.06); g.userData.r.rotation.z += dt * 3; g.userData.r.material.opacity = 0.8 * q;
 }
-const ZDRAW = { repeat: drawRepeat, chorus: drawChorus, chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+// 이수아 어색한 사이: 넘어온 적 머리 위에 분홍 하트 + 발밑 분홍 고리
+function drawCharm(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group();
+    const h = glowSprite("charmHeart", (c, w, hh) => { c.clearRect(0, 0, w, hh); c.font = "bold 76px serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.shadowColor = "#ff4d8a"; c.shadowBlur = 14; c.fillStyle = "#ff7ab0"; c.fillText("♥", w / 2, hh / 2 + 4); });
+    grp.add(h); grp.userData.h = h;
+    const r = new THREE.Mesh(GEO.ringFx, additive("#ff7ab0")); r.rotation.x = -Math.PI / 2; r.position.y = 0.24; grp.add(r); grp.userData.r = r;
+    return grp;
+  });
+  const q = Math.min(1, z.t / 0.2, Math.max(0, (z.dur - z.t) / 0.3));
+  g.position.set(worldX(z.X), 0, worldZ(z.Y));
+  g.userData.h.position.y = 2.9 + Math.sin(z.t * 5) * 0.1; g.userData.h.scale.setScalar(0.75 + Math.sin(z.t * 8) * 0.08); g.userData.h.material.opacity = q;
+  g.userData.r.scale.setScalar(0.85 + Math.sin(z.t * 6) * 0.05); g.userData.r.rotation.z -= dt * 3; g.userData.r.material.opacity = 0.8 * q;
+}
+const ZDRAW = { charm: drawCharm, repeat: drawRepeat, chorus: drawChorus, chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();
