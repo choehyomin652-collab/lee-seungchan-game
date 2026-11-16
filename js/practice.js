@@ -1,7 +1,8 @@
 // ============================================================
 //  practice.js — 연습장: 김예균(또는 아무 친구)을 마음껏 써 보는 곳
 //   · 골드 999 · 레벨 9 · 시간 제한 없음 · 체력이 깎이지 않아요
-//   · 위쪽 연습 패널: 주인공(예균 · 선생님) 별 바꾸기 · 상대(허수아비 / 강한 적 팀) · 시작하자마자 스킬 · 전투 멈추기 · 나가기
+//   · 위쪽 연습 패널: 주인공(예균 · 선생님) 별 바꾸기 · 상대(허수아비 / 강한 적 팀) · 대결 만들기 · 시작하자마자 스킬 · 전투 멈추기 · 나가기
+//   · 대결 만들기: 우리 편 / 상대 편에 아무 친구나 ★1~★3 으로 골라 넣고 바로 싸워요 (DUEL · duelStart)
 //   · 게임 규칙 함수를 감싸서(S.practice 일 때만) 다르게 동작해요. 보통 게임에는 영향이 없어요
 // ============================================================
 "use strict";
@@ -14,6 +15,7 @@ function pracDummies() { // 허수아비: 체력이 아주 많고 거의 때리�
   return [[0, 2], [0, 3], [0, 4], [1, 2], [1, 3]].map(([lr, c]) => ({ spec: { mon: { ...mon } }, lr, c }));
 }
 function pracFoes() {
+  if (S.pracFoe === "duel" && S.pracDuelFoe) return S.pracDuelFoe.map((x) => ({ spec: mkUnit(x.d, x.star), lr: x.lr, c: x.c })); // 대결 만들기에서 고른 상대 편
   if (S.pracFoe === "juhwan") return [{ spec: mkUnit(pracIdx("정주환"), 3), lr: 0, c: 3 }]; // 1대1: 정주환 ★3
   if (S.pracFoe === "yegyun") return [{ spec: mkUnit(pracIdx("김예균"), 3), lr: 0, c: 3 }]; // 1대1: 상대 김예균 ★3 전설 (이다연이 달려드는 것 확인용)
   if (S.pracFoe === "team") return PRAC_TEAM.map(([n, star, lr, c]) => ({ spec: mkUnit(pracIdx(n), star), lr, c }));
@@ -60,7 +62,47 @@ function practiceStart() {
 }
 function practiceExit() {
   S.practice = 0; S.phase = "over"; S.battle = null;
-  $("prac").hidden = true; $("ov").hidden = false;
+  $("prac").hidden = true; $("duel").hidden = true; $("ov").hidden = false;
+}
+// ---- 대결 만들기: 우리 편(a) · 상대 편(b)에 친구를 골라 넣고 바로 싸워요 (★3 도 바로) ----
+const DUEL = { side: "a", a: {}, b: {} }, DUEL_MAX = 9; // 편마다 { 친구 번호: 별 }
+const duelList = (side) => Object.entries(DUEL[side]).map(([d, star]) => ({ d: +d, star }));
+function duelOpen() {
+  if (!S || !S.practice || S.phase !== "plan") return;
+  if (!duelList("a").length) for (const x of sideOf(human())) if (duelList("a").length < DUEL_MAX) DUEL.a[x.spec.d] = x.spec.star; // 처음엔 지금 보드를 우리 편으로
+  $("duel").hidden = false; duelRender();
+}
+function duelRender() {
+  const side = DUEL.side, oth = side === "a" ? "b" : "a", col = { a: "#3fdf8a", b: "#ff7b6b" };
+  $("dueltabA").classList.toggle("on", side === "a"); $("dueltabB").classList.toggle("on", side === "b");
+  $("duelnA").textContent = duelList("a").length; $("duelnB").textContent = duelList("b").length;
+  $("duelgo").disabled = !duelList("a").length || !duelList("b").length;
+  $("duelclear").textContent = side === "a" ? "우리 편 비우기" : "상대 편 비우기";
+  $("duelgrid").innerHTML = DEFS.map((def, i) => {
+    const st = DUEL[side][i], o = DUEL[oth][i];
+    return `<button data-d="${i}" class="${st ? "in" : ""}" style="--cc:var(${COST_COLOR[def.c]});--dc:${col[side]};--oc:${col[oth]}"><img src="${PORTRAIT[i] || ""}" alt="">${def.n}${st ? `<span class="st">${"★".repeat(st)}</span>` : ""}${o ? `<span class="oth" title="다른 편에도 있어요"></span>` : ""}</button>`;
+  }).join("");
+  $("duelgrid").querySelectorAll("button").forEach((el) => tapButton(el, () => {
+    const d = +el.dataset.d, cur = DUEL[DUEL.side][d] || 0;
+    if (!cur && duelList(DUEL.side).length >= DUEL_MAX) return toast(`한 편에 ${DUEL_MAX}명까지 넣을 수 있어요`);
+    if (cur >= 3) delete DUEL[DUEL.side][d]; else DUEL[DUEL.side][d] = cur + 1;
+    const top = $("duelgrid").scrollTop; duelRender(); $("duelgrid").scrollTop = top;
+  }));
+}
+// 고른 친구들을 컴퓨터 반처럼 자동 배치 (수호자 앞줄 가운데 · 원거리 뒷줄 구석부터)
+function duelArrange(list) {
+  const T = newPlayer(1); T.level = list.length;
+  list.forEach((x, i) => (T.bench[i] = mkUnit(x.d, x.star)));
+  aiArrange(T); return T.board;
+}
+function duelStart() {
+  const a = duelList("a"), b = duelList("b");
+  if (!a.length || !b.length || S.phase !== "plan") return;
+  $("duel").hidden = true;
+  human().board = duelArrange(a);
+  S.pracDuelFoe = sideOf({ board: duelArrange(b) }).map((x) => ({ d: x.spec.d, star: x.spec.star, lr: x.lr, c: x.c }));
+  S.pracFoe = "duel"; S.pracHero = []; S.pracStar = 0;
+  renderUI(); startCombatNow();
 }
 // ---- 게임 규칙 감싸기 ----
 const _startPlan = startPlan, _startCombatNow = startCombatNow, _finishCombat = finishCombat, _afterResult = afterResult, _renderUI = renderUI;
@@ -74,7 +116,8 @@ startCombatNow = function () {
   collectOrbs(true);
   S.sel = null; S.scout = null; drag = null;
   const P = human(), B = makeBattle(sideOf(P), pracFoes(), true, P, null);
-  if (S.pracMana) B.f.forEach((f) => { if (f.d >= 0 && ((f.team === 0 && pracHeroes().includes(DEFS[f.d].n)) || (f.team === 1 && (S.pracFoe === "juhwan" || (S.pracFoe === "yegyun" && DEFS[f.d].n === PRAC_HERO))))) f.mana = f.mm; }); // 시작하자마자 스킬 (1대1이면 주환도 같이)
+  if (S.pracMana && S.pracFoe === "duel") B.f.forEach((f) => { if (f.d >= 0 && f.mm !== Infinity) f.mana = f.mm; }); // 대결: 양쪽 모두 시작하자마자 스킬
+  else if (S.pracMana) B.f.forEach((f) => { if (f.d >= 0 && ((f.team === 0 && pracHeroes().includes(DEFS[f.d].n)) || (f.team === 1 && (S.pracFoe === "juhwan" || (S.pracFoe === "yegyun" && DEFS[f.d].n === PRAC_HERO))))) f.mana = f.mm; }); // 시작하자마자 스킬 (1대1이면 주환도 같이)
   S.battle = B; S.results = [{ kind: "prac", a: P, B }]; S.opp = null;
   S.phase = "combat"; sfx("start"); renderUI();
 };
@@ -86,6 +129,13 @@ finishCombat = function () {
   const dmg = Math.round(hero.reduce((s, f) => s + (f.dmg || f.dealt || 0), 0));
   S.banner = { text: win ? "승리!" : S.pracFoe === "dummy" ? "연습 끝" : "패배", col: win ? TOK["--accent"] : TOK["--chalk"], t: 1.8 };
   if (S.pracFoe === "juhwan") { const foe = B.f.find((f) => f.team === 1 && f.d >= 0); toast(win ? `김예균 승리! 남은 체력 ${Math.round(hero.reduce((s, f) => s + Math.max(0, f.hp), 0))}` : `정주환 승리! 남은 체력 ${Math.round(foe ? Math.max(0, foe.hp) : 0)}`); }
+  else if (S.pracFoe === "duel") { // 대결 결과: 이긴 편 · 남은 친구 · 남은 체력
+    const left = (team) => B.f.filter((f) => f.team === team && f.alive && !(f.mon && f.mon.summon)), nm = (f) => (f.robot ? (f.mega ? "초합체로봇" : "합체로봇") : DEFS[f.d].n + " " + "★".repeat(f.star));
+    const w = B.win === 0 ? 0 : B.win === 1 ? 1 : -1, L = w >= 0 ? left(w) : [], solo = w >= 0 && B.f.filter((f) => f.team === w && !f.mon && !f.merged).length === 1 && L.length === 1;
+    const hp = Math.round(L.reduce((s, f) => s + Math.max(0, f.hp), 0)), max = Math.round(L.reduce((s, f) => s + f.maxHp, 0));
+    S.banner = { text: w === 0 ? "우리 편 승리!" : w === 1 ? "상대 편 승리!" : "무승부", col: w === 0 ? TOK["--accent"] : w === 1 ? TOK["--danger"] : TOK["--chalk"], t: 1.8 };
+    toast(w < 0 ? `무승부 (${B.t.toFixed(0)}초)` : `${solo ? nm(L[0]) + " 승리" : (w === 0 ? "우리 편" : "상대 편") + " " + L.length + "명 남음"} · 남은 체력 ${hp}/${max} · ${B.t.toFixed(0)}초`);
+  }
   else if (dmg) toast(`${pracHeroes().join(" · ")} 피해량 ${dmg}`);
   sfx(win ? "win" : "lose");
   S.resultT = 2; renderUI();
@@ -104,8 +154,9 @@ function pracUI() {
   $("pracmana").classList.toggle("on", !!S.pracMana);
   $("pracmana").textContent = S.pracMana ? "바로 스킬 켜짐" : "바로 스킬 꺼짐";
   const plan = S.phase === "plan";
-  el.querySelectorAll("[data-star],[data-foe],#pracmega,#practeach").forEach((b) => (b.disabled = !plan));
-  $("prachero").textContent = pracHeroes().length ? pracHeroes().join(" · ") : "주인공 없음";
+  el.querySelectorAll("[data-star],[data-foe],#pracmega,#practeach,#pracduel").forEach((b) => (b.disabled = !plan));
+  $("pracduel").classList.toggle("on", S.pracFoe === "duel");
+  $("prachero").textContent = pracHeroes().length ? pracHeroes().join(" · ") : S.pracFoe === "duel" ? "대결" : "주인공 없음";
   $("pracstop").disabled = S.phase !== "combat";
   const rt = $("rtype"); if (rt) { rt.textContent = "연습장"; rt.className = "rtype"; }
 }
@@ -116,4 +167,10 @@ tapButton($("pracmana"), () => { S.pracMana = !S.pracMana; renderUI(); });
 tapButton($("pracmega"), () => { if (S.phase === "plan") pracMegaRobot(); });
 tapButton($("practeach"), () => { if (S.phase === "plan") pracTeachers(); });
 tapButton($("pracexit"), practiceExit);
+tapButton($("pracduel"), duelOpen);
+tapButton($("dueltabA"), () => { DUEL.side = "a"; duelRender(); });
+tapButton($("dueltabB"), () => { DUEL.side = "b"; duelRender(); });
+tapButton($("duelclear"), () => { DUEL[DUEL.side] = {}; duelRender(); });
+tapButton($("duelclose"), () => { $("duel").hidden = true; });
+tapButton($("duelgo"), duelStart);
 tapButton($("pracstop"), () => { const B = S.battle; if (S.phase === "combat" && B && !B.done) { B.done = true; if (B.win == null) B.win = -1; } }); // 전투를 바로 끝내고 준비로 돌아가요
