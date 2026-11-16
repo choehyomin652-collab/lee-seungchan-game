@@ -31,7 +31,7 @@
   </div>
   <div class="hud pracbar" id="prac" hidden>
     <span class="praclbl" id="prachero">김예균</span><button data-star="1">★1</button><button data-star="2">★2</button><button data-star="3">★3</button>
-    <span class="pracsep"></span><span class="praclbl">상대</span><button data-foe="dummy">허수아비</button><button data-foe="team">강한 적 팀</button><button data-foe="yegyun">김예균</button><button data-foe="juhwan">정주환 ★3</button>
+    <span class="pracsep"></span><span class="praclbl">상대</span><button data-foe="dummy">허수아비</button><button data-foe="team">강한 적 팀</button><button data-foe="yegyun">김예균</button><button data-foe="juhwan">정주환 ★3</button><button id="pracduel">대결 만들기</button>
     <span class="pracsep"></span><button id="pracmega">초합체로봇</button><button id="practeach">선생님</button>
     <span class="pracsep"></span><button id="pracmana">바로 스킬 켜짐</button><button id="pracstop">전투 멈추기</button><button id="pracexit">나가기</button>
   </div>
@@ -61,6 +61,14 @@
 </div>
 <div class="overlay" id="cards" hidden>
   <div class="ov-box"><h1>카드 사진 바꾸기</h1><p class="guide" id="cardguide">바꿀 친구를 고르면 사진첩이 열려요. 사진은 이 기기에만 저장돼요.</p><div class="cardgrid" id="cardgrid"></div><button class="go" id="cardsclose">닫기</button></div>
+</div>
+<div class="overlay" id="duel" hidden>
+  <div class="ov-box duelbox"><h1>대결 만들기</h1>
+    <div class="dueltabs"><button id="dueltabA">우리 편 <b id="duelnA">0</b></button><span class="duelvs">VS</span><button id="dueltabB">상대 편 <b id="duelnB">0</b></button></div>
+    <p class="guide" id="duelguide">친구를 누르면 들어가요. 또 누르면 ★1 → ★2 → ★3 → 빼기 (한 편에 9명까지)</p>
+    <div class="duelgrid" id="duelgrid"></div>
+    <div class="ovbtns"><button class="go" id="duelgo">대결 시작</button><button class="go alt" id="duelclear">이 편 비우기</button><button class="go dim" id="duelclose">닫기</button></div>
+  </div>
 </div>
 <div class="overlay" id="rotate">
   <div class="ov-box"><h1>가로로 돌려주세요</h1><p>이 게임은 가로 화면에 맞춰져 있어요.</p><button class="go" id="rotok">그래도 세로로 하기</button></div>
