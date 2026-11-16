@@ -3340,7 +3340,7 @@ function drawOverlay(dt, R) {
   // 배성쌤 "포르테!": 화면이 금빛으로 한 번 번쩍
   const fz = S.battle && S.battle.zones.find((z) => z.kind === "chorus" && z.t >= CHORUS_T);
   if (fz) { const q = 1 - (fz.t - CHORUS_T) / 0.35; if (q > 0) { ctx.fillStyle = `rgba(255,214,110,${0.28 * q})`; ctx.fillRect(0, 0, W, H); } }
-  // 스킬 알림 띠 (4·5코스트가 스킬을 쓰면 화면 위쪽에 크게): 누가 무슨 스킬을 썼는지 한눈에
+  // 스킬 알림 띠 (5코스트가 스킬을 쓰면 화면 위쪽에 크게): 누가 무슨 스킬을 썼는지 한눈에
   const co = S.battle && S.battle.callout;
   if (co && co.t > 0 && S.phase === "combat") {
     co.t -= dt;

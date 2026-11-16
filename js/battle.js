@@ -204,8 +204,9 @@ function cast(B, u) {
   const allies = B.f.filter((o) => o.alive && o.team === u.team), foes = B.f.filter((o) => o.alive && o.team !== u.team);
   u.castT = 0.35;
   const SKU = u.robot ? (u.mega ? MEGA_SK : ROBOT_SK) : SK[def.n];
-  addFloat(B, { X: u.X, Y: u.Y }, SKU ? SKU.s : CLASS[def.k].sk, TOK["--accent"], true);
-  if (B.visual && !u.robot && def.c >= 4) B.callout = { name: def.n, skill: SKU ? SKU.s : CLASS[def.k].sk, team: u.team, c: def.c, t: 1.7, t0: 1.7 }; // 화면 위 스킬 알림 띠 (보여 주기만)
+  const big5 = u.robot || def.c >= 5; // 스킬 이름을 크게 보여 주는 건 5코스트(와 합체로봇)만. 나머지는 머리 위에 작게
+  addFloat(B, { X: u.X, Y: u.Y }, SKU ? SKU.s : CLASS[def.k].sk, TOK["--accent"], big5);
+  if (B.visual && !u.robot && def.c >= 5) B.callout = { name: def.n, skill: SKU ? SKU.s : CLASS[def.k].sk, team: u.team, c: def.c, t: 1.7, t0: 1.7 }; // 화면 위 스킬 알림 띠 (보여 주기만)
   if (B.visual) sfx("cast");
   if (SKU) SKU.run(B, u, P, t, allies, foes);
   else switch (def.k) {
