@@ -15,6 +15,7 @@ function pracDummies() { // 허수아비: 체력이 아주 많고 거의 때리�
 }
 function pracFoes() {
   if (S.pracFoe === "juhwan") return [{ spec: mkUnit(pracIdx("정주환"), 3), lr: 0, c: 3 }]; // 1대1: 정주환 ★3
+  if (S.pracFoe === "yegyun") return [{ spec: mkUnit(pracIdx("김예균"), 2), lr: 0, c: 3 }, { spec: mkUnit(pracIdx("이보경"), 2), lr: 0, c: 2 }, { spec: mkUnit(pracIdx("진성욱"), 2), lr: 0, c: 4 }]; // 상대 팀에 김예균 ★2 (이다연이 달려드는 것 · 연인 시너지 확인용)
   if (S.pracFoe === "team") return PRAC_TEAM.map(([n, star, lr, c]) => ({ spec: mkUnit(pracIdx(n), star), lr, c }));
   return pracDummies();
 }
@@ -73,7 +74,7 @@ startCombatNow = function () {
   collectOrbs(true);
   S.sel = null; S.scout = null; drag = null;
   const P = human(), B = makeBattle(sideOf(P), pracFoes(), true, P, null);
-  if (S.pracMana) B.f.forEach((f) => { if (f.d >= 0 && ((f.team === 0 && pracHeroes().includes(DEFS[f.d].n)) || (f.team === 1 && S.pracFoe === "juhwan"))) f.mana = f.mm; }); // 시작하자마자 스킬 (1대1이면 주환도 같이)
+  if (S.pracMana) B.f.forEach((f) => { if (f.d >= 0 && ((f.team === 0 && pracHeroes().includes(DEFS[f.d].n)) || (f.team === 1 && (S.pracFoe === "juhwan" || (S.pracFoe === "yegyun" && DEFS[f.d].n === PRAC_HERO))))) f.mana = f.mm; }); // 시작하자마자 스킬 (1대1이면 주환도 같이)
   S.battle = B; S.results = [{ kind: "prac", a: P, B }]; S.opp = null;
   S.phase = "combat"; sfx("start"); renderUI();
 };
