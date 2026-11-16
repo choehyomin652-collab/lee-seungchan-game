@@ -4,7 +4,7 @@
 "use strict";
 // =============== 전투 엔진 ===============
 const GIVE_SHIELD = [0, 0.06, 0.22]; // 다 퍼줌 2명 · 4명일 때 보호막 (최대 체력 비율)
-const TEACHER_AD = 1.1, TEACHER_STUN = 1; // 선생님(세세쌤·배성쌤) 2명: 우리 팀 공격력 배율, 상대 팀 멈춤(초)
+const TEACHER_AD = 1.1, TEACHER_STUN = 0.6; // 선생님(세세쌤·배성쌤) 2명: 우리 팀 공격력 배율, 상대 팀 멈춤(초)
 const LOVER_SHIELD = 0.15, LOVER_RAGE = 1.4; // 연인: 시작 보호막 (최대 체력 비율), 짝이 쓰러지면 공격력·공격 속도 배율
 // 피의 굶주림 이현 (영웅 증강): 언제나 피흡 steal, 혼자면 solo 배율
 const LEE_BLOOD = { steal: 0.25, solo: { hp: 3, ad: 2.5, as: 1.8, steal: 0.35, ar: 0.2 } };
