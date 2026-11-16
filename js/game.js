@@ -198,7 +198,7 @@ function startPlan() {
   const tier = AUG_ROUNDS[`${S.stage}-${S.k}`];
   for (const P of alivePlayers().filter(isLocal)) {
     mergeAll(P);
-    if (tier && !P.human) { const a = rnd(augOptions(P, TIER_IX[tier])); P.augs.push(a.id); a.f(P); }
+    if (tier && !P.human) { const a = aiAugment(P, augOptions(P, TIER_IX[tier])); P.augs.push(a.id); a.f(P); mergeAll(P); }
     if (!P.human) aiPlan(P);
   }
   if (tier && human().alive) showAugments(tier);
@@ -419,8 +419,7 @@ function stepCarousel(dt) {
     return;
   }
   const free = C.opts.filter((o) => !o.taken);
-  free.sort((x, y) => aiUnitScore(P, y.d) - aiUnitScore(P, x.d));
-  carouselPick(P, free[0]);
+  carouselPick(P, aiCarousel(P, free));
 }
 function carouselPick(P, o) {
   if (!o || o.taken) return;
@@ -439,76 +438,174 @@ function carouselPick(P, o) {
   renderUI();
 }
 
-// =============== 컴퓨터(AI) 반 ===============
-function aiUnitScore(P, d) {
-  const def = DEFS[d], own = unitsOf(P).filter((x) => x.u.d === d);
-  let s = own.length * 2.2 + def.t.filter((t) => P.plan.includes(t)).length * 1.5 + def.c * 0.3;
-  if (own.some((x) => x.u.star === 3)) s -= 10;
-  return s;
+// =============== 컴퓨터(AI) 반 — 에메랄드 수준 ===============
+// 팀 세기를 숫자로 계산해서(친구 세기 × 시너지) 가장 센 배치를 고르고, 정석대로 레벨업 · 리롤 · 증강을 골라요.
+//  · aiVal: 친구 한 명의 세기  · aiTeamScore: 보드 전체 세기  · aiBestBoard: 가진 친구 중 가장 센 조합
+//  · aiPlan: 계획 단계 (레벨업 → 사기/리롤 → 대기석 정리 → 배치)  · aiAugment: 증강 고르기  · aiCarousel: 급식 줄 고르기
+// 시너지 단계별로 팀 세기에 더하는 비율. 무작위 팀끼리 8천 번 싸운 결과에 맞춘 값이에요 (이긴 팀을 92% 맞혀요)
+// 친구나 특성을 바꾸면 다시 맞추면 좋아요. 신 · 연인 · 선생님 값이 큰 건 5코스트가 같이 오기 때문이에요
+const AI_TRAIT = {
+  "운동광": [0, 0.06, 0.43, 0.47], "지는 거 못 참음": [0, 0.06, 0.21, 0.44], "공부는 잘함": [0, 0.01, 0.11, 0.41],
+  "다 퍼줌": [0, -0.05, 0.13], "축구부": [0, 0.18, 0.25, 0.79], "댄스부": [0, 0.08, 0.13], "연인": [0, 0.42],
+  "선생님": [0, 0.42], "합체로봇": [0, 0.3], "신": [0, 0.54],
+};
+const AI_SOLO = 0.06; // 혼자 켜지는 특성 (수학왕 · 프로게이머 · 전교 1등 · 화학왕)
+// 친구 한 명의 세기: 체력과 공격력이 코스트 · 별에 따라 같이 커져요 (★1 1코스트 = 1)
+function aiVal(u) {
+  const def = DEFS[u.d], cf = 1 + (def.c - 1) * 0.22, tn = tuneOf(def);
+  let v = (cf * STARM[u.star]) ** 1.7 * ((tn.hp + tn.ad) / 2) ** 1.03;
+  if (def.c === 5 && u.star >= 3) v *= 4; // 전설
+  return v;
 }
-function unitPower(P, u) {
-  const def = DEFS[u.d];
-  return def.c * Math.pow(3, u.star - 1) + def.t.filter((t) => P.plan.includes(t)).length * 0.8 + u.items.length * 1.5;
+function aiTeamScore(units, P) {
+  const n = units.length; if (!n) return 0;
+  const cnt = traitCounts(units.map((u) => u.d));
+  for (const [t, k] of Object.entries(P.emb || {})) cnt[t] = (cnt[t] || 0) + k;
+  let mult = 1, sum = 0, melee = 0;
+  for (const [t, k] of Object.entries(cnt)) { const lv = traitLvl(t, k); if (lv) mult += AI_TRAIT[t] ? AI_TRAIT[t][Math.min(lv, AI_TRAIT[t].length - 1)] : AI_SOLO; }
+  for (const u of units) { sum += aiVal(u); if (CLASS[DEFS[u.d].k].rg <= 1) melee++; }
+  if (n >= 3 && melee < Math.min(2, n / 3)) mult *= 0.88; // 앞에서 버틸 친구가 없으면 뒷줄이 바로 맞아요
+  if (n >= 4 && melee === n) mult *= 0.92;
+  return sum * mult;
 }
-function aiMakeRoom(P) {
-  while (!P.bench.includes(null)) {
-    let worst = -1, ws = 1e9;
-    P.bench.forEach((u, i) => { if (!u) return; const sc = aiUnitScore(P, u.d) + u.star * 3; if (sc < ws) { ws = sc; worst = i; } });
-    sell(P, { w: "n", i: worst });
+// 가진 친구 중 레벨만큼 골라 가장 센 조합 (센 순서로 고른 뒤, 하나씩 맞바꿔 보며 더 세지면 바꿔요)
+function aiBestBoard(P, all) {
+  all = all || unitsOf(P).map((x) => x.u);
+  let pick = all.slice().sort((a, b) => aiVal(b) - aiVal(a)).slice(0, Math.min(P.level, all.length));
+  let best = aiTeamScore(pick, P);
+  for (let pass = 0; pass < 3; pass++) {
+    let better = false;
+    for (let i = 0; i < pick.length; i++) for (const o of all) {
+      if (pick.includes(o)) continue;
+      const trial = pick.slice(); trial[i] = o;
+      const sc = aiTeamScore(trial, P);
+      if (sc > best + 1e-9) { pick = trial; best = sc; better = true; }
+    }
+    if (!better) break;
   }
+  return { pick, score: best };
+}
+// 새 친구(u)가 들어오면 지금 가장 센 조합이 얼마나 세지는지 (빈자리에 넣거나 한 명과 바꿔 보기)
+function aiGain(P, base, u) {
+  let best = 0;
+  if (base.pick.length < P.level) best = aiTeamScore([...base.pick, u], P) - base.score;
+  for (let i = 0; i < base.pick.length; i++) { const t = base.pick.slice(); t[i] = u; best = Math.max(best, aiTeamScore(t, P) - base.score); }
+  return best;
+}
+// 친구 d 를 한 명 더 얻으면 얼마나 좋은지 (합성 · 보드가 세지는 정도 · 앞으로 ★2 가능성)
+function aiWant(P, d, base) {
+  const own = unitsOf(P).filter((x) => x.u.d === d), n1 = own.filter((x) => x.u.star === 1).length, n2 = own.filter((x) => x.u.star === 2).length;
+  const u1 = { d, star: 1 }, u2 = { d, star: 2 }, u3 = { d, star: 3 };
+  if (n1 === 2 && n2 === 2) return 50 + aiVal(u3); // ★3 완성
+  if (n1 === 2) return 10 + Math.max(aiGain(P, base, u2), aiVal(u2) * 0.3); // ★2 완성
+  const gain = aiGain(P, base, u1);
+  const onBoard = base.pick.some((u) => u.d === d);
+  let v = gain;
+  if (n1 === 1 || (n2 >= 1 && onBoard)) v += aiVal(u2) * (onBoard ? 0.35 : 0.2); // 짝(2장) 만들기
+  else if (n1 === 0 && n2 === 0) v += aiVal(u1) * 0.05;
+  return v;
+}
+// 정석 레벨업 시점: 2-1 4레벨 · 2-5 5레벨 · 3-2 6레벨 · 3-5 7레벨 · 4-1 8레벨 · 5-2 9레벨
+function aiLevelTarget(P) {
+  const s = S.stage, k = S.k;
+  if (s === 1) return 3;
+  if (s === 2) return k >= 5 ? 5 : 4;
+  if (s === 3) return k >= 5 ? 7 : k >= 2 ? 6 : 5;
+  if (s === 4) return 8;
+  if (s === 5) return k >= 2 ? 9 : 8;
+  return P.gold >= 40 ? 10 : 9;
 }
 function aiPlan(P) {
   const s = S.stage, k = S.k;
-  const target = s === 1 ? 3 : s === 2 ? (k >= 5 ? 5 : 4) : s === 3 ? (k >= 2 ? 6 : 5) : s === 4 ? (k >= 2 ? 8 : 7) : s === 5 ? 8 : 9;
-  const floor = P.hp < 35 ? 0 : s >= 5 ? 20 : s >= 4 ? 30 : 50;
+  // 골드를 얼마나 남길지: 3단계까지는 이자(50), 4단계부터 30, 체력이 낮으면 다 써요 (tools/preview/ai.js 로 재 보며 정한 값)
+  const hp = P.hp, weak = P.streak <= -2;
+  let floor = hp <= 30 ? 0 : s >= 4 ? (hp <= 60 ? 0 : weak ? 20 : 30) : hp <= 50 ? 10 : weak && s >= 3 ? 30 : 50;
+  if (s === 4 && k === 2 && !P.rolled42 && P.level >= 8) { P.rolled42 = 1; floor = Math.min(floor, hp > 75 ? 20 : 10); } // 4-2: 8레벨에서 한 번 크게 굴려 보드를 완성해요
+  if (s === 3 && k === 2 && hp < 70) floor = Math.min(floor, 20); // 3-2: 체력이 깎였으면 6레벨에서 굴려요
+  // 1) 레벨업: 정석 시점에는 이자보다 레벨이 먼저
+  const target = aiLevelTarget(P);
   while (P.level < target && buyXp(P));
-  for (let loop = 0; loop < 25; loop++) {
-    for (let i = 0; i < 5; i++) {
-      const di = P.shop[i]; if (di == null || P.gold < DEFS[di].c) continue;
-      const total = unitsOf(P).length, sc = aiUnitScore(P, di);
-      const need = total < P.level + 1;
-      const want = need || (sc >= 2.2 && (P.gold - DEFS[di].c >= floor * 0.5 || s <= 2)) || (sc >= 1.8 && P.gold - DEFS[di].c >= floor);
-      if (!want) continue;
-      if (!buy(P, i)) { aiMakeRoom(P); buy(P, i); }
-    }
-    if (s >= 3 && P.gold - 2 >= floor && P.gold >= 2) reroll(P); else break;
+  while (P.level < 9 && s >= 4 && P.gold - 4 >= Math.max(floor, 50) + 4 && buyXp(P)); // 골드가 넘치면 더 올려요
+  // 2) 사기 · 리롤
+  const buyFloor = s <= 2 ? 0 : s === 3 ? Math.min(floor, 30) : floor; // 초반엔 짝 · 합성에 아낌없이 (리롤은 안 해요)
+  for (let loop = 0; loop < 40; loop++) {
+    aiBuyPass(P, buyFloor);
+    const base = aiBestBoard(P); // 보드가 다 ★2 면 그만 굴려요
+    const done = P.level >= 8 && base.pick.length >= P.level && base.pick.every((u) => u.star >= 2);
+    if (s < 2 || (s === 2 && hp > 50) || done || P.gold - 2 < floor) break;
+    if (s === 3 && hp > 60 && floor >= 50) break; // 3단계엔 체력이 넉넉하면 아껴요
+    reroll(P);
   }
-  if (P.bench.filter(Boolean).length > 7) aiMakeRoom(P);
+  aiTrim(P);
   aiArrange(P);
-  aiTrim(P, s <= 2 ? 5 : 4);
-  aiItems(P);
 }
-// 컴퓨터 반이 대기석에 친구를 쌓아 두면 풀이 바닥나서 다른 반(사람 포함) 상점에 친구가 안 떠요.
-// 대기석은 keep 칸까지만 두고, 합성 가능성이 낮은 친구부터 팔아요.
-function aiTrim(P, keep) {
-  for (let guard = 0; guard < BENCH; guard++) {
-    const bench = P.bench.map((u, i) => ({ u, i })).filter((x) => x.u);
-    if (bench.length <= keep) return;
-    const copies = (d) => unitsOf(P).filter((x) => x.u.d === d).length;
-    bench.sort((a, b) => (copies(a.u.d) >= 2) - (copies(b.u.d) >= 2) || (aiUnitScore(P, a.u.d) + a.u.star * 3) - (aiUnitScore(P, b.u.d) + b.u.star * 3));
-    sell(P, { w: "n", i: bench[0].i });
+function aiBuyPass(P, floor) {
+  let base = aiBestBoard(P);
+  for (let i = 0; i < 5; i++) {
+    const d = P.shop[i]; if (d == null || P.gold < DEFS[d].c) continue;
+    const w = aiWant(P, d, base), c = DEFS[d].c;
+    const spare = P.gold - c >= floor;
+    // 합성은 거의 언제나, 보드가 세지면 남는 골드로, 짝 만들기는 여유 있을 때
+    const take = w >= 10 || (w > 0.6 && (spare || base.pick.length < P.level)) || (w > 0.25 && spare && P.gold - c >= floor + 6);
+    if (!take) continue;
+    if (P.bench.indexOf(null) < 0 && w < 10 && !aiMakeRoom(P, w)) continue;
+    if (buy(P, i)) base = aiBestBoard(P);
   }
 }
+// 대기석이 꽉 찼을 때: 새 친구(w)보다 덜 중요한 친구를 팔아 자리를 만들어요
+function aiMakeRoom(P, w) {
+  const base = aiBestBoard(P);
+  let worst = -1, ws = 1e9;
+  P.bench.forEach((u, i) => { if (!u || base.pick.includes(u)) return; const v = aiKeep(P, u, base); if (v < ws) { ws = v; worst = i; } });
+  if (worst < 0 || ws >= w) return false;
+  sell(P, { w: "n", i: worst }); return true;
+}
+// 대기석 친구를 남겨 둘 가치 (짝이 있거나 ★2 면 높아요)
+function aiKeep(P, u, base) {
+  const same = unitsOf(P).filter((x) => x.u.d === u.d && x.u.star === u.star).length;
+  return aiVal(u) * (u.star >= 2 ? 1.2 : 0.4) + (same >= 2 ? aiVal({ d: u.d, star: u.star + 1 }) * 0.4 : 0) + (base.pick.some((x) => x.d === u.d) ? 1 : 0);
+}
+// 대기석 정리: 보드에 안 쓰고 짝도 없는 친구부터 팔아서 6칸 이하로 (풀이 마르지 않게)
+function aiTrim(P) {
+  const keep = S.stage <= 2 ? 6 : 5;
+  for (let guard = 0; guard < BENCH; guard++) {
+    const base = aiBestBoard(P), bench = unitsOf(P).filter((x) => !base.pick.includes(x.u));
+    if (bench.length <= keep) return;
+    bench.sort((a, b) => aiKeep(P, a.u, base) - aiKeep(P, b.u, base));
+    sell(P, bench[0].w === "b" ? { w: "b", r: bench[0].r, c: bench[0].c } : { w: "n", i: bench[0].i });
+  }
+}
+// 배치: 수호자를 앞줄 가운데, 돌격대는 앞줄 양옆, 원거리는 뒷줄에 서로 떨어뜨려 (광역 스킬을 덜 맞게) — 가장 센 원거리는 구석
 function aiArrange(P) {
-  const all = unitsOf(P).map((x) => x.u);
+  const all = unitsOf(P).map((x) => x.u), { pick } = aiBestBoard(P, all);
   P.board = Array.from({ length: 4 }, () => Array(COLS).fill(null));
   P.bench = Array(BENCH).fill(null);
-  all.sort((a, b) => unitPower(P, b) - unitPower(P, a));
-  const order = [3, 2, 4, 1, 5, 0, 6], used = [0, 0, 0, 0];
-  all.slice(0, P.level).forEach((u) => {
-    const rg = CLASS[DEFS[u.d].k].rg;
-    const pref = rg <= 1 ? [0, 1, 2, 3] : rg === 2 ? [1, 2, 0, 3] : [3, 2, 1, 0];
-    for (const r of pref) if (used[r] < COLS) { P.board[r][order[used[r]++]] = u; break; }
-  });
-  all.slice(P.level).forEach((u, i) => { if (i < BENCH) P.bench[i] = u; });
+  const rg = (u) => CLASS[DEFS[u.d].k].rg, byVal = (a, b) => aiVal(b) - aiVal(a);
+  const tanks = pick.filter((u) => DEFS[u.d].k === "수호자").sort(byVal), divers = pick.filter((u) => rg(u) <= 1 && DEFS[u.d].k !== "수호자").sort(byVal);
+  const mids = pick.filter((u) => rg(u) === 2).sort(byVal), backs = pick.filter((u) => rg(u) >= 3).sort(byVal);
+  const put = (u, cells) => { for (const [r, c] of cells) if (!P.board[r][c]) { P.board[r][c] = u; return true; } return false; };
+  const FRONT = [[0, 3], [0, 2], [0, 4], [0, 1], [0, 5], [0, 0], [0, 6]], SECOND = [[1, 3], [1, 2], [1, 4], [1, 1], [1, 5], [1, 0], [1, 6]];
+  const BACK = [[3, 0], [3, 6], [3, 2], [3, 4], [2, 1], [2, 5], [3, 3], [2, 3], [3, 1], [3, 5], [2, 0], [2, 6], [2, 2], [2, 4]];
+  tanks.forEach((u) => put(u, [...FRONT, ...SECOND]));
+  divers.forEach((u) => put(u, [[0, 1], [0, 5], [0, 2], [0, 4], [0, 0], [0, 6], [0, 3], ...SECOND]));
+  mids.forEach((u) => put(u, [...SECOND, ...FRONT]));
+  backs.forEach((u) => put(u, [...BACK, ...SECOND]));
+  all.filter((u) => !pick.includes(u)).sort(byVal).forEach((u, i) => { if (i < BENCH) P.bench[i] = u; else { P.gold += sellValue(u); S.pool[u.d] += Math.pow(3, u.star - 1); } }); // 넘치면 팔아요
 }
-function aiItems(P) {
-  const board = unitsOf(P).filter((x) => x.w === "b").sort((a, b) => unitPower(P, b.u) - unitPower(P, a.u));
-  if (!board.length) return;
-  for (let ii = P.items.length - 1; ii >= 0; ii--) {
-    const id = P.items[ii];
-    const top = board.slice(0, 3);
-    const t = (ITEMS[id].comp && top.find((x) => x.u.items.some((z) => ITEMS[z].comp))) || board.find((x) => canAdd(x.u, id));
-    if (t) equip(P, ii, t);
-  }
+// 증강 고르기: 등급별 증강 가치 (예전 컴퓨터 반끼리 수천 번 무작위로 골라 본 평균 등수에서 뽑은 값, 높을수록 좋아요)
+const AI_AUG = { sports: [6, 8, 8], meat: [1, 10, 6], wall: [0, 6, 6], lunch: [6, 5, -2], money: [0, -1, 5], nurse: [-1, -1, 4],
+  study: [-2, -1, -2], honor: [-2, -2, -1], "hero-lee": [2, -5, 0], pres: [0, 0, 4], emb: [-2, -3, -5] };
+function aiAugment(P, opts) {
+  const ti = TIER_IX[AUG_ROUNDS[`${S.stage}-${S.k}`]] ?? 0, base = aiBestBoard(P);
+  const val = (a) => {
+    if (!a.id.startsWith("emb-")) return (AI_AUG[a.id] || [0, 0, 0])[ti];
+    const t = a.id.slice(4), cnt = traitCounts(base.pick.map((u) => u.d)), n = (cnt[t] || 0) + (P.emb[t] || 0);
+    return traitLvl(t, n + 1) > traitLvl(t, n) ? 6 : AI_AUG.emb[ti]; // 배지: 지금 보드의 시너지가 한 단계 오르면 좋아요
+  };
+  return opts.slice().sort((a, b) => val(b) - val(a))[0];
+}
+// 급식 줄: 합성 · 보드에 가장 도움이 되는 친구
+function aiCarousel(P, free) {
+  const base = aiBestBoard(P);
+  return free.slice().sort((x, y) => aiWant(P, y.d, base) - aiWant(P, x.d, base))[0];
 }
