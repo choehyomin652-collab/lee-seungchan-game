@@ -306,7 +306,7 @@ function renderUI() {
     if (di == null) return `<div class="card empty"></div>`;
     const d = DEFS[di], oc = ownCount[di];
     return `<div class="card${oc ? (oc >= 2 ? " own two" : " own") : ""}${P.gold < d.c ? " poor" : ""}" data-i="${i}" style="--cc:var(${COST_COLOR[d.c]});${PORTRAIT[di] ? `background-image:url(${PORTRAIT[di]})` : ""}" role="button" tabindex="0">
-      <span class="tr">${d.t.map((t) => `<span>${t}</span>`).join("")}</span><div class="bar"><span>${d.n}</span><span class="cost">● ${d.c}</span></div></div>`;
+      <span class="tr${d.t.length >= 5 ? " many" : ""}">${d.t.map((t) => `<span>${t}</span>`).join("")}</span><div class="bar"><span>${d.n}</span><span class="cost">● ${d.c}</span></div></div>`;
   }).join("");
   $("shop").querySelectorAll(".card[data-i]").forEach((el) => {
     const go = () => humanBuy(+el.dataset.i);
