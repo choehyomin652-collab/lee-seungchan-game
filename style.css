@@ -145,6 +145,8 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .gearbtn { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); border-radius: 50%; display: grid; place-items: center; padding: 0; font-size: calc(var(--u) * 2.4); }
 .menu { position: absolute; top: calc(100% + var(--u) * .6); left: 0; display: flex; flex-direction: column; gap: calc(var(--u) * .5); padding: calc(var(--u) * .7); border-radius: calc(var(--u) * 1.2); background: rgba(7, 20, 28, .94); border: 1px solid rgba(228, 192, 114, .45); box-shadow: 0 calc(var(--u) * .8) calc(var(--u) * 2.4) rgba(0, 0, 0, .5); }
 .menu .menubtn { display: block; cursor: pointer; color: #f3f1ea; font-family: var(--display); font-size: calc(var(--u) * 1.6); padding: calc(var(--u) * .7) calc(var(--u) * 1.4); border-radius: calc(var(--u) * .8); border: 1px solid var(--edge); background: var(--glass); white-space: nowrap; }
+.menu button.quit { color: #ffb0a4; border-color: rgba(255, 123, 107, .55); }
+.menu button.quit.armed { background: linear-gradient(#c8323a, #7a1820); color: #fff; border-color: #ffc0c4; }
 .menu button { border-radius: calc(var(--u) * .8); font-size: calc(var(--u) * 1.6); padding: calc(var(--u) * .7) calc(var(--u) * 1.4); white-space: nowrap; text-align: left; box-shadow: none; }
 .traits { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 6.4) !important; }
 .info, .traits, .players, .shop, .odds, .topbar { -webkit-touch-callout: none; }

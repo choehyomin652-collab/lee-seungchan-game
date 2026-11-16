@@ -398,6 +398,30 @@ function openCardMenu() {
   $("cards").hidden = false;
 }
 $("cardmenu").onclick = openCardMenu;
+// 게임 나가기: 한 번 누르면 "한 번 더 누르면 나가요", 4초 안에 다시 누르면 처음 화면으로 (실수로 누르지 않게)
+const OV0 = { title: $("ovtitle").textContent, text: $("ovtext").textContent, start: $("start").textContent };
+let QUIT_ARM = 0, QUIT_TM = 0;
+const quitReset = () => { QUIT_ARM = 0; $("quit").textContent = "게임 나가기"; $("quit").classList.remove("armed"); };
+tapButton($("quit"), () => { // 손가락 탭은 떼는 순간 바로 (두 번 빨리 눌러도 확대로 먹히지 않게)
+  if (!S || S.phase === "over") { $("menu").hidden = true; return; }
+  if (!QUIT_ARM) {
+    QUIT_ARM = 1; $("quit").textContent = NET.on ? "한 번 더 누르면 나가요 (탈락 처리)" : "한 번 더 누르면 나가요"; $("quit").classList.add("armed");
+    clearTimeout(QUIT_TM); QUIT_TM = setTimeout(quitReset, 4000); return;
+  }
+  clearTimeout(QUIT_TM); quitReset(); quitGame();
+});
+function quitGame() {
+  $("menu").hidden = true; $("gear").setAttribute("aria-expanded", "false");
+  if (S.practice) return practiceExit();
+  if (NET.on || NET.joined) { NET.on = false; NET.done = true; netLeave(); } // 온라인: 방에서 나가면 다른 친구들에게는 나간 걸로 보여요
+  S.phase = "over"; S.battle = null; S.augPending = false; S.sel = null; S.scout = null;
+  $("aug").hidden = true; $("cards").hidden = true;
+  $("ovtitle").textContent = OV0.title; $("ovtext").textContent = OV0.text; $("ovtext").hidden = false;
+  $("ovrules").hidden = false; $("ovbtns").hidden = false; $("start").textContent = OV0.start;
+  $("result").hidden = true; $("hist").hidden = true;
+  $("ov").hidden = false;
+  toast("게임에서 나왔어요");
+}
 tapButton($("cardsclose"), () => { $("cards").hidden = true; });
 $("cardfile").onchange = (e) => { pickCardPhoto(e.target.files && e.target.files[0]); e.target.value = ""; };
 if (document.fonts) document.fonts.ready.then(() => { readTokens(); resize(); if (HAS3D) { if (chalk) repaint(chalk); Object.values(PAPER).forEach(repaint); } });
