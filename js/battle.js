@@ -6,6 +6,8 @@
 const GIVE_SHIELD = [0, 0.06, 0.22]; // 다 퍼줌 2명 · 4명일 때 보호막 (최대 체력 비율)
 const TEACHER_AD = 1.1, TEACHER_STUN = 0.6; // 선생님(세세쌤·배성쌤) 2명: 우리 팀 공격력 배율, 상대 팀 멈춤(초)
 const YULGYEOM = [0, 0.03, 0.08, 0.16, 0.3]; // 율겸 2·4·6·8명: 우리 팀 모두 공격력·체력 증가
+// 연장전: 30초 안에 승부가 안 나면 15초 더. 모두 공격·이동이 빨라지고 피해가 커지고 회복이 줄어서 금방 끝나요. 그래도 안 끝나면 무승부
+const OT_AT = 30, OT_END = 45, OT = { as: 2, dmg: 1.5, heal: 0.5, move: 0.25 };
 const LOVER_SHIELD = 0.15, LOVER_RAGE = 1.4; // 연인: 시작 보호막 (최대 체력 비율), 짝이 쓰러지면 공격력·공격 속도 배율
 // 피의 굶주림 이현 (영웅 증강): 언제나 피흡 steal, 혼자면 solo 배율
 const LEE_BLOOD = { steal: 0.25, solo: { hp: 3, ad: 2.5, as: 1.8, steal: 0.35, ar: 0.2 } };
@@ -126,6 +128,7 @@ function dealDamage(B, src, t, amt, kind) {
   if (!t.alive) return 0;
   let crit = false;
   if (kind === "skill") amt *= src.amp;
+  if (B.ot) amt *= OT.dmg; // 연장전: 모든 피해 증가
   if (kind === "exec") { amt = Math.ceil(t.hp + t.shield); t.shield = 0; t.hp = 0; } // 처형: 보호막·방어 무시하고 바로 쓰러뜨려요
   else {
     if ((kind === "atk" || (kind === "skill" && src.skillCrit)) && Math.random() < src.crit) { amt *= 1.5; crit = true; }
@@ -157,6 +160,7 @@ function dealDamage(B, src, t, amt, kind) {
 }
 function heal(B, t, amt) {
   if (!t.alive) return;
+  if (B.ot) amt *= OT.heal; // 연장전: 회복 절반
   amt = Math.round(Math.min(amt, t.maxHp - t.hp)); if (amt <= 0) return;
   t.hp += amt;
   if (amt >= 8) addFloat(B, t, "+" + amt, TOK["--c2"], false);
@@ -239,6 +243,11 @@ function stepBattle(B, dt) {
   const cr = B.f.find((u) => u.combo && u.combo.t < u.combo.dur);
   if (cr) { stepCombo(B, cr, dt); return; }
   B.t += dt;
+  if (!B.ot && B.t >= OT_AT) { // 연장전 시작
+    B.ot = 1;
+    addHuge(B, { X: 3.25, Y: 3.5 }, "연장전!", "#ffffff", "#ff5a4a", 4.2);
+    if (B.visual) { S.shake = Math.max(S.shake || 0, 0.25); sfx("start"); }
+  }
   // 이수아 "어색한 사이": 잠깐 우리 편이 된 적은 시간이 끝나면(또는 원래 팀에 혼자 남으면) 돌아가요
   for (const u of B.f) if (u.charmT > 0) {
     u.charmT -= dt;
@@ -259,10 +268,10 @@ function stepBattle(B, dt) {
     const t = u.tgt; if (!t) continue;
     if (hexDist(u, t) <= u.rg) {
       u.atkCd -= dt;
-      if (u.atkCd <= 0) { u.atkCd = 1 / speedOf(u); attack(B, u, t); }
+      if (u.atkCd <= 0) { u.atkCd = 1 / (speedOf(u) * (B.ot ? OT.as : 1)); attack(B, u, t); }
     } else {
       u.moveCd -= dt;
-      if (u.moveCd <= 0) { u.moveCd = 0.42; const s = nextStep(B, u, t); if (s) { u.r = s[0]; u.c = s[1]; } }
+      if (u.moveCd <= 0) { u.moveCd = B.ot ? OT.move : 0.42; const s = nextStep(B, u, t); if (s) { u.r = s[0]; u.c = s[1]; } }
     }
   }
   for (const p of B.projs) {
@@ -273,7 +282,7 @@ function stepBattle(B, dt) {
   B.projs = B.projs.filter((p) => !p.done);
   if (B.zones.length) stepZones(B, dt);
   const a0 = B.f.some((u) => u.alive && u.team === 0), a1 = B.f.some((u) => u.alive && u.team === 1);
-  if (!a0 || !a1 || B.t >= 30) { B.done = true; B.win = a0 && !a1 ? 0 : a1 && !a0 ? 1 : -1; }
+  if (!a0 || !a1 || B.t >= OT_END) { B.done = true; B.win = a0 && !a1 ? 0 : a1 && !a0 ? 1 : -1; }
 }
 // 블랙홀 같은 "장판": 주변 적을 끌어당기고 계속 피해를 줘요
 function stepZones(B, dt) {

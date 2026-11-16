@@ -40,6 +40,7 @@ button:disabled { opacity: .45; }
 .rtype { font-size: .8em; color: var(--chalk-dim); }
 .rtype.pvp { color: var(--danger); } .rtype.pve { color: var(--c3); } .rtype.carousel { color: var(--accent); }
 .timer { width: 20vw; height: calc(var(--u) * 1); background: rgba(4, 16, 22, .75); border: 1px solid rgba(130, 225, 235, .3); border-radius: var(--u); overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, .4); }
+.timer.ot > i { background: linear-gradient(90deg, #ff9a6a, #e8402e); box-shadow: 0 0 calc(var(--u) * 1) rgba(255, 110, 90, .8); }
 .timer > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #7ff0e0, #37b6d2); box-shadow: 0 0 calc(var(--u) * 1) rgba(110, 235, 235, .7); }
 .stat-hp { color: #ff8f80; }
 /* 상점 카드 */
