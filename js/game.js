@@ -143,6 +143,9 @@ function addXp(P, n) {
 function buyXp(P) { if (P.gold < 4 || P.level >= 10) return false; P.gold -= 4; addXp(P, 4); return true; }
 function reroll(P) { if (P.gold < 2) return false; P.gold -= 2; refreshShop(P); return true; }
 function autoFill(P) {
+  // 영웅 증강 "피의 굶주림 이현": 보드에 이현 혼자 두었으면 일부러 혼자인 거라 채우지 않아요
+  const onBoard = P.board.flat().filter(Boolean);
+  if (P.buff && P.buff.lee && onBoard.length === 1 && DEFS[onBoard[0].d].n === "이현") return;
   const order = [3, 2, 4, 1, 5, 0, 6];
   for (let i = 0; i < BENCH && boardCount(P) < P.level; i++) {
     const u = P.bench[i]; if (!u) continue;
