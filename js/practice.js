@@ -15,7 +15,7 @@ function pracDummies() { // 허수아비: 체력이 아주 많고 거의 때리�
 }
 function pracFoes() {
   if (S.pracFoe === "juhwan") return [{ spec: mkUnit(pracIdx("정주환"), 3), lr: 0, c: 3 }]; // 1대1: 정주환 ★3
-  if (S.pracFoe === "yegyun") return [{ spec: mkUnit(pracIdx("김예균"), 2), lr: 0, c: 3 }]; // 1대1: 상대 김예균 ★2 (이다연이 달려드는 것 확인용)
+  if (S.pracFoe === "yegyun") return [{ spec: mkUnit(pracIdx("김예균"), 3), lr: 0, c: 3 }]; // 1대1: 상대 김예균 ★3 전설 (이다연이 달려드는 것 확인용)
   if (S.pracFoe === "team") return PRAC_TEAM.map(([n, star, lr, c]) => ({ spec: mkUnit(pracIdx(n), star), lr, c }));
   return pracDummies();
 }
