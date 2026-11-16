@@ -253,6 +253,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .dock .shop { position: relative; top: auto; left: auto; transform: none; display: grid; grid-template-columns: repeat(5, min(14vw, calc(var(--u) * 15.5))); gap: calc(var(--u) * .6); flex: none; }
 .dock .card { height: calc(var(--u) * 12.5); border-width: calc(var(--u) * .25); border-radius: calc(var(--u) * .5); background-position: center 22%; }
 .dock .card .tr { left: calc(var(--u) * .5); bottom: calc(var(--u) * 3.3); font-size: calc(var(--u) * 1.3); }
+.dock .card .tr.many { font-size: calc(var(--u) * 1.05); line-height: 1.15; gap: 0; } /* 특성이 5개 이상인 친구(김예균): 글자를 줄여 다 보이게 */
 .dock .card .bar { height: calc(var(--u) * 2.9); font-size: calc(var(--u) * 1.65); padding: 0 calc(var(--u) * .7); }
 .dock .card.own::after { font-size: calc(var(--u) * 1.3); }
 .dock .shop.selling::after { border-radius: calc(var(--u) * .5); font-size: calc(var(--u) * 3.2); }
