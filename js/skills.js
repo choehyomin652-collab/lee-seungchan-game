@@ -98,6 +98,21 @@ const SK = {
       addHuge(B, u, all ? "♪ 전교 합창! ♪" : "♪ 합창 시작! ♪", "#ffffff", "#ffb43a", all ? 3.2 : 2.6);
       if (B.visual) sfx("charge");
     } },
+  "이수아": { s: "친한 척 · 어색한 사이", d: (P) => `친한 척: 우리 팀 모두의 방어력이 올라가요 (받는 피해 -6%, ★2 -9%, ★3 -14%, 쓸 때마다 쌓여요). 어색한 사이: 가장 가까운 적 한 명이 4초 동안 우리 편이 돼서 자기 팀을 때려요 (보스 · 합체로봇 · ★3 전설은 안 넘어와요)`,
+    run(B, u, P, t, al, fo) {
+      const up = [0, 0.06, 0.09, 0.14][u.star || 1];
+      al.forEach((o) => { o.ar = Math.min(0.75, o.ar + up); addFx(B, o.X, o.Y, 0.7, "#ffd36b", 0.4); }); // 친한 척
+      addHuge(B, u, "우리 친하지~?", "#ffffff", "#f2c94c", 2.4);
+      const ok = (o) => o.alive && !o.robot && !(o.charmT > 0) && !(o.mon && o.mon.boss) && !(o.d >= 0 && DEFS[o.d].c === 5 && o.star >= 3);
+      const live = fo.filter((o) => o.alive);
+      const c = live.length > 1 ? (t && ok(t) ? t : live.filter(ok).sort((a, b) => hexDist(a, u) - hexDist(b, u))[0]) : null; // 혼자 남은 적은 안 넘어와요
+      if (c) {
+        c.team = u.team; c.charmT = CHARM_T; c.tgt = null; // 어색한 사이: 4초 동안 우리 편
+        B.zones.push({ kind: "charm", step: stepCharm, team: u.team, owner: u, tgt: c, X: c.X, Y: c.Y, t: 0, dur: CHARM_T });
+        addHuge(B, c, "어… 안녕…?", "#ffffff", "#ff7ab0", 2.4); addFx(B, c.X, c.Y, 1.2, "#ff7ab0", 0.5);
+      }
+      if (B.visual) sfx("charge");
+    } },
   "윤동욱": { s: "음양의 조화", d: (P) => `태극 문양을 펼쳐요. 양(陽)의 기운으로 대상에게 공격력×2 + ${R0(120 * P)} 피해, 음(陰)의 기운으로 준 피해의 40% 회복. 기본 공격 때 동양철학 한마디`,
     run(B, u, P, t) {
       if (!t) return;
@@ -359,6 +374,9 @@ function stepChorus(B, z, dt) {
   }
   if (z.t >= z.dur) z.done = 1;
 }
+// 이수아 "어색한 사이": 넘어온 동안 머리 위 하트가 따라다녀요 (보여 주기만. 편 바꾸기는 battle.js 의 charmT)
+const CHARM_T = 4;
+function stepCharm(B, z, dt) { z.t += dt; z.X = z.tgt.X; z.Y = z.tgt.Y; if (z.t >= z.dur || !z.tgt.alive || !(z.tgt.charmT > 0)) z.done = 1; }
 // ---------- 3코스트 스킬 연출 ----------
 // 보여 주기만 하는 장판 (전투 계산에는 영향 없음)
 function stepShow(B, z, dt) { z.t += dt; z.X = z.owner.X; z.Y = z.owner.Y; if (z.t >= z.dur) z.done = 1; }

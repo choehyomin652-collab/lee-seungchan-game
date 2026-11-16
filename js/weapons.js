@@ -102,6 +102,8 @@ const WEAPONS = {
     const gl = e.mk(0x2fc27a, 0.6);
     for (const arm of [e.L, e.R]) { const m = e.put(wg("glove", () => sphG(0.095)), gl, 0, -0.43, 0.02, arm); m.scale.set(1.1, 1, 1.15); }
   } },
+  "이수아": { n: "손하트", anim: "wave", pr: { col: "#ffb0d0", shape: "orb" }, build(e) { // 손엔 아무것도 없어요
+  } },
   "이다연": { n: "실내화 킥", anim: "kick", build(e) { // 손엔 아무것도 없어요 — 정강이를 차요
   } },
   "세세쌤": { n: "영어 단어 카드", anim: "throw", pr: { col: "#ffffff", shape: "plane" }, build(e) {
