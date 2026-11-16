@@ -75,12 +75,17 @@ const SK = {
       addFx(B, t.X, t.Y, 0.8, "#ffffff", 0.3); addFx(B, t.X, t.Y, 1.2, "#ff4d8a", 0.45);
       if (B.visual) { u.lunge = 0.18; u.lx = t.X - u.X; u.ly = t.Y - u.Y; S.shake = Math.max(S.shake || 0, 0.1); sfx("crit"); }
     } },
-  "세세쌤": { s: "Repeat after me!", d: (P) => `대상에게 "Repeat after me!" 공격력×1.4 + ${R0(200 * P)} 피해. 대상은 3초 동안 따라 말하느라 마나가 안 차서 스킬을 못 써요. ★3은 대상 주변 1칸 적도 같이 따라 말해요`,
+  "세세쌤": { s: "Repeat after me!", d: (P) => `"Repeat after me!" 대상과 주변 1칸 적 모두에게 공격력×1.4 + ${R0(200 * P)} 피해. 맞은 적은 3초 동안 따라 말하느라 마나가 안 차서 스킬을 못 써요. 3초 뒤에도 살아 있으면 "Wrong!" ${R0(120 * P)} 피해 + 0.5초 기절. ★3은 주변 2칸`,
     run(B, u, P, t, al, fo) {
       if (!t || !t.alive) return;
-      dealDamage(B, u, t, u.ad * 1.4 + 200 * P, "skill");
-      const list = [t, ...((u.star || 1) >= 3 ? near(fo.filter((o) => o.alive), t, 1).filter((o) => o !== t) : [])];
-      list.forEach((o) => { if (!o.alive) return; o.silenceT = Math.max(o.silenceT || 0, REPEAT_T); B.zones.push({ kind: "repeat", step: stepRepeat, team: u.team, owner: u, tgt: o, X: o.X, Y: o.Y, t: 0, n: 0, dur: REPEAT_T }); });
+      const list = [t, ...near(fo.filter((o) => o.alive), t, (u.star || 1) >= 3 ? 2 : 1).filter((o) => o !== t)]; // 대상 + 주변 (B.f 순서 그대로)
+      list.forEach((o) => {
+        dealDamage(B, u, o, u.ad * 1.4 + 200 * P, "skill");
+        if (!o.alive) return;
+        o.silenceT = Math.max(o.silenceT || 0, REPEAT_T);
+        B.zones.push({ kind: "repeat", step: stepRepeat, team: u.team, owner: u, P, tgt: o, X: o.X, Y: o.Y, t: 0, n: 0, dur: REPEAT_T });
+        if (o !== t) addFx(B, o.X, o.Y, 0.7, "#9fd0ff", 0.4);
+      });
       addHuge(B, u, "Repeat after me!", "#ffffff", "#4fa8ff", 2.6);
       if (B.visual) "REPEAT".split("").forEach((ch, i) => B.projs.push({ X: u.X - (t.X - u.X) * i * 0.06, Y: u.Y - (t.Y - u.Y) * i * 0.06, t, sp: 11, shape: "letter", ch, col: i % 2 ? "#9fd0ff" : "#ffffff", hit: () => addFx(B, t.X, t.Y, 0.5, "#9fd0ff", 0.25) })); // 보여 주기만
       addFx(B, t.X, t.Y, 1.2, "#9fd0ff", 0.5); addFx(B, t.X, t.Y, 0.7, "#ffffff", 0.3);
@@ -312,7 +317,12 @@ function stepRepeat(B, z, dt) {
   const o = z.tgt; if (!o.alive) { z.done = 1; return; }
   z.X = o.X; z.Y = o.Y;
   if (Math.floor(t0 / 0.75) !== Math.floor(z.t / 0.75)) addFloat(B, { X: o.X, Y: o.Y - 0.2 }, REPEAT_SAY[z.n++ % REPEAT_SAY.length], "#9fd0ff", true);
-  if (z.t >= z.dur) z.done = 1;
+  if (z.t >= z.dur) { // 따라 말하기 끝: "Wrong!" 추가 피해 + 잠깐 기절
+    z.done = 1;
+    dealDamage(B, z.owner, o, 120 * z.P, "skill"); if (o.alive) o.stunT = Math.max(o.stunT || 0, 0.5);
+    addHuge(B, o, "Wrong!", "#ffffff", "#ff4a4a", 2.4); addFx(B, o.X, o.Y, 1.0, "#ff6a5a", 0.4); addFx(B, o.X, o.Y, 0.6, "#ffffff", 0.25);
+    if (B.visual) { S.shake = Math.max(S.shake || 0, 0.1); sfx("crit"); }
+  }
 }
 // 배성쌤 "합창 지휘": 박자(0.5초)마다 아군 공격 속도 · 적 음표 피해, 마지막에 포르테
 const CHORUS_T = 4, CHORUS_BEAT = 0.5, CHORUS_NOTES = ["♩", "♪", "♫", "♬"];
