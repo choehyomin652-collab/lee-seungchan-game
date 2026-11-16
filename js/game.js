@@ -36,20 +36,27 @@ function rollCost(level) {
   for (let i = 0; i < 5; i++) { if (r < o[i]) return i + 1; r -= o[i]; }
   return 1;
 }
-function drawFromPool(level) {
+// 상점에서 더 자주 나오게 하는 짝꿍: 덱(보드 · 대기석)에 "이 친구"가 있으면 "저 친구"가 나올 가능성이 배로 늘어요
+const SHOP_BOOST = [{ has: "이다연", boost: "김예균", k: 3 }]; // 이다연이 덱에 있으면 상점에서 김예균이 3배 잘 나와요
+function shopWeight(P, i) {
+  let w = S.pool[i];
+  if (P) for (const b of SHOP_BOOST) if (DEFS[i].n === b.boost && unitsOf(P).some((x) => DEFS[x.u.d].n === b.has)) w *= b.k;
+  return w;
+}
+function drawFromPool(level, P) {
   for (let tries = 0; tries < 15; tries++) {
     const cost = rollCost(level);
     const cands = DEFS.map((_, i) => i).filter((i) => DEFS[i].c === cost && S.pool[i] > 0);
-    const total = cands.reduce((s, i) => s + S.pool[i], 0);
+    const total = cands.reduce((s, i) => s + shopWeight(P, i), 0);
     if (!total) continue;
     let r = Math.random() * total;
-    for (const i of cands) { r -= S.pool[i]; if (r < 0) { S.pool[i]--; return i; } }
+    for (const i of cands) { r -= shopWeight(P, i); if (r < 0) { S.pool[i]--; return i; } }
   }
   return null;
 }
 function refreshShop(P) {
   P.shop.forEach((di) => di != null && S.pool[di]++);
-  P.shop = Array.from({ length: 5 }, () => drawFromPool(P.level));
+  P.shop = Array.from({ length: 5 }, () => drawFromPool(P.level, P));
 }
 
 // =============== 유닛 관리 ===============
