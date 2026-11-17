@@ -1,7 +1,7 @@
 #!/bin/sh
 # ============================================================
 #  build-app.sh — 진짜 앱(Capacitor · Cordova 등)에 넣을 www/ 폴더를 만들어요
-#  · 게임 파일(index.html · style.css · js · icons)을 복사하고
+#  · 게임 파일(index.html · style.css · js · icons · cards)을 복사하고
 #  · 인터넷(CDN)에서 받던 라이브러리(three.js · mqtt)를 www/vendor/ 에 넣어서 인터넷 없이도 열리게 해요
 #  · 홈 화면 앱(PWA) 설정은 진짜 앱에서는 필요 없어서 빼요
 #  사용: sh tools/build-app.sh   (npm 이 필요해요. 결과: 저장소의 www/ 폴더)
@@ -14,7 +14,7 @@ TMP=$(mktemp -d)
 
 rm -rf "$ROOT/www"
 mkdir -p "$OUT/vendor/three/examples/js/environments" "$OUT/vendor/three/examples/js/shaders" "$OUT/vendor/three/examples/js/postprocessing"
-cp -R "$ROOT/style.css" "$ROOT/js" "$ROOT/icons" "$OUT/"
+cp -R "$ROOT/style.css" "$ROOT/js" "$ROOT/icons" "$ROOT/cards" "$OUT/" # cards: 미리 넣은 친구 카드 사진
 
 # 라이브러리 받기 (index.html 과 같은 버전)
 ( cd "$TMP" && npm pack -s three@0.128.0 mqtt@5.10.1 >/dev/null && tar xzf three-0.128.0.tgz && mv package three && tar xzf mqtt-5.10.1.tgz && mv package mqtt )

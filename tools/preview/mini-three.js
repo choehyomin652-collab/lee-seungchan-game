@@ -52,6 +52,15 @@
     constructor(x = 0, y = 0, z = 0, w = 1) { this.x = x; this.y = y; this.z = z; this.w = w; this._o = null; }
     _touch() { if (this._o) this._o._useQuat = true; return this; }
     copy(q) { this.x = q.x; this.y = q.y; this.z = q.z; this.w = q.w; return this._touch(); }
+    set(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; return this._touch(); }
+    // 단위 벡터 a 를 b 로 돌리는 회전 (정주환 번개 · 선 이펙트가 써요)
+    setFromUnitVectors(a, b) {
+      let r = a.x * b.x + a.y * b.y + a.z * b.z + 1;
+      if (r < 1e-6) { r = 0; if (Math.abs(a.x) > Math.abs(a.z)) { this.x = -a.y; this.y = a.x; this.z = 0; } else { this.x = 0; this.y = -a.z; this.z = a.y; } }
+      else { this.x = a.y * b.z - a.z * b.y; this.y = a.z * b.x - a.x * b.z; this.z = a.x * b.y - a.y * b.x; }
+      this.w = r; const l = Math.hypot(this.x, this.y, this.z, this.w) || 1; this.x /= l; this.y /= l; this.z /= l; this.w /= l;
+      return this._touch();
+    }
     setFromEuler(e) {
       const c1 = Math.cos(e.x / 2), c2 = Math.cos(e.y / 2), c3 = Math.cos(e.z / 2), s1 = Math.sin(e.x / 2), s2 = Math.sin(e.y / 2), s3 = Math.sin(e.z / 2);
       if (e.order === "YXZ") { this.x = s1 * c2 * c3 + c1 * s2 * s3; this.y = c1 * s2 * c3 - s1 * c2 * s3; this.z = c1 * c2 * s3 - s1 * s2 * c3; this.w = c1 * c2 * c3 + s1 * s2 * s3; }
