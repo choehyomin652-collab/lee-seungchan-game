@@ -1980,7 +1980,11 @@ function placeUnit(it, dt) {
   if (ud.jellyMats) for (const m of ud.jellyMats) { m.transparent = true; m.opacity = a * m.userData.op; if (m.userData.e0 === undefined) m.userData.e0 = m.emissive.getHex(); m.emissive.setHex(it.flash ? 0x3a3a3a : m.userData.e0); }
   if (it.f) unitStatus(g, ud, it.f, dt);
   if (!it.sp.mon && it.sp.star >= 2) starFlair(g, ud, it.sp.star, dt);
-  if (!it.sp.mon && !it.sp.robot && AURA_DEF[DEFS[it.sp.d].n]) heroAura(g, ud, DEFS[it.sp.d].n, it.sp.star, dt);
+  if (!it.sp.mon && !it.sp.robot && AURA_DEF[DEFS[it.sp.d].n]) {
+    const nm = DEFS[it.sp.d].n; heroAura(g, ud, nm, it.sp.star, dt);
+    const f = it.f; if (f && AURA_DEF[nm].tier === 4 && f.skillT > 0 && !(ud.prevSkillT > 0)) skillBurst(it.x, it.z, AURA_DEF[nm]); // 4코스트: 스킬 쓰는 순간 번쩍
+    ud.prevSkillT = f ? f.skillT : 0;
+  }
   it.g = g;
 }
 // 보호막 방울 · 기절 별 · 공격 속도 버프 고리
@@ -2006,6 +2010,12 @@ function unitStatus(g, ud, f, dt) {
 const AURA_DEF = {
   "배성쌤": { col: "#ffd36b", col2: "#fff3c4", sig: "music", part: "note" },
   "문주호": { col: "#5aff8a", col2: "#d4ffe4", sig: "chem", part: "bubble" },
+  // 4코스트: 5코스트보다 은은하게 (작은 마법진 · 기둥 없음 · 떠다니는 것 3개). 스킬을 쓰면 마법진이 번쩍 + 빛줄기 + 흩날림
+  "박희찬": { tier: 4, col: "#ff8a2a", col2: "#ffd36b", sig: "ball", part: "rise" },
+  "진성욱": { tier: 4, col: "#ff4a3a", col2: "#ffb0a0", sig: "crack", part: "rise" },
+  "박준서": { tier: 4, col: "#ffd86b", col2: "#e0c8ff", sig: "math", part: "glyph", chars: ["π", "∑", "√", "∞"] },
+  "손태민": { tier: 4, col: "#b06aff", col2: "#e0c8ff", sig: "void", part: "glyph", chars: ["✦", "✧", "✦"] },
+  "세세쌤": { tier: 4, col: "#6ab8ff", col2: "#dff0ff", sig: "abc", part: "glyph", chars: ["A", "B", "C"] },
 };
 const FLATG = () => GEO.flat || (GEO.flat = new THREE.PlaneGeometry(1, 1));
 // 발밑 마법진 그림 (캔버스)
@@ -2021,6 +2031,22 @@ function auraSigil(kind) {
       for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; g.save(); g.translate(c + Math.cos(a) * 186, c + Math.sin(a) * 186); g.rotate(a + Math.PI / 2); g.fillText(notes[i % 4], 0, 0); g.restore(); }
       g.lineWidth = 4; for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.beginPath(); g.moveTo(c + Math.cos(a) * 228, c + Math.sin(a) * 228); g.lineTo(c + Math.cos(a) * 240, c + Math.sin(a) * 240); g.stroke(); }
       g.font = "bold 120px serif"; g.fillText("♫", c, c + 6);
+    } else if (kind === "ball") { // 축구공 오각형 + 불꽃 무늬
+      g.lineWidth = 6; const pent = (cx, cy, r, rot) => { g.beginPath(); for (let i = 0; i <= 5; i++) { const a = rot + (i / 5) * Math.PI * 2; g[i ? "lineTo" : "moveTo"](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } g.stroke(); };
+      pent(c, c, 60, -Math.PI / 2); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i / 5) * Math.PI * 2; pent(c + Math.cos(a) * 118, c + Math.sin(a) * 118, 34, a + Math.PI / 2); }
+      g.lineWidth = 4; for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; g.beginPath(); g.moveTo(c + Math.cos(a) * 168, c + Math.sin(a) * 168); g.quadraticCurveTo(c + Math.cos(a + 0.12) * 196, c + Math.sin(a + 0.12) * 196, c + Math.cos(a + 0.05) * 214, c + Math.sin(a + 0.05) * 214); g.stroke(); }
+    } else if (kind === "crack") { // 땅이 갈라진 금 + 굵은 고리
+      g.lineWidth = 7; for (let i = 0; i < 8; i++) { let a = (i / 8) * Math.PI * 2, r = 40; g.beginPath(); g.moveTo(c + Math.cos(a) * r, c + Math.sin(a) * r); for (let k = 0; k < 4; k++) { r += 42; a += (k % 2 ? 0.16 : -0.16); g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); } g.stroke(); }
+      ring(40, 10);
+    } else if (kind === "math" || kind === "abc") { // 둘레에 기호 · 알파벳
+      const T = kind === "math" ? ["π", "∑", "√", "∞", "Δ", "x²", "θ", "∫"] : ["A", "B", "C", "D", "E", "F", "G", "H"];
+      g.font = "bold 44px serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      T.forEach((ch, i) => { const a = (i / T.length) * Math.PI * 2; g.save(); g.translate(c + Math.cos(a) * 186, c + Math.sin(a) * 186); g.rotate(a + Math.PI / 2); g.fillText(ch, 0, 0); g.restore(); });
+      g.lineWidth = 4; g.beginPath(); for (let i = 0; i <= 8; i++) { const a = (i / 8) * Math.PI * 2; g[i ? "lineTo" : "moveTo"](c + Math.cos(a) * 110, c + Math.sin(a) * 110); } g.stroke();
+      g.font = "bold 110px serif"; g.fillText(kind === "math" ? "π" : "Aa", c, c + 6);
+    } else if (kind === "void") { // 소용돌이
+      g.lineWidth = 6; for (let k = 0; k < 4; k++) { g.beginPath(); for (let i = 0; i <= 60; i++) { const t = i / 60, a = k * Math.PI / 2 + t * Math.PI * 2.2, r = 30 + t * 180; g[i ? "lineTo" : "moveTo"](c + Math.cos(a) * r, c + Math.sin(a) * r); } g.stroke(); }
+      g.beginPath(); g.arc(c, c, 26, 0, Math.PI * 2); g.fill();
     } else {
       g.lineWidth = 6; g.beginPath(); for (let i = 0; i <= 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; g[i ? "lineTo" : "moveTo"](c + Math.cos(a) * 110, c + Math.sin(a) * 110); } g.stroke(); // 벤젠 고리
       ring(68, 4);
@@ -2039,20 +2065,41 @@ const solfegeSprite = (i, col) => glowSprite("solf" + i + col, (g, w, h) => { g.
 const noteSprite = (ch, col) => glowSprite("note" + ch + col, (g, w, h) => { g.clearRect(0, 0, w, h); g.font = "bold 64px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.shadowColor = col; g.shadowBlur = 16; g.fillStyle = col; g.fillText(ch, w / 2, h / 2); g.fillStyle = "#ffffff"; g.shadowBlur = 0; g.globalAlpha = 0.7; g.fillText(ch, w / 2, h / 2); });
 const bubbleSprite = (col) => glowSprite("bubble" + col, (g, w, h) => { g.clearRect(0, 0, w, h); const gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2 - 4); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.7, col + "55"); gr.addColorStop(0.92, col); gr.addColorStop(1, col + "00"); g.fillStyle = gr; g.beginPath(); g.arc(w / 2, h / 2, w / 2 - 2, 0, Math.PI * 2); g.fill(); g.fillStyle = "rgba(255,255,255,.9)"; g.beginPath(); g.arc(w * 0.38, h * 0.36, 7, 0, Math.PI * 2); g.fill(); });
 function heroAura(g, ud, name, star, dt) {
-  const A = AURA_DEF[name], k = star >= 3 ? 1.35 : star === 2 ? 1.15 : 1;
+  const A = AURA_DEF[name], soft = A.tier === 4, k = (star >= 3 ? 1.35 : star === 2 ? 1.15 : 1) * (soft ? 0.78 : 1);
   if (!ud.aura2) {
     const grp = (ud.aura2 = new THREE.Group()); g.add(grp);
     const sm = new THREE.MeshBasicMaterial({ map: auraSigil(A.sig), color: new THREE.Color(A.col), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const sig = new THREE.Mesh(FLATG(), sm); sig.rotation.x = -Math.PI / 2; sig.position.y = 0.235; grp.add(sig); grp.userData.sig = sig;
     const pil = new THREE.Mesh(GEO.auraPil || (GEO.auraPil = new THREE.CylinderGeometry(0.42, 0.58, 2.8, 24, 1, true)), additive(A.col)); pil.position.y = 1.4; pil.material.opacity = 0.1; grp.add(pil); grp.userData.pil = pil;
-    grp.userData.parts = Array.from({ length: A.part === "note" ? 5 : 7 }, (_, i) => { const s = A.part === "note" ? noteSprite(["♪", "♫", "♩", "♬"][i % 4], i % 2 ? A.col : A.col2) : bubbleSprite(A.col); grp.add(s); return s; });
+    if (soft) pil.visible = false; // 4코스트는 빛기둥 없이
+    grp.userData.parts = Array.from({ length: soft ? 3 : A.part === "note" ? 5 : 7 }, (_, i) => { const s = A.part === "note" ? noteSprite(["♪", "♫", "♩", "♬"][i % 4], i % 2 ? A.col : A.col2) : A.part === "glyph" ? noteSprite(A.chars[i % A.chars.length], i % 2 ? A.col : A.col2) : bubbleSprite(i % 2 ? A.col2 : A.col); grp.add(s); return s; });
   }
   const U = ud.aura2.userData, t = clock3d;
-  U.sig.scale.setScalar(1.9 * k * (1 + Math.sin(t * 2.2) * 0.03)); U.sig.rotation.z += dt * 0.5; U.sig.material.opacity = 0.85 + 0.15 * Math.sin(t * 2.2);
+  U.sig.scale.setScalar(1.9 * k * (1 + Math.sin(t * 2.2) * 0.03)); U.sig.rotation.z += dt * 0.5; U.sig.material.opacity = (soft ? 0.5 : 0.85) + 0.15 * Math.sin(t * 2.2);
   U.pil.material.opacity = (0.14 + 0.06 * Math.sin(t * 3)) * k; U.pil.rotation.y += dt;
   U.parts.forEach((s, i) => {
-    if (A.part === "note") { const a = t * 1.1 + (i / U.parts.length) * Math.PI * 2; s.position.set(Math.cos(a) * 0.75 * k, 1.0 + Math.sin(t * 2 + i * 1.7) * 0.45 + i * 0.12, Math.sin(a) * 0.75 * k); s.scale.setScalar(0.32 + 0.06 * Math.sin(t * 4 + i)); }
+    if (A.part === "note" || A.part === "glyph") { const a = t * 1.1 + (i / U.parts.length) * Math.PI * 2; s.position.set(Math.cos(a) * 0.75 * k, 1.0 + Math.sin(t * 2 + i * 1.7) * 0.45 + i * 0.12, Math.sin(a) * 0.75 * k); s.scale.setScalar(0.32 + 0.06 * Math.sin(t * 4 + i)); }
     else { const ph = (t * 0.35 + i / U.parts.length) % 1, a = i * 2.4; s.position.set(Math.cos(a) * (0.35 + 0.25 * Math.sin(i)) * k, 0.3 + ph * 2.4, Math.sin(a) * (0.35 + 0.25 * Math.cos(i)) * k); s.scale.setScalar((0.12 + 0.1 * (i % 3) * 0.5) * (1 - ph * 0.3)); s.material.opacity = Math.sin(ph * Math.PI); }
+  });
+}
+// 4코스트 스킬 순간: 발밑 마법진이 크게 번쩍 퍼지고, 빛줄기가 솟고, 기호 · 불씨가 사방으로 흩날려요 (0.8초)
+let SBURST = [];
+function skillBurst(x, z, A) {
+  const grp = new THREE.Group(); grp.position.set(x, 0, z); scene.add(grp);
+  const sig = new THREE.Mesh(FLATG(), new THREE.MeshBasicMaterial({ map: auraSigil(A.sig), color: new THREE.Color(A.col), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  sig.rotation.x = -Math.PI / 2; sig.position.y = 0.25; grp.add(sig);
+  const beam = new THREE.Mesh(GEO.auraPil || (GEO.auraPil = new THREE.CylinderGeometry(0.42, 0.58, 2.8, 24, 1, true)), additive(A.col)); beam.position.y = 1.4; grp.add(beam);
+  const parts = Array.from({ length: 8 }, (_, i) => { const s = A.part === "glyph" ? noteSprite(A.chars[i % A.chars.length], i % 2 ? A.col : A.col2) : bubbleSprite(i % 2 ? A.col2 : A.col); const a = (i / 8) * Math.PI * 2; s.userData.v = [Math.cos(a) * 2.2, 2 + (i % 3) * 0.6, Math.sin(a) * 2.2]; s.position.set(0, 1, 0); grp.add(s); return s; });
+  SBURST.push({ grp, sig, beam, parts, t: 0 });
+}
+function stepSkillBursts(dt) {
+  SBURST = SBURST.filter((b) => {
+    b.t += dt; const q = b.t / 0.8;
+    if (q >= 1) { scene.remove(b.grp); b.grp.traverse((m) => m.material && m.material.dispose()); return false; }
+    b.sig.scale.setScalar(1 + q * 3.2); b.sig.rotation.z += dt * 2; b.sig.material.opacity = (1 - q) * 0.95;
+    b.beam.scale.set(1 - q * 0.6, 1 + q * 0.6, 1 - q * 0.6); b.beam.material.opacity = (1 - q) * 0.45;
+    b.parts.forEach((s) => { const v = s.userData.v; s.position.x += v[0] * dt; s.position.z += v[2] * dt; s.position.y += v[1] * dt; v[1] -= dt * 3; s.material.opacity = 1 - q; s.scale.setScalar(0.4 + q * 0.2); });
+    return true;
   });
 }
 // ★2는 은빛, ★3은 금빛 고리와 반짝이가 따라다녀요
@@ -3015,6 +3062,7 @@ function render3D(dt) {
       }
     }
     B.fx = drawFx(B.fx, dt);
+    stepSkillBursts(dt);
     for (const z of B.zones) {
       if (ZDRAW[z.kind]) { ZDRAW[z.kind](z, dt); continue; }
       const g = useMesh(z, () => {
