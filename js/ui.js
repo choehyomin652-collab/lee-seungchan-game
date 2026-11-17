@@ -186,7 +186,7 @@ function showUnit(u, foe) {
       const back = document.createElement("button"); back.className = "sell cardpick"; back.textContent = "원래 사진으로";
       back.onclick = () => {
         if (!hasCustomCard(u.d)) return unshareCardPhoto(u.d);
-        try { localStorage.removeItem("uri-card-" + DEFS[u.d].n); } catch (e) {}
+        try { localStorage.removeItem(pkey("uri-card-" + DEFS[u.d].n)); } catch (e) {}
         setPortrait(u.d, sharedCard(u.d) ? photoUrl(sharedCard(u.d)) : BASE_PORTRAIT[u.d]); toast("원래 카드 사진으로 돌아왔어요"); renderUI();
       };
       row.appendChild(back);
@@ -196,11 +196,11 @@ function showUnit(u, foe) {
 }
 let CARD_TARGET = null;
 const BASE_PORTRAIT = {};
-function hasCustomCard(d) { try { return !!localStorage.getItem("uri-card-" + DEFS[d].n); } catch (e) { return false; } }
+function hasCustomCard(d) { try { return !!localStorage.getItem(pkey("uri-card-" + DEFS[d].n)); } catch (e) { return false; } }
 function loadCustomCards() {
   DEFS.forEach((def, d) => {
     BASE_PORTRAIT[d] = PORTRAIT[d];
-    let url = null; try { url = localStorage.getItem("uri-card-" + def.n); } catch (e) {}
+    let url = null; try { url = localStorage.getItem(pkey("uri-card-" + def.n)); } catch (e) {}
     if (url) PORTRAIT[d] = url;
   });
 }
@@ -216,7 +216,7 @@ function pickCardPhoto(file) {
       g.drawImage(img, (c.width - w) / 2, (c.height - h) / 2, w, h);
       if (canShare()) { shareCardPhoto(d, c); return; } // 모두에게 보이게
       const url = c.toDataURL("image/jpeg", 0.85);
-      try { localStorage.setItem("uri-card-" + DEFS[d].n, url); } catch (e) { toast("저장 공간이 부족해서 이번 판에만 바뀌어요"); }
+      try { localStorage.setItem(pkey("uri-card-" + DEFS[d].n), url); } catch (e) { toast("저장 공간이 부족해서 이번 판에만 바뀌어요"); }
       PORTRAIT[d] = url; toast(`${DEFS[d].n} 카드 사진을 바꿨어요`); renderUI(); if (!$("cards").hidden) openCardMenu();
     };
     img.src = r.result;
@@ -361,7 +361,7 @@ $("bgclear").onclick = () => {
 };
 $("gear").onclick = (e) => { e.stopPropagation(); const m = $("menu"); m.hidden = !m.hidden; $("gear").setAttribute("aria-expanded", String(!m.hidden)); };
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest || !e.target.closest(".mini")) { $("menu").hidden = true; $("gear").setAttribute("aria-expanded", "false"); } });
-$("qual").onclick = () => { HQ = !HQ; AUTOQ.done = true; try { localStorage.setItem("uri-hq", HQ ? "1" : "0"); } catch (e) {} resize(); renderUI(); toast(HQ ? "화질 높음: 빛 번짐·고해상도" : "화질 보통: 더 부드럽게 움직여요"); };
+$("qual").onclick = () => { HQ = !HQ; AUTOQ.done = true; try { localStorage.setItem(pkey("uri-hq"), HQ ? "1" : "0"); } catch (e) {} acctSettingsChanged(); resize(); renderUI(); toast(HQ ? "화질 높음: 빛 번짐·고해상도" : "화질 보통: 더 부드럽게 움직여요"); };
 document.addEventListener("keydown", (e) => {
   if (!S || !$("ov").hidden || e.repeat) return;
   const k = e.key.toLowerCase();
@@ -371,14 +371,14 @@ document.addEventListener("keydown", (e) => {
   else if (k === " " && S.phase === "plan") { e.preventDefault(); startCombat(); }
 });
 $("speed").onclick = () => { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 3 : 1; renderUI(); };
-$("mute").onclick = () => { muted = !muted; try { localStorage.setItem("uri-mute", muted ? "1" : "0"); } catch (e) {} renderUI(); };
+$("mute").onclick = () => { muted = !muted; try { localStorage.setItem(pkey("uri-mute"), muted ? "1" : "0"); } catch (e) {} acctSettingsChanged(); renderUI(); };
 $("start").onclick = () => {
   if (NET.joined) netLeave();
   NET.on = false; NET.done = true;
   if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
   $("ov").hidden = true; newGame(); resize();
 };
-try { const b = +localStorage.getItem("uri-best-place") || 0; if (b) $("best").textContent = `최고 기록: ${b}등`; } catch (e) {}
+try { const b = +localStorage.getItem(pkey("uri-best-place")) || 0; if (b) $("best").textContent = `최고 기록: ${b}등`; } catch (e) {}
 window.addEventListener("resize", () => { resize(); });
 $("rotok").onclick = () => { $("rotate").classList.add("dismissed"); resize(); };
 if (HAS3D) { init3D(); makePortraits(); }

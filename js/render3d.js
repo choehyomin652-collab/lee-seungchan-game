@@ -562,7 +562,7 @@ function makePortraits() {
 }
 let composer = null, bloomPass = null, HQ = true, pollen = null;
 // 화질: 직접 고른 게 있으면 그대로. 없으면 휴대폰(작은 화면)은 "보통"으로 시작하고, 큰 화면은 "높음"으로 시작해서 느리면 자동으로 낮춰요 (autoQualityStep)
-const HQ_PICKED = (() => { try { return localStorage.getItem("uri-hq"); } catch (e) { return null; } })();
+const HQ_PICKED = (() => { try { return localStorage.getItem(pkey("uri-hq")); } catch (e) { return null; } })();
 try { HQ = HQ_PICKED ? HQ_PICKED !== "0" : localStorage.getItem("uri-hq-auto") !== "0" && Math.min(screen.width, screen.height) >= 500; } catch (e) {}
 // 게임 화면이 보이는 동안 1초를 건너뛰고 4초 동안 프레임 수를 세요. 초당 35프레임이 안 나오면 "보통"으로 (다음 실행도 보통으로 시작)
 const AUTOQ = { t0: 0, n: 0, done: !!HQ_PICKED };
