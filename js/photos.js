@@ -105,7 +105,7 @@ async function shareCardPhoto(d, canvas) {
     const blob = await toBlob(canvas);
     const up = await SHARED.assets.upload(blob, { type: "image/jpeg" });
     await saveShared({ cards: { [name]: up.id } });
-    try { localStorage.removeItem("uri-card-" + name); } catch (e) {}
+    try { localStorage.removeItem(pkey("uri-card-" + name)); } catch (e) {}
     if (old && old !== up.id) SHARED.assets.delete(old).catch(() => {});
     SHARED.cards[name] = up.id; setPortrait(d, up.url);
     toast(`${name} 카드 사진을 모두에게 보이게 올렸어요`); renderUI(); if (!$("cards").hidden) openCardMenu();

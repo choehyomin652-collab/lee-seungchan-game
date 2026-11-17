@@ -4,7 +4,7 @@
 "use strict";
 // =============== 소리 ===============
 let AC = null, muted = false, lastHit = 0, noiseSeed = 12345;
-try { muted = localStorage.getItem("uri-mute") === "1"; } catch (e) {}
+try { muted = localStorage.getItem(pkey("uri-mute")) === "1"; } catch (e) {}
 // 배성쌤 "합창 지휘": 박자마다 도레미파솔라시도 (종소리처럼 맑게), 포르테는 화음
 const SOLFEGE = ["도", "레", "미", "파", "솔", "라", "시", "도"], SOLFEGE_HZ = [523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5];
 function playNote(i, chord) {

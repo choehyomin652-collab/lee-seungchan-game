@@ -24,12 +24,12 @@ const RANKS = [
 const rankOf = (p) => RANKS.filter((r) => p >= r.p).pop();
 const REC_KEY = "uri-record", REC_MAX = 20;
 function loadRecord() {
-  let r = null; try { r = JSON.parse(localStorage.getItem(REC_KEY)); } catch (e) {}
+  let r = null; try { r = JSON.parse(localStorage.getItem(pkey(REC_KEY))); } catch (e) {}
   if (!r || typeof r !== "object" || !Array.isArray(r.games)) r = { pts: 0, games: [] };
   r.pts = Math.max(0, +r.pts || 0);
   return r;
 }
-function saveRecord(r) { try { localStorage.setItem(REC_KEY, JSON.stringify(r)); } catch (e) {} }
+function saveRecord(r) { try { localStorage.setItem(pkey(REC_KEY), JSON.stringify(r)); } catch (e) {} }
 
 // 게임이 끝나면 game.js 의 gameOver 가 불러요
 function recordGame(place) {
@@ -46,6 +46,7 @@ function recordGame(place) {
   rec.games = rec.games.slice(0, REC_MAX);
   saveRecord(rec);
   showResult(rec, before);
+  acctOnGame(place, rec.games[0].on); // 내 계정: 경험치 · 레벨 · 칭호 · 서버 저장 (account.js)
 }
 const unitChip = ([n, star, c]) => `<span class="uchip" style="--cc:var(${COST_COLOR[c] || "--c1"})">${esc(n)}<i>${"★".repeat(star)}</i></span>`;
 const placeDot = (g) => `<span class="pdot p${g.pl <= 1 ? 1 : g.pl <= 4 ? 4 : 8}" title="${g.pl}등">${g.pl}</span>`;
@@ -174,3 +175,4 @@ $("chatform").onsubmit = (e) => { e.preventDefault(); const v = $("chatinput").v
 $("chatinput").addEventListener("keydown", (e) => e.stopPropagation()); // 글 쓸 때 D·F·E·스페이스 단축키가 눌리지 않게
 setInterval(chatTick, 400);
 renderRankLine();
+acctInit(); // 시작 화면에 내 계정 버튼 (account.js)

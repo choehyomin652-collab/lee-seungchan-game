@@ -379,8 +379,8 @@ function gameOver(place) {
   S.phase = "over";
   netFinish();
   $("ovrules").hidden = true; $("ovbtns").hidden = false; $("ovtext").hidden = false;
-  let best = 0; try { best = +localStorage.getItem("uri-best-place") || 0; } catch (e) {}
-  if (!best || place < best) { best = place; try { localStorage.setItem("uri-best-place", String(best)); } catch (e) {} }
+  let best = 0; try { best = +localStorage.getItem(pkey("uri-best-place")) || 0; } catch (e) {}
+  if (!best || place < best) { best = place; try { localStorage.setItem(pkey("uri-best-place"), String(best)); } catch (e) {} }
   $("ovtitle").textContent = place === 1 ? "1등! 우리반 최고!" : `${place}등`;
   $("ovtext").textContent = place === 1 ? "8개 반 중에서 끝까지 살아남았어요." : `${S.stage}-${S.k} 라운드에서 탈락했어요.`;
   $("ovrules").hidden = true;

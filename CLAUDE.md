@@ -25,6 +25,11 @@
 - 앱 설정(manifest · 아이콘 · 서비스 워커 등록)은 `index.html` 의 `<!-- PWA -->` 표시 사이에 있어요. 아티팩트 페이지를 만들 때는 이 부분이 빠져요
 - 앱에서는 claude.ai 기능(친구와 같이 하기 · 게임에서 올린 공유 사진)이 없어요. 혼자 하기 · 연습장 · 미리 넣은 카드 사진 · 내 기기 사진은 돼요
 
+## 개인 계정 (js/account.js)
+- 아이디·비밀번호 로그인, 프로필(닉네임·대표 캐릭터), 레벨·칭호, 전적, 계정별 설정(소리·화질·카드 사진)
+- 계정마다 나뉘어야 하는 localStorage 키는 `pkey("uri-...")` 로 감싸요. 서버에 같이 올릴 키는 `SYNC_KEYS` 에 넣어요
+- 서버(Firebase)는 `FIREBASE_CONFIG` 를 채우면 켜져요 (`ACCOUNTS.md`, 규칙은 `firestore.rules`). 비어 있으면 기기 안 계정만 돼요
+
 ## 화면 확인 도구 (tools/preview)
 진짜 three.js 대신 간이 렌더러(`tools/preview/mini-three.js`, WebGL2)를 끼워 Playwright 로 화면을 찍어요. 외곽선·빛번짐은 안 나와요. 인자의 `.` 은 저장소 루트예요.
 - `node tools/preview/combat.js .` — 전투 몇 판 돌리고 오류 확인

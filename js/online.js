@@ -49,7 +49,7 @@ function netShowPanel(show) {
   if (show) { $("result").hidden = true; $("hist").hidden = true; }
 }
 function netInit() {
-  let saved = ""; try { saved = localStorage.getItem("uri-net-name") || ""; } catch (e) {}
+  let saved = ""; try { saved = localStorage.getItem(pkey("uri-net-name")) || ""; } catch (e) {}
   $("netname").value = saved;
   $("netcode").value = String(1000 + Math.floor(Math.random() * 9000));
   NET.app = !(window.claude && window.claude.use); // 홈 화면 앱: claude.ai 대신 공개 중계 서버로 (approom.js)
@@ -66,7 +66,7 @@ function netJoin() {
   const name = cleanName($("netname").value), code = String($("netcode").value || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
   if (!name) { $("netname").focus(); return toast("이름을 적어 주세요"); }
   if (!code) { $("netcode").focus(); return toast("방 코드를 적어 주세요"); }
-  try { localStorage.setItem("uri-net-name", name); } catch (e) {}
+  try { localStorage.setItem(pkey("uri-net-name"), name); } catch (e) {}
   NET.name = name; NET.code = code; NET.joined = true; NET.done = false; NET.on = false;
   NET.room.presence({ app: NET_APP, rm: code, n: name, st: "lobby", start: null, gid: null, rd: null, rdy: null, hp: null, lv: null, al: null, pl: null, b: null, e: null, bf: null }).catch(() => {});
   $("netlobby").hidden = false; $("netjoin").textContent = "방 바꾸기";
