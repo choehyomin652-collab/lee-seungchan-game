@@ -208,7 +208,7 @@ function cast(B, u) {
   if (!u.tgt || !u.tgt.alive) u.tgt = nearest(B, u);
   const t = u.tgt;
   const allies = B.f.filter((o) => o.alive && o.team === u.team), foes = B.f.filter((o) => o.alive && o.team !== u.team);
-  u.castT = 0.35;
+  u.castT = 0.35; if (!u.robot) u.skillT = u.skillT0 = skillPoseT(def.n); // skillT: 스킬 동작 (보여 주기만, weapons.js 의 SKILL_POSE)
   const SKU = u.robot ? (u.mega ? MEGA_SK : ROBOT_SK) : SK[def.n];
   const big5 = u.robot || def.c >= 5; // 스킬 이름을 크게 보여 주는 건 5코스트(와 합체로봇)만. 나머지는 머리 위에 작게
   addFloat(B, { X: u.X, Y: u.Y }, SKU ? SKU.s : CLASS[def.k].sk, TOK["--accent"], big5);
@@ -258,7 +258,7 @@ function stepBattle(B, dt) {
     const k = Math.min(1, dt * 9);
     u.X += (u.c + (u.r & 1) * 0.5 - u.X) * k; u.Y += (u.r - u.Y) * k;
     if (!u.alive) continue;
-    u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, u.lunge - dt); u.castT = Math.max(0, (u.castT || 0) - dt); u.atkT = Math.max(0, (u.atkT || 0) - dt);
+    u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, u.lunge - dt); u.castT = Math.max(0, (u.castT || 0) - dt); u.skillT = Math.max(0, (u.skillT || 0) - dt); u.atkT = Math.max(0, (u.atkT || 0) - dt);
     u.asBuffT = Math.max(0, (u.asBuffT || 0) - dt); u.vulnT = Math.max(0, (u.vulnT || 0) - dt); u.leapT = Math.max(0, (u.leapT || 0) - dt); u.silenceT = Math.max(0, (u.silenceT || 0) - dt);
     if (u.stunT > 0) { u.stunT -= dt; continue; }
     if (u.hunt && !u.leapt) { u.leapt = 1; const h = huntTarget(B, u); if (h) leapTo(B, u, h); } // 이다연: 시작하자마자 김예균에게

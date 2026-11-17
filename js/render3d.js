@@ -1805,7 +1805,7 @@ function collect(dt) {
       let face = isFoe(u) ? 0 : Math.PI;
       if (u.alive && u.tgt) face = Math.atan2(worldX(u.tgt.X) - worldX(u.X), worldZ(u.tgt.Y) - worldZ(u.Y));
       push(u, u, x, z, { hit: u.alive ? { g: "board", r: u.r, c: u.c } : null, enemy: isFoe(u), f: u, flash: u.flash > 0, alpha: u.alive ? 1 : Math.max(0, Math.min(1, u.deadT / 0.6)), face,
-        jump: u.leapT > 0 ? Math.sin((1 - u.leapT / 0.45) * Math.PI) * 1.3 : u.castT > 0 ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive, // leapT: 이다연이 김예균에게 달려들 때 폴짝
+        jump: u.leapT > 0 ? Math.sin((1 - u.leapT / 0.45) * Math.PI) * 1.3 : u.castT > 0 && !(u.skillT > 0) ? Math.sin((u.castT / 0.35) * Math.PI) * 0.45 : 0, dead: !u.alive, // leapT: 이다연이 김예균에게 달려들 때 폴짝
         lift: u.dropT > 0 ? u.dropT * u.dropT * 9 : 0 }); // 소환수가 하늘에서 떨어지는 중
     }
   } else {
@@ -1834,7 +1834,7 @@ function placeUnit(it, dt) {
   const speed = Math.hypot(it.x - pv.x, it.z - pv.z) / Math.max(dt, 1e-3);
   ud.prev = { x: it.x, z: it.z };
   const moving = it.walking ? 0.6 : it.held ? 0 : Math.min(1, speed / 2.2);
-  ud.move = ud.move * 0.85 + moving * 0.15;
+  ud.move += (moving - ud.move) * Math.min(1, dt * 9); // 걷기 ↔ 멈춤을 부드럽게 (기기 속도와 상관없이 같은 빠르기)
   ud.walk += dt * (it.walking ? 9 : 5 + Math.min(9, speed * 3.2)); // 걷는 박자를 실제 이동 속도에 맞춰요 (발이 미끄러지지 않게)
   const sw = Math.sin(ud.walk) * 0.65 * ud.move;
   const bounce = Math.abs(Math.sin(ud.walk)) * 0.05 * ud.move;
@@ -1851,17 +1851,25 @@ function placeUnit(it, dt) {
   g.rotation.x = it.dead ? -fe * 1.4 : it.held ? 0.25 : -hitK * 0.2;
   g.rotation.z = it.dead ? fe * 0.9 : ud.legs ? Math.sin(ud.walk) * 0.035 * ud.move + Math.sin(clock3d * 0.9 + it.x * 1.7) * 0.012 * (1 - ud.move) : 0; // 걸을 때 좌우로 흔들, 서 있을 땐 체중을 살짝 옮겨요
   if (ud.legs) {
-    ud.legs[0].rotation.x = sw; ud.legs[1].rotation.x = -sw;
     let la = -sw * 0.8, ra = sw * 0.8, lz = ud.restZ[0], rz = ud.restZ[1], lean = ud.move * 0.14, twist = 0;
     const f = it.f;
-    let kick = 0, spin = null, headX = 0, elbL = 0, elbR = 0;
+    let kick = 0, spin = null, headX = 0, elbL = 0, elbR = 0, crouch = 0;
     if (f && f.atkT > 0 && f.atkT > (ud.lastAtk ?? 0) + 1e-4 && f.rg > 1) { // 새 공격이 시작됐어요
       const pk = projKind(champOfUnit(f));
       if (pk) WFX.push({ kind: "impact", X: f.X + (ud.dirX || 0) * 0.35, Y: f.Y + (ud.dirY || 0) * 0.35, y: 1.15, col: (champOfUnit(f) || {}).accent ? "#" + champOfUnit(f).accent.toString(16).padStart(6, "0") : "#ffffff", t: 0.18, t0: 0.18, small: 1 });
     }
     if (f) ud.lastAtk = f.atkT;
-    if (f && f.atkT > 0) { // 무기마다 다른 공격 동작 (weapons.js 의 ATK_ANIM)
-      const p = Math.min(1, 1 - f.atkT / ATK_T), k = Math.sin(p * Math.PI);
+    const SP = f && !f.robot && f.alive && f.skillT > 0 && f.d >= 0 && SKILL_POSE[DEFS[f.d].n];
+    if (SP) { // 스킬 동작 (weapons.js 의 SKILL_POSE): 공격 동작보다 먼저예요
+      const T = f.skillT0 || SP.t, s = T - f.skillT, A = SP.f(Math.min(1, s / T), s);
+      elbL = A.le || 0; elbR = A.re || 0;
+      if (A.la != null) la = A.la; if (A.ra != null) ra = A.ra;
+      if (A.lz != null) lz += A.lz; if (A.rz != null) rz += A.rz;
+      lean = (A.lean || 0) + ud.move * 0.1; twist = A.twist || 0; kick = A.kick || 0; headX = A.head || 0; crouch = A.crouch || 0;
+      if (A.spin != null) spin = A.spin;
+      g.position.y += A.hop || 0;
+    } else if (f && f.atkT > 0) { // 무기마다 다른 공격 동작 (weapons.js 의 ATK_ANIM)
+      const p0 = Math.min(1, 1 - f.atkT / ATK_T), p = p0 * p0 * (3 - 2 * p0), k = Math.sin(p * Math.PI); // 처음·끝은 천천히, 가운데는 빠르게
       const wp = !f.robot && f.d >= 0 && WEAPONS[DEFS[f.d].n], CHa = champOfUnit(f);
       const akey = CHa && (DIV_ANIM[DEFS[f.d].n] || CH_ANIM[CHa.weapon]);
       const A = (akey && CANIM[akey]) ? CANIM[akey](p) : ((wp && ATK_ANIM[wp.anim]) || ATK_ANIM[f.rg > 1 ? "cast" : "swing"])(p, k);
@@ -1872,11 +1880,17 @@ function placeUnit(it, dt) {
       if (A.spin != null) spin = A.spin;
       g.position.y += A.hop || 0;
     }
-    ud.legs[1].rotation.x += kick;
+    { // 다리: 바로 바꾸지 않고 부드럽게 따라가요 (웅크리면 허벅지를 앞으로)
+      const kl = Math.min(1, dt * 22), tl = sw - crouch * 0.55, tr = -sw - crouch * 0.55 + kick;
+      ud.legs[0].rotation.x += (tl - ud.legs[0].rotation.x) * kl; ud.legs[1].rotation.x += (tr - ud.legs[1].rotation.x) * kl;
+      ud.crouch = (ud.crouch || 0) + (crouch - (ud.crouch || 0)) * Math.min(1, dt * 14);
+      g.position.y -= ud.crouch * 0.17; lean += ud.crouch * 0.25;
+    }
     twist += Math.sin(ud.walk) * 0.12 * ud.move; // 걸을 때 어깨가 다리와 반대로 돌아요
     if (ud.knees) { // 걸을 때 뒤로 가는 다리의 무릎을 굽혀요, 차는 다리는 펴요
-      ud.knees[0].rotation.x = Math.max(0, Math.sin(ud.walk + 1.2)) * 0.95 * ud.move;
-      ud.knees[1].rotation.x = Math.max(0, -Math.sin(ud.walk + 1.2)) * 0.95 * ud.move + Math.max(0, kick) * 0.6;
+      const kk = Math.min(1, dt * 22), c2 = (ud.crouch || 0) * 1.05 + 0.05 * (1 - ud.move); // 서 있을 땐 무릎을 살짝 풀어요
+      ud.knees[0].rotation.x += (Math.max(0, Math.sin(ud.walk + 1.2)) * 0.95 * ud.move + c2 - ud.knees[0].rotation.x) * kk;
+      ud.knees[1].rotation.x += (Math.max(0, -Math.sin(ud.walk + 1.2)) * 0.95 * ud.move + Math.max(0, kick) * 0.6 + c2 - ud.knees[1].rotation.x) * kk;
     }
     if (it.jump > 0) { lz = -0.4 - it.jump * 3; rz = 0.4 + it.jump * 3; lean = -0.15; }
     if (win) { la = ra = -2.7 + Math.sin(clock3d * 14 + it.x) * 0.25; lz = -0.45; rz = 0.45; lean = -0.1; }
@@ -1887,9 +1901,9 @@ function placeUnit(it, dt) {
     }
     if (it.held) { la = -0.3; ra = -0.3; lz = -0.6; rz = 0.6; }
     { // 서 있을 땐 숨 쉬듯 팔이 살짝 움직이고, 자세가 바뀔 땐 툭 튀지 않게 부드럽게 따라가요
-      const atk = !!(f && f.atkT > 0), idle = (1 - ud.move) * (atk || win ? 0 : 1), br = Math.sin(clock3d * 2.2 + it.x);
+      const atk = !!(f && (f.atkT > 0 || SP)), idle = (1 - ud.move) * (atk || win ? 0 : 1), br = Math.sin(clock3d * 2.2 + it.x);
       la += br * 0.045 * idle; ra -= br * 0.045 * idle; lz -= (0.5 + 0.5 * br) * 0.04 * idle; rz += (0.5 + 0.5 * br) * 0.04 * idle;
-      const ak = ud.armInit ? Math.min(1, dt * (atk ? 34 : 14)) : 1; ud.armInit = 1;
+      const ak = ud.armInit ? Math.min(1, dt * (SP ? 22 : atk ? 34 : 12)) : 1; ud.armInit = 1;
       const A0 = ud.arms[0].rotation, A1 = ud.arms[1].rotation;
       A0.set(A0.x + (la - A0.x) * ak, 0, A0.z + (lz - A0.z) * ak); A1.set(A1.x + (ra - A1.x) * ak, 0, A1.z + (rz - A1.z) * ak);
     }
