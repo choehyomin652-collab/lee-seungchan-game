@@ -14,6 +14,7 @@ const DEFS = [
   { n: "최효민", c: 1, k: "저격수", t: ["운동광", "공부는 잘함", "지는 거 못 참음"] },
   { n: "전하율", c: 1, k: "저격수", t: ["지는 거 못 참음", "공부는 잘함"] },
   { n: "이수아", c: 1, k: "응원단", t: ["다 퍼줌", "댄스부"], s: "친한 척 · 어색한 사이" },
+  { n: "임시온", c: 1, k: "수호자", t: ["축구부", "다 퍼줌"], s: "골문 사수" },
   // 2코스트
   { n: "이준희", c: 2, k: "돌격대", t: ["운동광", "지는 거 못 참음"], s: "덩크슛" },
   { n: "김현우", c: 2, k: "수호자", t: ["지는 거 못 참음"] },
@@ -23,17 +24,17 @@ const DEFS = [
   { n: "이다연", c: 2, k: "돌격대", t: ["댄스부", "연인", "율겸"], s: "깨물기 · 정강이 차기", hunt: "김예균" }, // hunt: 상대 팀에 이 친구가 있으면 전투 시작하자마자 달려들어 먼저 노려요
   // 3코스트
   { n: "김민기", c: 3, k: "천재",   t: ["공부는 잘함", "다 퍼줌"] },
-  { n: "임시온", c: 3, k: "수호자", t: ["축구부", "다 퍼줌"], s: "골문 사수" },
   { n: "박현호", c: 3, k: "응원단", t: ["공부는 잘함", "다 퍼줌"] },
   { n: "조하윤", c: 3, k: "저격수", t: ["공부는 잘함", "프로게이머", "합체로봇"] },
   { n: "최윤서", c: 3, k: "수호자", t: ["지는 거 못 참음", "댄스부"], s: "그물 던지기" },
   { n: "배성쌤", c: 3, k: "응원단", t: ["선생님"], s: "합창 지휘" }, // 음악 선생님
+  { n: "세세쌤", c: 3, k: "저격수", t: ["선생님"], s: "Repeat after me!" }, // 영어 선생님
+  { n: "이승환", c: 3, k: "돌격대", t: ["운동광", "지는 거 못 참음"], s: "주먹왕 승환 펀치" }, // 체력 높고 순수 딜만 센 주먹왕 (기절·디버프 없음)
   // 4코스트
   { n: "박희찬", c: 4, k: "저격수", t: ["축구부", "공부는 잘함", "합체로봇", "율겸"], s: "무회전 프리킥" },
   { n: "진성욱", c: 4, k: "돌격대", t: ["운동광", "지는 거 못 참음"] },
   { n: "박준서", c: 4, k: "천재",   t: ["수학왕", "공부는 잘함", "율겸"], s: "수학 문제 폭격" },
   { n: "손태민", c: 4, k: "천재",   t: ["공부는 잘함", "전교 1등", "율겸"] },
-  { n: "세세쌤", c: 4, k: "저격수", t: ["선생님"], s: "Repeat after me!" }, // 영어 선생님
   // 5코스트
   { n: "정주환", c: 5, k: "신",     t: ["신", "다 퍼줌", "운동광"] },
   { n: "김예균", c: 5, k: "수호자", t: ["운동광", "지는 거 못 참음", "연인", "율겸"] },
@@ -73,6 +74,7 @@ const OUTFITS = {
   "윤동욱": { type: "dobok", top: 0xf6f4ee, bottom: 0xf6f4ee, accent: 0x111111 },
   "김민기": { type: "tshirt", top: 0xf4f4f4, bottom: 0x3c5a86, accent: 0x7a5cd0, print: "✎" },
   "임시온": { type: "jersey", top: 0xd8e83a, bottom: 0x1e2126, accent: 0x1e2126, num: "1", sleeve: "long", socks: 0xd8e83a },
+  "이승환": { type: "tank", top: 0xd8202a, bottom: 0x1e2126, accent: 0xffd36b, print: "KING" },
   "이다연": { type: "uniform", top: 0x2a3550, bottom: 0x8a2a44, accent: 0xff7aa8 },
   "김예균": { type: "hoodie", top: 0x2a7a78, bottom: 0x2b303b, accent: 0x7ff0e0 },
   "최윤서": { type: "track", top: 0x2a8a6a, accent: 0xf4f4f4 },
@@ -111,6 +113,7 @@ const LOOKS = {
   "윤동욱": { hair: "mohawk", hc: 0x141414, skin: 1, tall: 1.0, wide: 1.06, mouth: "pout", brow: 1.3, acc: [["headband", 0xf6f4ee, "tails"], ["bandage", "cheek"]] },
   "김민기": { hair: "mushroom", hc: 0x3a291c, skin: 2, tall: 0.95, wide: 0.97, eye: 1.1, mouth: "smile", acc: [["beret", 0x7a5cd0], ["glasses", "round", 0x7a5cd0], ["pencil"], ["backpack", 0x7a5cd0]] },
   "임시온": { hair: "side", hc: 0x2a1d15, skin: 1, tall: 1.06, wide: 1.12, mouth: "smile", acc: [["cap", 0x2b303b, "", 0xd8e83a]] },
+  "이승환": { hair: "buzz", hc: 0x141414, skin: 2, tall: 1.08, wide: 1.2, mouth: "grin", brow: 1.3, acc: [["headband", 0xd8202a, "tails"], ["wristband", 0xffd36b]] },
   "이다연": { hair: "long", hc: 0x2a1a14, skin: 1, tall: 0.94, wide: 0.92, mouth: "grin", acc: [["headband", 0xff4d8a], ["blush"], ["wristband", 0xff4d8a]] },
   "김예균": { hair: "messy", hc: 0x1a1a1a, tip: 0x3fd8c8, skin: 0, tall: 1.03, wide: 1.08, mouth: "smile", acc: [["sweatband", 0x7ff0e0], ["pendant", 0x7ff0e0], ["wristband", 0x7ff0e0], ["backprint", "✦", 0x7ff0e0]] },
   "최윤서": { hair: "wavy", hc: 0x1c1612, skin: 2, tall: 1.03, wide: 1.08, mouth: "pout", brow: 1.2, acc: [["sweatband", 0xf4f4f4], ["armband", 0x2a8a6a]] },
@@ -152,6 +155,7 @@ const CHAMPS = {
   "박준서": { title: "별자리 점성술사", kit: "mage", top: 0x6a2038, bottom: 0x2a2030, accent: 0xffd86b, metal: "gold", hair: "bowl", hc: 0x1c1612, skin: 0, head: "hood", weapon: "astrolabe", coat: 1 },
   "손태민": { title: "심연 마도사", kit: "mage", top: 0x1e1838, bottom: 0x14121e, accent: 0xb06aff, metal: "dark", hair: "slick", hc: 0x16110e, skin: 2, head: "crown", weapon: "abyssorb", coat: 1 },
   "정주환": { title: "천벌의 심판자", kit: "god", top: 0xf4ecd8, bottom: 0xe8e0c8, accent: 0xffd86b, metal: "gold", hair: "slick", hc: 0xe8c25a, tip: 0xfff0b0, skin: 0, head: "crown", weapon: "spear", acc: [["wings"]] },
+  "이승환": { title: "주먹왕", kit: "warrior", top: 0xc81820, bottom: 0x1e1416, accent: 0xffc83a, metal: "dark", hair: "buzz", hc: 0x141414, skin: 2, head: "band", weapon: "gauntlets", scar: 1 },
   "이다연": { title: "정강이 사냥꾼", kit: "monk", top: 0xc8304e, bottom: 0x2e1622, accent: 0xffb0d0, metal: "gold", hair: "long", hc: 0x2a1a14, skin: 1, head: "band", weapon: "none" },
   "문주호": { title: "원소 연금술사", kit: "mage", top: 0xe8ecef, bottom: 0x1e2a26, accent: 0x5aff8a, metal: "steel", hair: "messy", hc: 0x1c1612, tip: 0x3fdf7a, skin: 1, head: "visor", weapon: "flask", coat: 1 },
   "세세쌤": { title: "언어의 현자", kit: "mage", top: 0x23407a, bottom: 0x1c2234, accent: 0x9fd0ff, metal: "steel", hair: "side", hc: 0x1c1612, skin: 1, head: "circlet", weapon: "tome", coat: 1 },
@@ -163,10 +167,10 @@ const CHAMPS = {
 // 같은 골드로 짠 무작위 팀끼리 수천 판 싸우게 해서, 승률이 50%에 가깝도록 맞춘 값이에요.
 const TUNE = {
   "이승찬": { hp: 1.25, ad: 1.25, sk: 1.25 },
-  "이현": { hp: 1.01, ad: 1.01, sk: 1.01 },
+  "이현": { hp: 0.98, ad: 0.98, sk: 0.98 },
   "최효민": { hp: 0.78, ad: 0.78, sk: 0.78 },
   "전하율": { hp: 1.03, ad: 1.03, sk: 1.03 },
-  "이수아": { hp: 0.97, ad: 0.97, sk: 0.97 },
+  "이수아": { hp: 1.05, ad: 1.05, sk: 1.05 },
   "이준희": { hp: 0.95, ad: 0.95, sk: 0.95 },
   "김현우": { hp: 1.22, ad: 1.22, sk: 1.22 },
   "이보경": { hp: 1.10, ad: 1.10, sk: 1.10 },
@@ -174,10 +178,11 @@ const TUNE = {
   "은혜린": { hp: 0.97, ad: 0.97, sk: 0.97 },
   "김민기": { hp: 1.20, ad: 1.20, sk: 1.20 },
   "임시온": { hp: 1.05, ad: 1.05, sk: 1.05 },
-  "조하윤": { hp: 1.02, ad: 1.02, sk: 1.02 },
+  "조하윤": { hp: 1.06, ad: 1.06, sk: 1.06 },
   "최윤서": { hp: 0.88, ad: 0.88, sk: 0.88 },
   "박현호": { hp: 1.66, ad: 1.66, sk: 1.66 },
   "이다연": { hp: 1.14, ad: 1.14, sk: 1.14 },
+  "이승환": { hp: 1.05, ad: 0.97, sk: 0.8 }, // 체력·공격력이 높고, 스킬은 기절 없이 피해만 아주 커요
   "김예균": { hp: 1.43, ad: 1.43, sk: 1.43 }, // ★1·★2 가 정주환보다 많이 약해서 올림 (★3 전설은 LEGEND_FOR 에서 따로)
   "박희찬": { hp: 1.03, ad: 1.03, sk: 1.03 },
   "진성욱": { hp: 1.24, ad: 1.24, sk: 1.24 },
@@ -186,7 +191,7 @@ const TUNE = {
   "정주환": { hp: 1.14, ad: 1.14, sk: 1.14 }, // 김예균이 연인 시너지를 얻은 만큼 (★3 전설은 LEGEND_FOR 에서 따로)
   "문주호": { hp: 2.60, ad: 1.70, sk: 2.05 }, // 천재(뒷줄 마법사)라 체력이 낮아서 체력을 많이 올렸어요
   "세세쌤": { hp: 1.09, ad: 1.09, sk: 1.09 },
-  "배성쌤": { hp: 2.06, ad: 1.30, sk: 1.46 }, // 3코스트로 내리면서 다시 맞춤 (응원단이라 체력·공격이 낮아서 올려 둔 값)
+  "배성쌤": { hp: 2.36, ad: 1.47, sk: 1.66 }, // 3코스트로 내리면서 다시 맞춤 (응원단이라 체력·공격이 낮아서 올려 둔 값)
 };
 const tuneOf = (def) => TUNE[def.n] || { hp: 1, ad: 1, sk: 1 };
 // 5코스트 ★3 = 전설. 만들기 아주 어려운 대신, 만들면 거의 무조건 이겨요 (체력·공격력·스킬에 곱하는 숫자)
