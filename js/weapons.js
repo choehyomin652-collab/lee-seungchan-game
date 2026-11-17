@@ -51,6 +51,40 @@ const ATK_ANIM = {
   toss:     (p, k) => ({ ra: windup(p, 0.6, -1.6, 0.4), rz: 0.2 * k, lean: 0.12 * k }),                               // 살짝 던지기
   zeus:     (p, k) => ({ ra: windup(p, -3.0, -1.4, 0.45), la: 0.3 * k, lz: -0.7 * k, hop: 0.12 * k, lean: 0.2 * p, head: -0.2 * k }), // 번개 내리꽂기
 };
+// ---------- 친구별 스킬 동작 ----------
+// 스킬을 쓰면 t초 동안 이 동작을 해요 (battle.js 의 cast 가 skillT 를 켜요. 보이는 것만, 전투 결과엔 영향 없음)
+// f(p, s): p = 0→1 진행도, s = 지난 초. 돌려주는 값은 ATK_ANIM 과 같고, 더해서
+//   crouch: 무릎 굽혀 낮추기(0~1), le/re: 팔꿈치 굽히기(음수 = 더 굽힘)
+const sw2 = (p, a, b) => a + (b - a) * (p * p * (3 - 2 * p)); // 부드럽게 a → b
+const pulse = (p, a, b) => Math.max(0, Math.sin(Math.min(1, Math.max(0, (p - a) / (b - a))) * Math.PI)); // a~b 구간에서 0→1→0
+const SKILL_POSE = {
+  "이승찬": { t: 0.9, f: (p) => ({ la: -2.7 + Math.sin(p * 12) * 0.3, ra: -2.7 - Math.sin(p * 12) * 0.3, lz: -0.5, rz: 0.5, hop: Math.abs(Math.sin(p * Math.PI * 2)) * 0.25, head: -0.25, lean: -0.1 }) }, // 두 팔 흔들며 응원 점프
+  "이현": { t: 0.7, f: (p) => ({ la: Math.sin(p * 19) * 1.3, ra: -Math.sin(p * 19) * 1.3, le: -1.2, re: -1.2, lean: 0.6, crouch: 0.25, hop: Math.abs(Math.sin(p * 19)) * 0.08 }) }, // 몸 숙이고 전력 질주 (팔 크게 흔들기)
+  "최효민": { t: 0.8, f: (p) => ({ ra: windup(p, -3.0, -0.2, 0.55), rz: 0.3, la: -1.0, lean: sw2(p, -0.2, 0.4), twist: windup(p, 0.5, -0.5, 0.55), hop: pulse(p, 0.2, 0.85) * 0.55 }) }, // 높이 뛰어 스매시
+  "전하율": { t: 0.8, f: (p) => ({ ra: p < 0.7 ? -1.55 : windup((p - 0.7) / 0.3, -1.55, -1.9, 0.3), re: 0, la: -1.2, lz: 0.35, le: -0.8, crouch: 0.3, head: 0.12, twist: -0.2 }) }, // 한쪽 무릎 굽혀 겨눴다가 휙
+  "이수아": { t: 0.9, f: (p) => p < 0.5 ? ({ la: -2.6, lz: -0.3 + Math.sin(p * 30) * 0.25, le: -0.5, ra: -0.3, head: -0.1, twist: 0.2 }) : ({ la: -2.7, ra: -2.7, lz: 0.2, rz: -0.2, le: -1.5, re: -1.5, head: -0.2, hop: pulse(p, 0.55, 1) * 0.12 }) }, // 손 흔들어 인사 → 머리 위 하트
+  "이준희": { t: 0.9, f: (p) => ({ la: windup(p, -3.0, -0.5, 0.5), ra: windup(p, -3.0, -0.5, 0.5), lz: -0.25, rz: 0.25, hop: pulse(p, 0.1, 0.8) * 0.9, lean: sw2(p, -0.2, 0.5), crouch: pulse(p, 0.75, 1) * 0.5 }) }, // 덩크: 높이 뛰어 내리꽂기
+  "김현우": { t: 0.8, f: (p) => { const c = p < 0.5 ? 0 : sw2((p - 0.5) / 0.15 > 1 ? 1 : (p - 0.5) / 0.15, 0, 1); return { la: -1.5, ra: -1.5, lz: -1.3 * (1 - c), rz: 1.3 * (1 - c), le: -0.3 - c, re: -0.3 - c, lean: sw2(p, -0.15, 0.55), head: p < 0.5 ? -0.4 : 0.2 }; } }, // 팔 쩍 벌렸다가 꽉 물기
+  "이보경": { t: 0.8, f: (p) => ({ crouch: pulse(p, 0, 0.95) * 0.7, kick: -1.3 * pulse(p, 0.1, 0.9), la: 0.7, ra: 0.5, lz: -0.6, lean: -0.35 * pulse(p, 0, 1) }) }, // 슬라이딩 태클
+  "윤동욱": { t: 1.0, f: (p) => { const a = p * Math.PI * 2; return { la: -1.3 + Math.sin(a) * 0.6, ra: -1.3 - Math.sin(a) * 0.6, lz: -0.5 + Math.cos(a) * 0.35, rz: 0.5 + Math.cos(a) * 0.35, le: -0.7, re: -0.7, twist: Math.sin(a) * 0.5, crouch: 0.35 }; } }, // 태극권: 천천히 원 그리기
+  "은혜린": { t: 0.9, f: (p) => ({ spin: p * Math.PI * 2, la: -2.5 + Math.sin(p * 20) * 0.3, ra: -2.5 - Math.sin(p * 20) * 0.3, lz: -0.6, rz: 0.6, hop: Math.abs(Math.sin(p * Math.PI * 3)) * 0.18 }) }, // 한 바퀴 빙글 춤
+  "이다연": { t: 0.8, f: (p) => ({ lean: p < 0.45 ? sw2(p / 0.45, 0, 0.6) : sw2((p - 0.45) / 0.55, 0.6, -0.1), head: p < 0.45 ? 0.3 : 0, la: -1.0, ra: -1.0, le: -1.3, re: -1.3, kick: p > 0.4 ? windup((p - 0.4) / 0.6, 0.8, -1.7, 0.35) : 0 }) }, // 콱 깨물고 → 정강이 차기
+  "김민기": { t: 0.9, f: (p) => ({ ra: -1.6 + Math.sin(p * 40) * 0.2, rz: Math.cos(p * 40) * 0.25, re: -0.4, la: -0.9, le: -1.0, lean: 0.3, head: 0.25 }) }, // 거대 연필로 슥슥 필기
+  "임시온": { t: 0.8, f: (p) => ({ crouch: 0.45, la: -1.7, ra: -1.7, lz: -1.1, rz: 1.1, le: -0.2, re: -0.2, lean: 0.2, hop: Math.abs(Math.sin(p * Math.PI * 3)) * 0.08 }) }, // 골키퍼 자세로 막기
+  "박현호": { t: 0.9, f: (p) => ({ ra: windup((p * 2) % 1, 0.6, -2.2, 0.4), la: windup((p * 2 + 0.5) % 1, 0.6, -2.2, 0.4), rz: 0.2, lz: -0.2, twist: Math.sin(p * Math.PI * 4) * 0.3, hop: Math.abs(Math.sin(p * Math.PI * 2)) * 0.1 }) }, // 피자를 양손으로 번갈아 휙휙
+  "조하윤": { t: 0.8, f: (p) => ({ crouch: 0.5, ra: -1.57, re: 0, la: -1.4, le: -0.6, head: 0.15, lean: p > 0.6 ? -0.3 * pulse(p, 0.6, 1) + 0.15 : 0.15, twist: -0.15 }) }, // 무릎 꿇고 조준 → 반동
+  "최윤서": { t: 0.8, f: (p) => ({ ra: windup(p, 0.9, -2.4, 0.45), rz: 0.4, la: -0.6, twist: windup(p, 1.0, -0.8, 0.45), lean: sw2(p, -0.15, 0.3), crouch: pulse(p, 0, 0.5) * 0.25 }) }, // 몸을 비틀어 그물 휙 던지기
+  "배성쌤": { t: 4.3, f: (p, s) => { const end = s > 4; const b = s * Math.PI * 4; return end ? { la: -2.9, ra: -2.9, lz: -0.5, rz: 0.5, head: -0.35, hop: 0.12 } : { ra: -1.9 + Math.sin(b) * 0.5, rz: 0.35 + Math.cos(b) * 0.3, re: -0.6, la: -1.5 + Math.sin(b + 1) * 0.25, lz: -0.6, le: -0.8, head: -0.15 + Math.sin(b) * 0.05, lean: Math.sin(b) * 0.05 }; } }, // 박자 맞춰 지휘 → 포르테!
+  "박희찬": { t: 0.9, f: (p) => ({ crouch: pulse(p, 0, 0.5) * 0.3, kick: p > 0.35 ? windup((p - 0.35) / 0.65, 0.9, -2.0, 0.35) : 0.5 * p / 0.35, la: -0.8, ra: 0.6, lz: -0.9, rz: 0.9, lean: -0.2 }) }, // 프리킥: 자세 잡고 강하게 차기
+  "진성욱": { t: 0.95, f: (p) => ({ la: windup(p, -3.0, 0.2, 0.32), ra: windup(p, -3.0, 0.2, 0.32), le: -0.3, re: -0.3, hop: pulse(p, 0, 0.32) * 0.9, crouch: pulse(p, 0.3, 1) * 0.7, lean: sw2(p, -0.2, 0.5) }) }, // 뛰어올라 쾅 내리찍기
+  "박준서": { t: 1.0, f: (p) => ({ la: -2.8, ra: -2.8, lz: -0.45 + Math.sin(p * 12) * 0.1, rz: 0.45 - Math.sin(p * 12) * 0.1, head: -0.45, lean: -0.15, hop: Math.sin(p * Math.PI) * 0.15 }) }, // 하늘을 향해 두 팔 → 공식 비 소환
+  "손태민": { t: 1.0, f: (p) => ({ la: -1.5, ra: -1.5, lz: sw2(p, 0.3, -1.0), rz: sw2(p, -0.3, 1.0), le: -0.5, re: -0.5, lean: -0.2, head: -0.1, hop: Math.sin(p * Math.PI) * 0.25 }) }, // 두 손 모았다가 쫙 펼쳐 블랙홀
+  "세세쌤": { t: 0.9, f: (p) => ({ ra: -1.6, re: 0, rz: -0.1, la: -2.3, le: -1.7, lz: -0.2, lean: 0.12, head: -0.1 + Math.sin(p * 18) * 0.08, twist: -0.15 }) }, // 손가락으로 가리키고 한 손은 귀에 (따라 해 봐!)
+  "정주환": { t: 1.0, f: (p) => ({ ra: windup(p, -3.0, -1.1, 0.55), rz: 0.2, la: -0.6, lz: -0.5, head: windup(p, -0.45, 0.1, 0.55), hop: Math.sin(p * Math.PI) * 0.35, lean: sw2(p, -0.2, 0.25) }) }, // 하늘에 손 → 번개 내리꽂기
+  "김예균": { t: 1.0, f: (p) => ({ la: windup(p, -3.0, -0.3, 0.55), ra: windup(p, -3.0, -0.3, 0.55), lz: -0.2, rz: 0.2, lean: windup(p, -0.35, 0.55, 0.55), twist: windup(p, 0.5, -0.5, 0.55), crouch: pulse(p, 0.55, 1) * 0.55, hop: pulse(p, 0.1, 0.55) * 0.3 }) }, // 두 손으로 크게 내리베기
+  "문주호": { t: 1.0, f: (p) => p < 0.55 ? ({ la: -2.6 + Math.sin(p * 30) * 0.15, ra: -2.6 - Math.sin(p * 30) * 0.15, lz: -0.3, rz: 0.3, le: -0.6, re: -0.6, head: -0.35 }) : ({ ra: windup((p - 0.55) / 0.45, 0.7, -1.8, 0.35), la: -0.8, twist: windup((p - 0.55) / 0.45, 0.4, -0.4, 0.35), lean: 0.2 }) }, // 머리 위로 화학식 조립 → 플라스크 던지기
+};
+const skillPoseT = (n) => (SKILL_POSE[n] ? SKILL_POSE[n].t : 0);
 const WEAPONS = {
   "이승찬": { n: "하트 지팡이", anim: "wave", pr: { col: "#ff7aa8", shape: "orb" }, build(e) {
     const pink = e.mk(0xff6f9f, 0.4, { emissive: lin(0x5a1a30) });
