@@ -79,6 +79,7 @@ const SKILL_POSE = {
   "진성욱": { t: 0.95, f: (p) => ({ la: windup(p, -3.0, 0.2, 0.32), ra: windup(p, -3.0, 0.2, 0.32), le: -0.3, re: -0.3, hop: pulse(p, 0, 0.32) * 0.9, crouch: pulse(p, 0.3, 1) * 0.7, lean: sw2(p, -0.2, 0.5) }) }, // 뛰어올라 쾅 내리찍기
   "박준서": { t: 1.0, f: (p) => ({ la: -2.8, ra: -2.8, lz: -0.45 + Math.sin(p * 12) * 0.1, rz: 0.45 - Math.sin(p * 12) * 0.1, head: -0.45, lean: -0.15, hop: Math.sin(p * Math.PI) * 0.15 }) }, // 하늘을 향해 두 팔 → 공식 비 소환
   "손태민": { t: 1.0, f: (p) => ({ la: -1.5, ra: -1.5, lz: sw2(p, 0.3, -1.0), rz: sw2(p, -0.3, 1.0), le: -0.5, re: -0.5, lean: -0.2, head: -0.1, hop: Math.sin(p * Math.PI) * 0.25 }) }, // 두 손 모았다가 쫙 펼쳐 블랙홀
+  "이승환": { t: 0.95, f: (p) => (p < 0.42 ? { ra: sw2(p / 0.42, -0.6, 0.9), re: -2.0, la: -1.2, le: -1.6, twist: sw2(p / 0.42, 0, -0.7), lean: sw2(p / 0.42, 0, -0.25), crouch: 0.35 } : { ra: -1.75, re: 0, la: -0.6, le: -1.5, twist: sw2(Math.min(1, (p - 0.42) / 0.12), -0.7, 0.55), lean: sw2(Math.min(1, (p - 0.42) / 0.12), -0.25, 0.45), crouch: 0.2 }) }, // 주먹을 뒤로 꽉 젖혔다가 몸을 비틀며 쭉 뻗어요
   "세세쌤": { t: 0.9, f: (p) => ({ ra: -1.6, re: 0, rz: -0.1, la: -2.3, le: -1.7, lz: -0.2, lean: 0.12, head: -0.1 + Math.sin(p * 18) * 0.08, twist: -0.15 }) }, // 손가락으로 가리키고 한 손은 귀에 (따라 해 봐!)
   "정주환": { t: 1.0, f: (p) => ({ ra: windup(p, -3.0, -1.1, 0.55), rz: 0.2, la: -0.6, lz: -0.5, head: windup(p, -0.45, 0.1, 0.55), hop: Math.sin(p * Math.PI) * 0.35, lean: sw2(p, -0.2, 0.25) }) }, // 하늘에 손 → 번개 내리꽂기
   "김예균": { t: 1.0, f: (p) => ({ la: windup(p, -3.0, -0.3, 0.55), ra: windup(p, -3.0, -0.3, 0.55), lz: -0.2, rz: 0.2, lean: windup(p, -0.35, 0.55, 0.55), twist: windup(p, 0.5, -0.5, 0.55), crouch: pulse(p, 0.55, 1) * 0.55, hop: pulse(p, 0.1, 0.55) * 0.3 }) }, // 두 손으로 크게 내리베기
@@ -131,6 +132,10 @@ const WEAPONS = {
     const dy = Math.cos(0.45), dz = Math.sin(0.45);
     const c = e.put(wg("pt", () => new THREE.ConeGeometry(0.032, 0.1, 8)), e.mk(0x5a3e2a, 0.7), tx, ty + dy * 0.05, tz + dz * 0.05, e.R); c.rotation.x = 0.45;
     e.put(wg("pe", () => sphG(0.036)), e.mk(0xff8aa8, 0.6), 0, -0.43 - dy * 0.31, 0.1 - dz * 0.31, e.R);
+  } },
+  "이승환": { n: "권투 글러브", anim: "punch", build(e) {
+    const gl = e.mk(0xd8202a, 0.45);
+    for (const arm of [e.L, e.R]) { const m = e.put(wg("glove", () => sphG(0.095)), gl, 0, -0.43, 0.02, arm); m.scale.set(1.15, 1.05, 1.25); }
   } },
   "임시온": { n: "골키퍼 장갑", anim: "punch", build(e) {
     const gl = e.mk(0x2fc27a, 0.6);

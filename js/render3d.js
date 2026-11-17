@@ -2874,6 +2874,42 @@ function drawBite(z, dt) {
   g.scale.setScalar(0.9 + 0.25 * Math.sin(snap * Math.PI)); g.visible = q > 0.02;
   g.userData.mats.forEach((m) => (m.opacity = q));
 }
+// 이승환 "주먹왕 승환 펀치": 어깨 위에 불붙은 거대 주먹이 커지며 힘을 모으고 → 대상에게 쾅! 날아가 → 바닥에 충격파 고리 + 금빛 별 터짐
+const glowDot = (col) => glowSprite("dot" + col, (g, w, h) => { g.clearRect(0, 0, w, h); const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(0.3, col); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+function drawPunch(z, dt) {
+  const g = useMesh(z, () => {
+    const grp = new THREE.Group(), red = new THREE.MeshStandardMaterial({ color: lin(0xd8202a), emissive: lin(0xff3a1a), emissiveIntensity: 0.9, roughness: 0.35, transparent: true });
+    const PG = GEO.punch || (GEO.punch = { palm: new THREE.SphereGeometry(0.34, 18, 14), knuckle: new THREE.SphereGeometry(0.13, 10, 8), cuff: new THREE.CylinderGeometry(0.22, 0.26, 0.26, 16), ring: new THREE.RingGeometry(0.7, 1, 40) });
+    const fist = new THREE.Group();
+    const palm = new THREE.Mesh(PG.palm, red); palm.scale.set(1, 0.9, 1.15); fist.add(palm);
+    for (let i = 0; i < 4; i++) { const k = new THREE.Mesh(PG.knuckle, red); k.position.set(-0.2 + i * 0.135, 0.12, 0.32); fist.add(k); }
+    const gold = new THREE.MeshStandardMaterial({ color: lin(0xffc83a), emissive: lin(0xffa020), emissiveIntensity: 0.6, roughness: 0.3, transparent: true });
+    const cuff = new THREE.Mesh(PG.cuff, gold); cuff.rotation.x = Math.PI / 2; cuff.position.z = -0.38; fist.add(cuff);
+    const glow = glowDot("#ff7a2a"); glow.scale.setScalar(1.6); fist.add(glow);
+    grp.add(fist);
+    const wave = new THREE.Mesh(PG.ring, additive("#ffb43a")); wave.rotation.x = -Math.PI / 2; grp.add(wave);
+    const wave2 = new THREE.Mesh(PG.ring, additive("#ffffff")); wave2.rotation.x = -Math.PI / 2; grp.add(wave2);
+    const star = glowDot("#ffe9a0"); grp.add(star);
+    Object.assign(grp.userData, { fist, glow, wave, wave2, star, mats: [red, gold] });
+    return grp;
+  });
+  const U = g.userData, t = z.t, at = z.hitAt, ox = worldX(z.ox), oz = worldZ(z.oy), tx = worldX(z.X), tz = worldZ(z.Y);
+  if (t < at) { // 힘 모으기: 어깨 뒤에서 점점 커지며 부르르
+    const q = t / at, bx = ox - (tx - ox) * 0.12, bz = oz - (tz - oz) * 0.12;
+    U.fist.position.set(bx + Math.sin(t * 90) * 0.03 * q, 1.9 + q * 0.3, bz);
+    U.fist.scale.setScalar(0.5 + q * 0.9); U.glow.material.opacity = 0.4 + q * 0.6;
+    U.fist.lookAt(tx, 1.2, tz); U.fist.visible = true; U.wave.visible = U.wave2.visible = U.star.visible = false;
+  } else { // 날아가서 쾅
+    const q = Math.min(1, (t - at) / 0.1), r = (t - at) / (z.dur - at);
+    U.fist.position.set(ox + (tx - ox) * q, 2.2 - q * 0.9, oz + (tz - oz) * q); U.fist.scale.setScalar(1.4 + q * 0.3);
+    U.fist.visible = r < 0.35; U.mats.forEach((m) => (m.opacity = 1 - r / 0.35));
+    const hit = z.hit ? 1 : 0;
+    U.wave.visible = U.wave2.visible = U.star.visible = !!hit && q >= 1;
+    U.wave.position.set(tx, 0.12, tz); U.wave.scale.setScalar(0.6 + r * 3.2); U.wave.material.opacity = (1 - r) * 0.9;
+    U.wave2.position.set(tx, 0.14, tz); U.wave2.scale.setScalar(0.3 + r * 2); U.wave2.material.opacity = (1 - r) * 0.7;
+    U.star.position.set(tx, 1.2, tz); U.star.scale.setScalar(1.5 + Math.sin(Math.min(1, r * 2) * Math.PI) * 3); U.star.material.opacity = Math.max(0, 1 - r * 1.4);
+  }
+}
 // 문주호 "화학식 조립": 머리 위에서 원소 구슬이 모여 → 플라스크가 포물선으로 날아가 → 반응 (폭발 · 염산 웅덩이 · 얼음 가시)
 function elemTex(el, col) {
   return textTex("el" + el + col, 128, 128, (g, w, h) => {
@@ -3006,7 +3042,7 @@ function drawCharm(z, dt) {
   g.userData.h.position.y = 2.9 + Math.sin(z.t * 5) * 0.1; g.userData.h.scale.setScalar(0.75 + Math.sin(z.t * 8) * 0.08); g.userData.h.material.opacity = q;
   g.userData.r.scale.setScalar(0.85 + Math.sin(z.t * 6) * 0.05); g.userData.r.rotation.z -= dt * 3; g.userData.r.material.opacity = 0.8 * q;
 }
-const ZDRAW = { charm: drawCharm, repeat: drawRepeat, chorus: drawChorus, chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
+const ZDRAW = { punch: drawPunch, charm: drawCharm, repeat: drawRepeat, chorus: drawChorus, chem: drawChem, bite: drawBite, megasword: drawMegaSword, net: drawNet, dance: drawDance, zap: drawZap, rend: drawRend, hearts: drawHearts, mark: drawMark, legion: drawLegion, smite: drawSmite, freekick: drawFreekick, snipe: drawFreekick, slam: drawSlam, mathrain: drawMathRain, scribble: drawScribble, goal: drawGoal, summon: drawSummon, dunk: drawDunk, tackle: drawTackle, yinyang: drawYinYang };
 function render3D(dt) {
   frameId++; clock3d += dt;
   const P = human();

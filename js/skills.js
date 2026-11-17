@@ -91,6 +91,13 @@ const SK = {
       addFx(B, t.X, t.Y, 1.2, "#9fd0ff", 0.5); addFx(B, t.X, t.Y, 0.7, "#ffffff", 0.3);
       if (B.visual) { u.atkT = ATK_T; sfx("cast"); }
     } },
+  "이승환": { s: "주먹왕 승환 펀치", d: (P) => `주먹을 크게 뒤로 젖혀 힘을 모았다가(0.4초) 대상에게 개쎈 주먹 한 방! 공격력×3 + ${R0(320 * P)} 피해. 기절 · 디버프 없이 순수 피해만 아주 커요`,
+    run(B, u, P, t) {
+      if (!t || !t.alive) return;
+      B.zones.push({ kind: "punch", step: stepPunch, team: u.team, owner: u, P, tgt: t, X: t.X, Y: t.Y, ox: u.X, oy: u.Y, t: 0, hitAt: PUNCH_AT, dur: PUNCH_AT + 0.55 });
+      addHuge(B, u, "주먹왕…", "#ffffff", "#d8202a", 2.2);
+      if (B.visual) sfx("charge");
+    } },
   "배성쌤": { s: "합창 지휘", d: (P) => `지휘봉을 들면 4초 동안 오선지 무대가 깔려요 (반경 3칸). 0.5초 박자마다 무대 위 아군은 공격 속도 +35%, 무대 위 적은 음표에 맞아 ${R0(30 * P)} 피해. 마지막 마디 "포르테!" 반경 2칸 적에게 ${R0(160 * P)} 피해 + 한 칸 밀쳐내기 + 0.6초 기절. ★3은 전장 전체가 무대예요`,
     run(B, u, P) {
       const all = (u.star || 1) >= 3;
@@ -208,7 +215,7 @@ const SK = {
 
 const SPANISH = ["¡Hola!", "¡Vamos!", "¡Toma!", "¡Olé!", "¡Ay, caramba!", "¡Fuego!", "¡Venga!", "¡Qué fácil!"];
 const PHILO = ["무위자연", "음양오행", "중용", "상선약수", "물아일체", "도(道)", "호접지몽", "지행합일"];
-const SHOUT = { "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5], "이다연": [["정강이!", "에잇!", "퍽!", "앙!"], "#ff9ac0", 0.3], "문주호": [["H₂O!", "NaCl!", "반응해라!", "펑!", "몰(mol)!", "촉매 투입!"], "#9affc0", 0.3], "세세쌤": [["Good!", "Excellent!", "Hello~", "Listen!"], "#9fd0ff", 0.3], "배성쌤": [["♪", "도레미~", "♫", "한 번 더!"], "#ffd36b", 0.3] };
+const SHOUT = { "이승환": [["퍽!", "주먹왕!", "한 방!", "쾅!"], "#ffb43a", 0.3], "조하윤": [SPANISH, "#ffd36b", 0.7], "윤동욱": [PHILO, "#cfe0ff", 0.5], "이다연": [["정강이!", "에잇!", "퍽!", "앙!"], "#ff9ac0", 0.3], "문주호": [["H₂O!", "NaCl!", "반응해라!", "펑!", "몰(mol)!", "촉매 투입!"], "#9affc0", 0.3], "세세쌤": [["Good!", "Excellent!", "Hello~", "Listen!"], "#9fd0ff", 0.3], "배성쌤": [["♪", "도레미~", "♫", "한 번 더!"], "#ffd36b", 0.3] };
 // 소환수 이다연: 김예균 주변 빈칸에 나타나요
 const SUMMON_DEF = { n: "이다연", c: 2, k: "응원단", t: [] };
 function summon(B, u, P, max, opt = {}) {
@@ -312,6 +319,21 @@ function stepDunk(B, z, dt) {
   if (z.t >= z.dur) z.done = 1;
 }
 // 이다연 "깨물기 · 정강이 차기": 깨문 뒤(바로) KICK_AT초에 정강이를 차요
+// 이승환 "주먹왕 승환 펀치": PUNCH_AT초 힘을 모은 뒤 한 방 (그 사이 대상이 쓰러지면 헛방)
+const PUNCH_AT = 0.4;
+function stepPunch(B, z, dt) {
+  const t0 = z.t; z.t += dt;
+  const u = z.owner, t = z.tgt;
+  if (u.alive) { z.ox = u.X; z.oy = u.Y; }
+  if (t.alive && !z.hit) { z.X = t.X; z.Y = t.Y; }
+  if (t0 < z.hitAt && z.t >= z.hitAt && u.alive && t.alive) {
+    z.hit = 1; dealDamage(B, u, t, u.ad * 3 + 320 * z.P, "skill");
+    addHuge(B, t, "승환 펀치!!", "#ffffff", "#d8202a", 3.4);
+    addFx(B, t.X, t.Y, 1.0, "#ffffff", 0.3); addFx(B, t.X, t.Y, 1.8, "#ffb43a", 0.5); addFx(B, t.X, t.Y, 2.6, "#d8202a", 0.7);
+    if (B.visual) { u.atkT = ATK_T; u.lunge = 0.22; u.lx = t.X - u.X; u.ly = t.Y - u.Y; B.fx.push({ kind: "spark", X: t.X, Y: t.Y, col: "#ffe9a0", t: 0.4, t0: 0.4 }); S.shake = Math.max(S.shake || 0, 0.35); sfx("boom"); }
+  }
+  if (z.t >= z.dur) z.done = 1;
+}
 const KICK_AT = 0.35;
 function stepBiteKick(B, z, dt) {
   const t0 = z.t; z.t += dt;
