@@ -473,3 +473,17 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .acrank .acn { flex: 1; } .acrank .rv { display: flex; flex-direction: column; align-items: flex-end; font-size: 13px; } .acrank .rv small { font-size: 11px; color: var(--chalk-dim); }
 .acctres h3 { font-size: 14px; }
 @media (max-width: 380px) { .acstats { grid-template-columns: repeat(3, 1fr); } }
+/* 휴대폰 가로(낮은 화면): 로그인 버튼이 생겨 시작 화면이 길어졌어요 → 줄여서 "혼자 하기" 버튼까지 한 화면에 */
+@media (max-height: 430px) {
+  #ov .ov-box { padding: 10px 16px; gap: 5px; }
+  #ov .ov-box h1 { font-size: 20px; }
+  #ov .ov-box h1::after { margin-top: 3px; }
+  #ov .ov-box > p { font-size: 13px; line-height: 1.3; }
+  #ov .ov-box ul { font-size: 11px; line-height: 1.32; }
+  #ov .acctchip { min-height: 0; padding: 2px 12px 2px 2px; gap: 7px; }
+  #ov .acctchip .av { width: 26px; height: 26px; border-width: 1.5px; }
+  #ov .acctchip .acn { flex-direction: row; align-items: baseline; gap: 6px; } /* 이름과 레벨을 한 줄로 */
+  #ov .acctchip .acn b { font-size: 13px; }
+  #ov .rankline { font-size: 13px; }
+  #ov .netnote { font-size: 11px; }
+}
