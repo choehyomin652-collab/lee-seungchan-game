@@ -262,6 +262,8 @@ function updateTimer() {
   $("timerfill").parentNode.classList.toggle("ot", !!(S.battle && S.battle.ot && S.phase === "combat")); // 연장전: 빨간 시간 막대
   $("timerfill").style.width = (frac * 100).toFixed(1) + "%";
 }
+let TRAIT_ALL = innerHeight > 430; // 꺼진 시너지 펼쳐 보기 (휴대폰은 처음엔 접어 둬요)
+try { const v = localStorage.getItem("uri-traitall"); if (v) TRAIT_ALL = v === "1"; } catch (e) {}
 function renderUI() {
   const P = human();
   $("stage").textContent = `${S.stage}-${S.k}`;
@@ -276,16 +278,14 @@ function renderUI() {
   $("lvl").textContent = P.level;
   $("xpwrap").style.setProperty("--p", need ? `${(P.xp / need) * 100}%` : "100%");
   $("xptxt").textContent = need ? `${P.xp}/${need} · 배치 ${boardCount(P)}/${P.level}` : `MAX · 배치 ${boardCount(P)}/${P.level}`;
-  // 플레이어 목록
+  // 플레이어 목록: 동그라미 + 체력 숫자 + 체력 막대 (나 = 금테, 대결 상대 = 빨간 테)
   const AVC = ["#c08a2a", "#3a6ea8", "#a83a4a", "#3a8a5a", "#7a4aa8", "#a8703a", "#2a8a8a", "#6a6a7a"];
   const list = S.players.slice().sort((a, b) => (b.alive - a.alive) || (b.hp - a.hp) || (a.place - b.place));
-  $("players").innerHTML = list.map((p) => `<button class="pl${p.human ? " me" : ""}${p.remote ? " net" : ""}${p.alive ? "" : " dead"}${S.scout === p.i ? " scout" : ""}${S.opp === p ? " opp" : ""}" data-i="${p.i}" title="${esc(p.name)}">
-    ${p.remote ? `<span class="nm">${esc(p.name)}</span>` : ""}<span class="av" style="--avc:${AVC[p.i]}">${p.human ? "나" : p.remote ? esc(p.name.slice(0, 2)) : p.name}</span><span class="hpn">${p.alive ? Math.max(0, p.hp) : p.place + "등"}</span></button>`).join("");
-  $("players").querySelectorAll(".pl").forEach((el) => tapButton(el, () => {
-    const i = +el.dataset.i;
-    if (S.phase !== "plan" || i === 0 || !S.players[i].alive) return toast(i === 0 ? "내 반이에요" : "계획 단계에서만 정찰할 수 있어요");
-    S.scout = S.scout === i ? null : i; renderUI();
-  }));
+  $("players").innerHTML = list.map((p) => {
+    const hp = Math.max(0, p.hp), pct = Math.max(0, Math.min(100, hp)), col = hp > 50 ? "#3fdf8a" : hp > 25 ? "#f0c060" : "#ff7b6b";
+    return `<button class="pl${p.human ? " me" : ""}${p.remote ? " net" : ""}${p.alive ? "" : " dead"}${S.scout === p.i ? " scout" : ""}${S.opp === p ? " opp" : ""}" data-i="${p.i}" title="${esc(p.name)}">
+    <span class="av" style="--avc:${AVC[p.i]}">${p.human ? "나" : p.remote ? esc(p.name.slice(0, 2)) : p.name}</span><span class="plb">${p.remote ? `<span class="nm">${esc(p.name)}</span>` : ""}<span class="hpn">${p.alive ? hp : p.place + "등"}</span><span class="hpb"><i style="width:${p.alive ? pct : 0}%;background:${col}"></i></span></span></button>`;
+  }).join("");
   // 정찰 중 안내: 지금 보이는 게 누구 배치인지 확실하게
   const sb = $("scoutbar"), sq = S.phase === "plan" && S.scout != null ? S.players[S.scout] : null;
   sb.hidden = !sq;
@@ -294,27 +294,29 @@ function renderUI() {
     sb.innerHTML = `<span>🔍 <b>${esc(sq.name)}</b> 배치 보는 중</span><span class="hint"><i class="sw" style="background:#e0483c"></i> 위쪽 빨간 칸 = ${esc(sq.name)} · <i class="sw" style="background:#3fbf7a"></i> 아래 = 우리 반</span><button type="button">닫기</button>`;
     tapButton(sb.querySelector("button"), () => { S.scout = null; renderUI(); });
   }
-  // 시너지
+  // 시너지: 켜진 것 먼저 (단계 숫자 중 닿은 건 밝게), 꺼진 건 접어 둘 수 있어요
   const cnt = teamCounts(unitsOf(P).filter((x) => x.w === "b").map((x) => ({ spec: x.u })), P);
   const keys = Object.keys(cnt).sort((a, b) => traitLvl(b, cnt[b]) - traitLvl(a, cnt[a]) || cnt[b] - cnt[a]);
-  $("traits").innerHTML = keys.length
-    ? keys.map((k) => {
-        const on = traitLvl(k, cnt[k]) > 0, th = TRAITS[k].t, next = th.find((x) => x > cnt[k]) ?? th.at(-1);
-        const lv = traitLvl(k, cnt[k]), tier = lv === 0 ? "" : lv >= th.length && th.length > 1 ? " l3" : lv >= 2 ? " l2" : " l1";
-        return `<button class="trait${tier}${S.traitSel === k ? " sel" : ""}" data-t="${k}" aria-pressed="${S.traitSel === k}"><span class="hx">${cnt[k]}</span><span><b>${k}</b>${cnt[k]} / ${next}</span></button>`;
-      }).join("")
-    : "";
+  const offN = keys.filter((k) => traitLvl(k, cnt[k]) === 0).length;
+  const traitBtn = (k) => {
+    const th = TRAITS[k].t, lv = traitLvl(k, cnt[k]), tier = lv === 0 ? "" : lv >= th.length && th.length > 1 ? " l3" : lv >= 2 ? " l2" : " l1";
+    const steps = th.map((x) => `<i class="${cnt[k] >= x ? "on" : ""}">${x}</i>`).join("");
+    return `<button class="trait${tier}${S.traitSel === k ? " sel" : ""}" data-t="${k}" aria-pressed="${S.traitSel === k}"><span class="hx">${cnt[k]}</span><span class="tb"><b>${k}</b><span class="steps">${steps}</span></span></button>`;
+  };
+  $("traits").innerHTML = keys.filter((k) => TRAIT_ALL || traitLvl(k, cnt[k]) > 0).map(traitBtn).join("")
+    + (offN ? `<button class="traitmore" id="traitmore" type="button">${TRAIT_ALL ? "꺼진 시너지 접기" : `꺼진 시너지 +${offN}`}</button>` : "");
   $("traits").querySelectorAll("[data-t]").forEach((el) => tapButton(el, () => {
     // 특성 설명은 다시 누르거나 다른 걸 누를 때까지 열려 있어요 (전투 중 피해량 표·화면 갱신에 덮이지 않게)
     const t = el.dataset.t; S.traitSel = S.traitSel === t ? null : t; S.sel = null; S.infoHold = 0; renderUI();
   }));
+  if ($("traitmore")) tapButton($("traitmore"), () => { TRAIT_ALL = !TRAIT_ALL; try { localStorage.setItem("uri-traitall", TRAIT_ALL ? "1" : "0"); } catch (e) {} renderUI(); });
   // 상점
   const ownCount = {};
   unitsOf(P).forEach((x) => { if (x.u.star === 1) ownCount[x.u.d] = (ownCount[x.u.d] || 0) + 1; else ownCount[x.u.d] = ownCount[x.u.d] || 0.5; });
   $("shop").innerHTML = (P.shop.length ? P.shop : [null, null, null, null, null]).map((di, i) => {
     if (di == null) return `<div class="card empty"></div>`;
     const d = DEFS[di], oc = ownCount[di];
-    return `<div class="card${oc ? (oc >= 2 ? " own two" : " own") : ""}${P.gold < d.c ? " poor" : ""}" data-i="${i}" style="--cc:var(${COST_COLOR[d.c]});${PORTRAIT[di] ? `background-image:url(${PORTRAIT[di]})` : ""}" role="button" tabindex="0">
+    return `<div class="card c${d.c}${oc ? (oc >= 2 ? " own two" : " own") : ""}${P.gold < d.c ? " poor" : ""}" data-i="${i}" style="--cc:var(${COST_COLOR[d.c]});${PORTRAIT[di] ? `background-image:url(${PORTRAIT[di]})` : ""}" role="button" tabindex="0">
       <span class="tr${d.t.length >= 5 ? " many" : ""}">${d.t.map((t) => `<span>${t}</span>`).join("")}</span><div class="bar"><span>${d.n}</span><span class="cost">● ${d.c}</span></div></div>`;
   }).join("");
   $("shop").querySelectorAll(".card[data-i]").forEach((el) => {
@@ -372,7 +374,7 @@ $("gear").onclick = (e) => { e.stopPropagation(); const m = $("menu"); m.hidden 
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest || !e.target.closest(".mini")) { $("menu").hidden = true; $("gear").setAttribute("aria-expanded", "false"); } });
 $("qual").onclick = () => { HQ = !HQ; AUTOQ.done = true; try { localStorage.setItem(pkey("uri-hq"), HQ ? "1" : "0"); } catch (e) {} acctSettingsChanged(); resize(); renderUI(); toast(HQ ? "화질 높음: 빛 번짐·고해상도" : "화질 보통: 더 부드럽게 움직여요"); };
 document.addEventListener("keydown", (e) => {
-  if (!S || !$("ov").hidden || e.repeat) return;
+  if (!S || !$("ov").hidden || !$("res").hidden || e.repeat) return;
   const k = e.key.toLowerCase();
   if (k === "d") $("reroll").click();
   else if (k === "f") $("buyxp").click();
@@ -385,9 +387,20 @@ $("start").onclick = () => {
   if (NET.joined) netLeave();
   NET.on = false; NET.done = true;
   if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
-  $("ov").hidden = true; newGame(); resize();
+  $("ov").hidden = true; $("res").hidden = true; newGame(); resize();
 };
-try { const b = +localStorage.getItem(pkey("uri-best-place")) || 0; if (b) $("best").textContent = `최고 기록: ${b}등`; } catch (e) {}
+// 시작 화면 오른쪽 칸: 내 카드(acct) · 규칙(rules) · 지난 기록(hist)
+function setSide(v) { $("tside").dataset.view = v; $("rulesbtn").classList.toggle("on", v === "rules"); $("histbtn").classList.toggle("on", v === "hist"); }
+function showTitle(view) {
+  $("res").hidden = true; $("aug").hidden = true; $("cards").hidden = true; $("duel").hidden = true;
+  if (!NET.joined) netShowPanel(false);
+  renderAcctChip(); setSide(view || "acct");
+  $("ov").hidden = false;
+}
+// 시작 · 결과 화면이 떠 있으면 게임 화면의 버튼들은 숨겨요 (뒤에 경기장만 보이게)
+const syncOv = () => document.body.classList.toggle("ovon", !$("ov").hidden || !$("res").hidden);
+for (const id of ["ov", "res"]) new MutationObserver(syncOv).observe($(id), { attributes: true, attributeFilter: ["hidden"] });
+syncOv();
 window.addEventListener("resize", () => { resize(); });
 $("rotok").onclick = () => { $("rotate").classList.add("dismissed"); resize(); };
 if (HAS3D) { init3D(); makePortraits(); }
@@ -409,7 +422,6 @@ function openCardMenu() {
 }
 $("cardmenu").onclick = openCardMenu;
 // 게임 나가기: 한 번 누르면 "한 번 더 누르면 나가요", 4초 안에 다시 누르면 처음 화면으로 (실수로 누르지 않게)
-const OV0 = { title: $("ovtitle").textContent, text: $("ovtext").textContent, start: $("start").textContent };
 let QUIT_ARM = 0, QUIT_TM = 0;
 const quitReset = () => { QUIT_ARM = 0; $("quit").textContent = "게임 나가기"; $("quit").classList.remove("armed"); };
 tapButton($("quit"), () => { // 손가락 탭은 떼는 순간 바로 (두 번 빨리 눌러도 확대로 먹히지 않게)
@@ -425,11 +437,7 @@ function quitGame() {
   if (S.practice) return practiceExit();
   if (NET.on || NET.joined) { NET.on = false; NET.done = true; netLeave(); } // 온라인: 방에서 나가면 다른 친구들에게는 나간 걸로 보여요
   S.phase = "over"; S.battle = null; S.augPending = false; S.sel = null; S.scout = null;
-  $("aug").hidden = true; $("cards").hidden = true;
-  $("ovtitle").textContent = OV0.title; $("ovtext").textContent = OV0.text; $("ovtext").hidden = false;
-  $("ovrules").hidden = false; $("ovbtns").hidden = false; $("start").textContent = OV0.start;
-  $("result").hidden = true; $("hist").hidden = true;
-  $("ov").hidden = false;
+  showTitle();
   toast("게임에서 나왔어요");
 }
 tapButton($("cardsclose"), () => { $("cards").hidden = true; });

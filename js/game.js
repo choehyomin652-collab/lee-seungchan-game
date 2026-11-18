@@ -23,10 +23,10 @@ function newGame() {
     pool: DEFS.map((d) => POOL_SIZE[d.c]),
     speed: S ? S.speed : 1, fast: S ? S.fast : false,
     battle: null, results: [], car: null, sel: null, scout: null, opp: null,
-    banner: null, resultT: 0, shake: 0, orbs: [], augPending: false,
+    banner: null, resultT: 0, shake: 0, orbs: [], augPending: false, t0: Date.now(),
   };
   if (NET.on) netSetup();
-  if ($("result")) { $("result").hidden = true; $("hist").hidden = true; }
+  if ($("res")) $("res").hidden = true;
   startRound(true);
 }
 
@@ -229,23 +229,61 @@ function augOptions(P, ti) {
   return shuffle(AUGS.filter((a) => (ITEMS_ON || !["supplies", "complete"].includes(a.id)) && (a.id.startsWith("emb-") || !P.augs.includes(a.id)) && (!a.tiers || a.tiers.includes(ti))))
     .slice(0, 3).map((a) => { const v = a.v ? a.v[ti] : undefined; return { id: a.id, n: a.n, hero: !!a.hero, d: a.d(v), f: (Q) => a.f(Q, v) }; });
 }
+// 증강 카드 그림 · 한 줄 도움말 (보이는 것만)
+const AUG_ICON = {
+  money: "M5 7a7 3 0 1 0 14 0a7 3 0 1 0-14 0M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5",
+  lunch: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7v5l3.5 2",
+  study: "M3.5 5.5c3-1.2 6-1 8.5 1c2.5-2 5.5-2.2 8.5-1v13c-3-1.2-6-1-8.5 1c-2.5-2-5.5-2.2-8.5-1zM12 6.5v13",
+  supplies: "M7 9a5 5 0 0 1 10 0v11.5H7zM9.5 7V5.5a2.5 2.5 0 0 1 5 0V7M7 13.5h10M10 13.5v3h4v-3",
+  complete: "M4 9.5h16v4H4zM5.5 13.5h13v7h-13zM12 9.5v11M12 9.5c-2 0-5-.8-5-2.8s3-2.2 5 2.8c2-5 5-4.8 5-2.8s-3 2.8-5 2.8",
+  sports: "M6.5 3.5h11v4a5.5 5.5 0 0 1-11 0zM9 20.5h6M12 13v7.5M6.5 5H3.5v1.5a3 3 0 0 0 3 3M17.5 5h3v1.5a3 3 0 0 1-3 3",
+  wall: "M12 3l8 3v6c0 5-3.5 8-8 9c-4.5-1-8-4-8-9V6zM12 7.5v9M8.5 11h7",
+  meat: "M3.5 13h17a8.5 8.5 0 0 1-17 0zM8 10c0-2 2-2 2-4M12 10c0-2 2-2 2-4M16 10c0-2 2-2 2-4",
+  nurse: "M9 3.5h6v5.5h5.5v6H15v5.5H9V15H3.5V9H9z",
+  honor: "M12 3l2.7 5.5 6 .9-4.35 4.25 1 6L12 16.8 6.65 19.65l1-6L3.3 9.4l6-.9z",
+  "hero-lee": "M12 3c3 5 6.5 8 6.5 12a6.5 6.5 0 0 1-13 0c0-4 3.5-7 6.5-12zM9.5 15.5a2.5 2.5 0 0 0 2.5 2.5",
+  pres: "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1",
+  emb: "M12 2.8l8 4.6v9.2l-8 4.6l-8-4.6V7.4zM12 8.5v7M8.5 12h7",
+};
+const AUG_TIP = {
+  money: "지금 바로 레벨 · 새로고침에 쓰기 좋아요", lunch: "일찍 고를수록 많이 벌어요", study: "빨리 레벨을 올리고 싶을 때",
+  supplies: "아이템을 조합해서 핵심 친구에게", complete: "바로 강해지고 싶을 때", sports: "공격 속도가 중요한 팀에 좋아요",
+  wall: "앞줄이 약할 때 버티기 좋아요", meat: "어떤 팀에도 무난해요", nurse: "체력이 적을 때 한 번 더 버티기",
+  honor: "★2 친구를 바로 받아요", "hero-lee": "이현 한 명으로 버티는 영웅 증강", pres: "5코스트 정주환을 바로 받아요",
+};
+function augTip(P, a) {
+  if (!a.id.startsWith("emb-")) return AUG_TIP[a.id] || "";
+  const t = a.id.slice(4), n = traitCounts(sideOf(P).map((x) => x.spec.d))[t] || 0, nx = TRAITS[t] && TRAITS[t].t.find((x) => x > n);
+  return n ? `지금 ${t} ${n}명${nx ? ` · ${nx}명까지 ${nx - n}` : ""}` : `${t} 시너지를 모을 때 좋아요`;
+}
+// 남은 시간 고리 (render3d.js 의 loop 가 계획 시간마다 불러요)
+function augTick() {
+  const t = Math.max(0, Math.ceil(S.augT)), frac = Math.max(0, Math.min(1, S.augT / 20));
+  if ($("augsec2").textContent !== t + "초") { $("augsec").textContent = t; $("augsec2").textContent = t + "초"; $("augtimer").classList.toggle("low", t <= 5); }
+  $("augtimer").style.setProperty("--f", (100 - frac * 100).toFixed(1));
+}
 function showAugments(tier, rerolled) {
   const P = human(), opts = augOptions(P, TIER_IX[tier]);
   S.augPending = true;
   $("augre").hidden = !!rerolled;
-  tapButton($("augre"), () => { if (S.augPending) showAugments(tier, true); });
+  tapButton($("augre"), () => { if (S.augPending) { sfx("buy"); showAugments(tier, true); } });
+  const peek = (on) => { $("aug").classList.toggle("peek", on); $("augback").hidden = !on; };
+  tapButton($("augpeek"), () => peek(true));
+  tapButton($("augback"), () => peek(false));
+  peek(false);
   $("augtier").textContent = `${tier} 증강`;
   $("augtier").className = "augtier t-" + tier;
-  $("augs").innerHTML = opts.map((a, i) => `<button class="augcard t-${tier}${a.hero ? " hero" : ""}" data-i="${i}"><span class="augicon">${a.n[0]}</span><b>${a.n}</b><span>${a.d}</span></button>`).join("");
+  $("augs").innerHTML = opts.map((a, i) => `<button class="augcard t-${tier}${a.hero ? " hero" : ""}" data-i="${i}" style="--k:${i}" type="button">${a.hero ? `<span class="augbadge">영웅</span>` : ""}<span class="augicon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${AUG_ICON[a.id.startsWith("emb-") ? "emb" : a.id] || AUG_ICON.emb}"/></svg></span><b>${a.n}</b><span class="augdesc">${a.d}</span><small class="augtip">${augTip(P, a)}</small></button>`).join("");
   const choose = (i) => {
     if (!S.augPending) return;
-    const a = opts[i]; S.augPending = false; $("aug").hidden = true;
+    const a = opts[i]; S.augPending = false; $("aug").hidden = true; peek(false);
     try { P.augs.push(a.id); a.f(P); mergeAll(P); } catch (e) { reportError(e); }
     sfx("level"); toast(`증강: ${a.n}`); renderUI();
   };
   S.augChoose = () => choose(0);
   $("augs").querySelectorAll(".augcard").forEach((el) => tapButton(el, () => choose(+el.dataset.i)));
   S.augT = 20;
+  augTick();
   $("aug").hidden = false;
 }
 function sideOf(P) {
@@ -378,17 +416,12 @@ function afterResult() {
 function gameOver(place) {
   S.phase = "over";
   netFinish();
-  $("ovrules").hidden = true; $("ovbtns").hidden = false; $("ovtext").hidden = false;
   let best = 0; try { best = +localStorage.getItem(pkey("uri-best-place")) || 0; } catch (e) {}
-  if (!best || place < best) { best = place; try { localStorage.setItem(pkey("uri-best-place"), String(best)); } catch (e) {} }
-  $("ovtitle").textContent = place === 1 ? "1등! 우리반 최고!" : `${place}등`;
-  $("ovtext").textContent = place === 1 ? "8개 반 중에서 끝까지 살아남았어요." : `${S.stage}-${S.k} 라운드에서 탈락했어요.`;
-  $("ovrules").hidden = true;
-  $("best").textContent = `최고 기록: ${best}등`;
-  $("start").textContent = "혼자 다시 하기";
-  recordGame(place); // 결과 화면 · 영토 점수 · 기록 (social.js)
+  const newBest = !best || place < best;
+  if (newBest) { try { localStorage.setItem(pkey("uri-best-place"), String(place)); } catch (e) {} }
+  $("aug").hidden = true; S.augPending = false;
+  recordGame(place, newBest && best > 0); // 결과 화면 · 영토 점수 · 기록 (social.js)
   tactEmote(place <= 4 ? "dance" : "cry", 4);
-  $("ov").hidden = false;
   sfx(place <= 4 ? "win" : "lose");
 }
 

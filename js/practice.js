@@ -62,7 +62,7 @@ function practiceStart() {
 }
 function practiceExit() {
   S.practice = 0; S.phase = "over"; S.battle = null;
-  $("prac").hidden = true; $("duel").hidden = true; $("ov").hidden = false;
+  $("prac").hidden = true; $("duel").hidden = true; showTitle();
 }
 // ---- 대결 만들기: 우리 편(a) · 상대 편(b)에 친구를 골라 넣고 바로 싸워요 (★3 도 바로) ----
 const DUEL = { side: "a", a: {}, b: {} }, DUEL_MAX = 9; // 편마다 { 친구 번호: 별 }

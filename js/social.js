@@ -32,7 +32,7 @@ function loadRecord() {
 function saveRecord(r) { try { localStorage.setItem(pkey(REC_KEY), JSON.stringify(r)); } catch (e) {} }
 
 // 게임이 끝나면 game.js 의 gameOver 가 불러요
-function recordGame(place) {
+function recordGame(place, newBest) {
   const H = human(), rec = loadRecord(), before = rec.pts;
   const board = [];
   for (const row of H.board) for (const u of row) if (u) board.push(u);
@@ -42,43 +42,78 @@ function recordGame(place) {
   const traits = Object.entries(cnt).filter(([t, n]) => TRAITS[t] && traitLvl(t, n) > 0).sort((a, b) => traitLvl(b[0], b[1]) - traitLvl(a[0], a[1]) || b[1] - a[1]);
   const delta = Math.max(-before, PLACE_PTS[place] || 0);
   rec.pts = before + delta;
-  rec.games.unshift({ t: Date.now(), pl: place, d: delta, r: `${S.stage}-${S.k}`, on: S.players.some((p) => p.remote), u: board.map((u) => [DEFS[u.d].n, u.star, DEFS[u.d].c]), tr: traits.map(([t, n]) => [t, n]) });
+  const augs = (H.augs || []).map((id) => (AUGS.find((a) => a.id === id) || {}).n).filter(Boolean);
+  rec.games.unshift({ t: Date.now(), pl: place, d: delta, r: `${S.stage}-${S.k}`, on: S.players.some((p) => p.remote), u: board.map((u) => [DEFS[u.d].n, u.star, DEFS[u.d].c]), tr: traits.map(([t, n]) => [t, n]), ag: augs });
   rec.games = rec.games.slice(0, REC_MAX);
   saveRecord(rec);
-  showResult(rec, before);
+  const mins = S.t0 ? Math.max(1, Math.round((Date.now() - S.t0) / 60000)) : 0;
+  showResult(rec, before, { newBest, mins });
   acctOnGame(place, rec.games[0].on); // 내 계정: 경험치 · 레벨 · 칭호 · 서버 저장 (account.js)
 }
 const unitChip = ([n, star, c]) => `<span class="uchip" style="--cc:var(${COST_COLOR[c] || "--c1"})">${esc(n)}<i>${"★".repeat(star)}</i></span>`;
 const placeDot = (g) => `<span class="pdot p${g.pl <= 1 ? 1 : g.pl <= 4 ? 4 : 8}" title="${g.pl}등">${g.pl}</span>`;
-function showResult(rec, before) {
-  const g = rec.games[0], r0 = rankOf(before), r1 = rankOf(rec.pts);
+const placeTile = (pl) => `<span class="ptile p${pl <= 1 ? 1 : pl <= 4 ? 4 : 8}">${pl}</span>`;
+const nextRank = (p) => RANKS.find((x) => x.p > p);
+// 영토 등급 배지: 지금 등급 · 점수 · 다음 등급까지 막대 (시작 화면 카드 · 결과 화면)
+function rankBadge(pts) {
+  const r = rankOf(pts), nx = nextRank(pts), pct = nx ? Math.round(((pts - r.p) / (nx.p - r.p)) * 100) : 100;
+  return `<div class="rankb"><span class="ri" aria-hidden="true">${r.i}</span><span class="rt"><b>${r.n} · ${pts}점</b><small>${nx ? `${nx.n}까지 ${nx.p - pts}점` : "가장 높은 등급이에요"}</small><span class="rbar"><i style="width:${pct}%"></i></span></span></div>`;
+}
+// 마지막 팀 한 명: 카드 사진 + 별 + 코스트 색 테두리
+function unitTile([n, star, c]) {
+  const d = DEFS.findIndex((x) => x.n === n), url = d >= 0 && typeof PORTRAIT !== "undefined" ? PORTRAIT[d] : null;
+  return `<span class="runit" style="--cc:var(${COST_COLOR[c] || "--c1"})"><span class="rimg"${url ? ` style="background-image:url('${esc(url)}')"` : ""}>${url ? "" : esc(short(n))}</span><i>${"★".repeat(star)}</i><b>${esc(short(n))}</b></span>`;
+}
+const traitTier = (t, n) => { const th = TRAITS[t] ? TRAITS[t].t : [], lv = traitLvl(t, n); return lv >= th.length && th.length > 1 ? "l3" : lv >= 2 ? "l2" : "l1"; };
+const PLACE_HEAD = ["", "우리 반 우승!", "아깝다, 2등!", "상위권 성공!", "상위권 성공!", "조금만 더!", "조금만 더!", "다음 판은 이길 거예요", "다음 판은 이길 거예요"];
+// 결과 화면: 가운데 메달(등수) → 영토 점수 · 경험치 → 마지막 팀 · 시너지 · 증강 → 최근 등수 → 버튼
+function showResult(rec, before, info) {
+  info = info || {};
+  const g = rec.games[0], pl = g.pl, r0 = rankOf(before), r1 = rankOf(rec.pts);
+  const tier = pl === 1 ? "gold" : pl === 2 ? "silver" : pl <= 4 ? "bronze" : "plain";
+  const C = 2 * Math.PI * 54, frac = (9 - pl) / 8;
+  const sub = (pl === 1 ? "8개 반 중에서 끝까지 살아남았어요" : `${g.r} 라운드에서 탈락했어요`) + (info.mins ? ` · ${info.mins}분 동안 싸웠어요` : "");
   const sign = g.d > 0 ? `<b class="up">+${g.d}</b>` : g.d < 0 ? `<b class="down">${g.d}</b>` : `<b>±0</b>`;
-  const change = r1.p > r0.p ? `<p class="rankup">등급이 올랐어요! ${r0.i} ${r0.n} → ${r1.i} ${r1.n}</p>` : r1.p < r0.p ? `<p class="rankdown">등급이 내려갔어요: ${r1.i} ${r1.n}</p>` : "";
-  $("result").innerHTML = `
-    <div class="resrank"><span class="rbadge">${r1.i}</span><span>${r1.n} · ${rec.pts}점</span>${sign}</div>${change}
-    <div class="ressec"><h3>마지막 덱</h3><div class="chips">${g.u.length ? g.u.map(unitChip).join("") : "<span class='muted'>경기장에 친구가 없었어요</span>"}</div>
-    ${g.tr.length ? `<div class="chips">${g.tr.map(([t, n]) => `<span class="tchip">${esc(t)} ${n}</span>`).join("")}</div>` : ""}</div>
-    <div class="ressec"><h3>최근 등수</h3><div class="chips">${rec.games.slice(0, 10).map(placeDot).join("")}</div></div>`;
-  $("result").hidden = false; $("hist").hidden = true;
+  const rkChange = r1.p > r0.p ? `<small class="rkup">등급 업! ${r0.n} → ${r1.n}</small>` : r1.p < r0.p ? `<small class="rkdown">등급이 내려갔어요</small>` : "";
+  const recent = rec.games.slice(0, 10), avg = recent.reduce((s, x) => s + x.pl, 0) / recent.length;
+  const confetti = pl === 1 ? `<div class="confetti" aria-hidden="true">${Array.from({ length: 28 }, (_, i) => `<i style="--x:${(Math.random() * 100).toFixed(1)}%;--d:${(Math.random() * 1.6).toFixed(2)}s;--r:${Math.round(Math.random() * 360)}deg;--c:${["#ffd24a", "#7ff0e0", "#ff7b6b", "#b47aff", "#4fb4ff", "#3fdf8a"][i % 6]}"></i>`).join("")}</div>` : "";
+  $("result").className = "rescard t-" + tier;
+  const crown = pl === 1 ? `<svg class="crown" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg>` : "";
+  $("result").innerHTML = `${confetti}
+    <div class="rleft"><div class="medal"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" class="trk"/><circle cx="60" cy="60" r="54" class="arc" style="--len:${(C * frac).toFixed(1)};--full:${C.toFixed(1)}"/></svg>
+      <span class="mnum">${crown}<b>${pl}등</b><small>8반 중</small></span>${info.newBest ? `<span class="mbest">최고 기록!</span>` : ""}</div>
+    <h2 class="reshead">${PLACE_HEAD[pl] || pl + "등"}</h2>
+    <p class="ressub">${sub}</p></div>
+    <div class="rright"><div class="restiles">
+      <div class="rtile pts"><span class="rtl"><span>영토 점수</span>${sign}</span>${rankBadge(rec.pts)}${rkChange}</div>
+      <div class="rtile xp" id="resxp"><span class="rtl"><span>경험치</span></span><p class="rnote">로그인하면 경험치 · 레벨 · 칭호가 쌓여요</p></div>
+    </div>
+    <div class="ressec"><h3>마지막 팀</h3><div class="rteam">${g.u.length ? g.u.map(unitTile).join("") : "<span class='muted'>경기장에 친구가 없었어요</span>"}</div>
+      ${g.tr.length || (g.ag && g.ag.length) ? `<div class="chips">${g.tr.map(([t, n]) => `<span class="tchip ${traitTier(t, n)}">${esc(t)} ${n}</span>`).join("")}${(g.ag || []).map((a) => `<span class="achip">${esc(a)}</span>`).join("")}</div>` : ""}</div>
+    <div class="resrecent"><span>최근 ${recent.length}판 · 평균 ${avg.toFixed(1)}등</span><div>${recent.map((x) => placeTile(x.pl)).join("")}</div></div>
+    <div class="resbtns"><button class="go" id="resagain" type="button">${g.on ? "혼자 하기" : "다시 하기"}</button><button class="go dim" id="reshome" type="button">처음으로</button><button class="go dim" id="reshist" type="button">지난 기록</button></div></div>`;
+  tapButton($("resagain"), () => $("start").onclick());
+  tapButton($("reshome"), () => showTitle());
+  tapButton($("reshist"), () => { showTitle(); toggleHistory(true); });
+  $("res").hidden = false;
   renderRankLine();
 }
-// 시작 화면: 내 등급 한 줄 + 기록 보기
-function renderRankLine() {
-  const rec = loadRecord(), r = rankOf(rec.pts), next = RANKS.find((x) => x.p > rec.pts);
-  $("rankline").innerHTML = `<span>${r.i} ${r.n} · 영토 점수 ${rec.pts}${next ? ` <small>(${next.n}까지 ${next.p - rec.pts})</small>` : ""}</span>${rec.games.length ? `<button class="linkbtn" id="histbtn">기록 보기</button>` : ""}`;
-  if ($("histbtn")) $("histbtn").onclick = toggleHistory;
-}
-function toggleHistory() {
-  const el = $("hist");
-  if (!el.hidden) { el.hidden = true; return; }
+// 시작 화면 오른쪽 카드 (account.js 의 renderAcctChip 이 그려요)
+function renderRankLine() { renderAcctChip(); }
+// 지난 기록: 시작 화면 오른쪽 칸에 (다시 누르면 내 카드로)
+function toggleHistory(open) {
+  if (!open && $("tside").dataset.view === "hist") return setSide("acct");
   const rec = loadRecord(), G = rec.games, n = G.length;
-  if (!n) return;
-  const avg = G.reduce((s, g) => s + g.pl, 0) / n, wins = G.filter((g) => g.pl === 1).length, top4 = G.filter((g) => g.pl <= 4).length;
   const day = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-  el.innerHTML = `<p class="hstat">최근 ${n}판 · 1등 ${wins}번 · 4등 안 ${top4}번 · 평균 ${avg.toFixed(1)}등</p>
-    <ol class="hlist">${G.map((g) => `<li>${placeDot(g)}<div><div class="hmeta">${day(g.t)} · ${g.r} · ${g.on ? "친구와" : "혼자"} · <b class="${g.d > 0 ? "up" : g.d < 0 ? "down" : ""}">${g.d > 0 ? "+" : ""}${g.d}</b></div>
-      <div class="chips">${g.tr.slice(0, 3).map(([t, k]) => `<span class="tchip">${esc(t)} ${k}</span>`).join("")}${g.u.slice(0, 4).map(unitChip).join("")}</div></div></li>`).join("")}</ol>`;
-  el.hidden = false; $("result").hidden = true;
+  let body = `<p class="muted">아직 기록이 없어요. 한 판 해 보세요!</p>`;
+  if (n) {
+    const avg = G.reduce((s, g) => s + g.pl, 0) / n, wins = G.filter((g) => g.pl === 1).length, top4 = G.filter((g) => g.pl <= 4).length;
+    body = `<p class="hstat">최근 ${n}판 · 1등 ${wins}번 · 4등 안 ${top4}번 · 평균 ${avg.toFixed(1)}등</p>
+    <ol class="hlist">${G.map((g) => `<li>${placeTile(g.pl)}<div><div class="hmeta">${day(g.t)} · ${g.r} · ${g.on ? "친구와" : "혼자"} · <b class="${g.d > 0 ? "up" : g.d < 0 ? "down" : ""}">${g.d > 0 ? "+" : ""}${g.d}</b></div>
+      <div class="chips">${g.tr.slice(0, 3).map(([t, k]) => `<span class="tchip ${traitTier(t, k)}">${esc(t)} ${k}</span>`).join("")}${g.u.slice(0, 4).map(unitChip).join("")}</div></div></li>`).join("")}</ol>`;
+  }
+  $("hist").innerHTML = `<div class="tchead"><h3>지난 기록</h3><button class="tcx" type="button" data-back aria-label="닫기">✕</button></div>${body}`;
+  setSide("hist");
 }
 
 // ---------- 감정 표현 버튼 ----------
@@ -174,5 +209,8 @@ $("chatquick").querySelectorAll("button").forEach((b) => (b.onclick = () => chat
 $("chatform").onsubmit = (e) => { e.preventDefault(); const v = $("chatinput").value; if (cleanMsg(v)) { chatSend(v); $("chatinput").value = ""; } };
 $("chatinput").addEventListener("keydown", (e) => e.stopPropagation()); // 글 쓸 때 D·F·E·스페이스 단축키가 눌리지 않게
 setInterval(chatTick, 400);
-renderRankLine();
-acctInit(); // 시작 화면에 내 계정 버튼 (account.js)
+tapButton($("histbtn"), () => toggleHistory());
+tapButton($("rulesbtn"), () => setSide($("tside").dataset.view === "rules" ? "acct" : "rules"));
+$("tside").addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-back]")) setSide("acct"); });
+acctInit(); // 시작 화면 오른쪽: 내 계정 카드 (account.js)
+setSide(loadRecord().games.length || loadProfile() ? "acct" : "rules"); // 처음 온 친구에게는 규칙부터
