@@ -295,7 +295,7 @@ function startCombatNow() {
     S.opp = null;
   } else {
     for (const pr of NET.on ? netPairs() : pairUp()) {
-      const isH = pr.a.human || pr.b.human;
+      const isH = pr.a.human || (pr.b.human && !pr.ghost); // 내 반이 다른 반의 "복제 상대"로만 뽑힌 판은 내 대결이 아니라서 화면에 띄우지 않아요
       const B = pr.net ? netBattle(pr) : makeBattle(sideOf(pr.a), sideOf(pr.b), isH, pr.a, pr.b);
       if (isH) { S.battle = B; S.opp = pr.a.human ? pr.b : pr.a; S.oppGhost = pr.ghost; } else runBattle(B);
       S.results.push({ kind: "pvp", ...pr, B });
@@ -351,7 +351,7 @@ function finishCombat() {
       if (B.win === 0) { win(a); if (!ghost) lose(b, dmgFrom(0)); }
       else if (B.win === 1) { lose(a, dmgFrom(1)); if (!ghost) win(b); }
       else { lose(a, dmgFrom(1)); if (!ghost) lose(b, dmgFrom(0)); }
-      if (a.human) hWin = B.win === 0; else if (b.human) hWin = B.win === 1;
+      if (a.human) hWin = B.win === 0; else if (b.human && !ghost) hWin = B.win === 1; // 복제로 뽑힌 판의 결과로 승패를 띄우지 않아요
     }
   }
   // 탈락 처리
