@@ -44,9 +44,9 @@ const cleanName = (s) => String(s || "").replace(/[\u0000-\u001f\u007f-\u009f​
 
 // ---------- 로비 ----------
 function netShowPanel(show) {
-  $("net").hidden = !show; $("ovbtns").hidden = show; $("ovrules").hidden = show; $("ovtext").hidden = show;
+  $("net").hidden = !show; $("ovbtns").hidden = show; $("ovtext").hidden = show; $("tlinks").hidden = show;
   $("netnote").hidden = show || NET.ready;
-  if (show) { $("result").hidden = true; $("hist").hidden = true; }
+  $("ov").classList.toggle("neton", show);
 }
 function netInit() {
   let saved = ""; try { saved = localStorage.getItem(pkey("uri-net-name")) || ""; } catch (e) {}

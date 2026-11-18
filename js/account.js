@@ -150,10 +150,14 @@ function acctOnGame(place, online) {
   const gain = Math.round((PLACE_XP[place] || 20) * (online ? 1.2 : 1));
   p.xp += gain; p.tot.g++; p.tot.sum += place; if (place === 1) p.tot.w++; if (place <= 4) p.tot.t4++; if (online) p.tot.on++;
   saveProfile(p);
-  const L = levelOf(p.xp), fresh = TITLES.filter((t) => t.ok(p) && !had.has(t.n)).map((t) => t.n);
-  const box = document.createElement("div"); box.className = "ressec acctres";
-  box.innerHTML = `<h3>${esc(p.name)} · 경험치 +${gain}</h3>${xpBar(L)}${L.lv > before ? `<p class="rankup">레벨 업! Lv.${L.lv}</p>` : ""}${fresh.length ? `<p class="rankup">새 칭호: ${fresh.map(esc).join(", ")}</p>` : ""}`;
-  $("result").appendChild(box);
+  const L = levelOf(p.xp), fresh = TITLES.filter((t) => t.ok(p) && !had.has(t.n)).map((t) => t.n), up = L.lv > before;
+  const box = $("resxp"); // 결과 화면의 경험치 칸 (social.js 의 showResult)
+  if (box) {
+    box.classList.toggle("lvup", up);
+    box.innerHTML = `<span class="rtl"><span>경험치 <b class="up">+${gain}</b></span>${up ? `<b class="lvtag">레벨 업! Lv.${L.lv}</b>` : `<b>Lv.${L.lv}</b>`}</span>
+      <span class="xpline"><i style="width:${Math.round((L.cur / L.need) * 100)}%"></i></span>
+      <small>${fresh.length ? `새 칭호: ${fresh.map(esc).join(", ")}` : `다음 레벨까지 ${L.need - L.cur}`}</small>`;
+  }
   renderAcctChip(); pushServer();
 }
 // 설정을 바꾸면 (소리 · 화질) 서버에도
@@ -166,10 +170,30 @@ function avatarHtml(n, cls) {
   return `<span class="av ${cls || ""}">${url ? `<img src="${esc(url)}" alt="">` : `<b>${esc(n ? short(n) : "?")}</b>`}</span>`;
 }
 const xpBar = (L) => `<div class="xpbar"><span>Lv.${L.lv}</span><div><i style="width:${Math.round((L.cur / L.need) * 100)}%"></i></div><small>${L.cur}/${L.need}</small></div>`;
+// 시작 화면 오른쪽 "내 카드": 로그인했으면 프로필 · 경험치 · 전적 · 영토 등급 · 최근 등수, 아니면 로그인 버튼과 이 기기 기록
+const GUEST_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/></svg>`;
 function renderAcctChip() {
-  const el = $("acctchip"); if (!el) return;
-  const p = loadProfile();
-  el.innerHTML = p ? `${avatarHtml(p.av)}<span class="acn"><b>${esc(p.name)}</b><small>Lv.${levelOf(p.xp).lv} · ${esc(p.title)}</small></span>` : `<span class="av"><b>👤</b></span><span class="acn"><b>로그인</b><small>내 계정으로 기록 저장</small></span>`;
+  const el = $("acctcard"); if (!el || typeof loadRecord !== "function") return;
+  const p = loadProfile(), rec = loadRecord(), G = rec.games, recent = G.slice(0, 5);
+  const stat = (b, s) => `<div><b>${b}</b><small>${s}</small></div>`;
+  const recentHtml = `<div class="acrecent"><span>최근 ${recent.length ? recent.length + "판" : "등수"}</span><div>${recent.length ? recent.map((g) => placeTile(g.pl)).join("") : `<em>아직 한 판도 안 했어요</em>`}</div></div>`;
+  if (p) {
+    const L = levelOf(p.xp), T = p.tot;
+    el.innerHTML = `<div class="achd">${avatarHtml(p.av, "big")}<span class="acn"><b>${esc(p.name)}</b><small>Lv.${L.lv} · ${esc(p.title)}</small></span><button class="acbtn" id="acopen" type="button">내 계정</button></div>
+      <div class="acxp"><span>경험치</span><span>${L.cur} / ${L.need}</span><span class="xpline"><i style="width:${Math.round((L.cur / L.need) * 100)}%"></i></span></div>
+      <div class="acgrid">${stat(T.g, "판")}${stat(T.w, "1등")}${stat(T.t4, "4등 안")}${stat(T.g ? (T.sum / T.g).toFixed(1) : "-", "평균 등수")}</div>
+      ${rankBadge(rec.pts)}${recentHtml}`;
+    tapButton($("acopen"), showProfile);
+  } else {
+    const n = G.length, avg = n ? (G.reduce((s, g) => s + g.pl, 0) / n).toFixed(1) : "-";
+    el.innerHTML = `<div class="achd"><span class="av big guest">${GUEST_SVG}</span><span class="acn"><b>손님</b><small>로그인하면 레벨 · 칭호 · 전적이 쌓여요</small></span></div>
+      <div class="acbtns"><button class="acbtn gold" id="aclogin" type="button">로그인</button><button class="acbtn" id="acsignup" type="button">계정 만들기</button></div>
+      ${n ? `<div class="acgrid">${stat(n, "판")}${stat(G.filter((g) => g.pl === 1).length, "1등")}${stat(G.filter((g) => g.pl <= 4).length, "4등 안")}${stat(avg, "평균 등수")}</div>` : ""}
+      ${rankBadge(rec.pts)}${recentHtml}`;
+    tapButton($("aclogin"), () => showLogin("in"));
+    tapButton($("acsignup"), () => showLogin("up"));
+  }
+  if ($("histbtn")) $("histbtn").hidden = !G.length;
 }
 function acctModal(html) {
   let m = $("acctm");
@@ -236,10 +260,6 @@ async function showRanking() {
   } catch (e) { el.innerHTML = `<p class="acnote">순위를 불러오지 못했어요.</p>`; }
 }
 function acctInit() {
-  const box = document.querySelector("#ov .ov-box"); if (!box || $("acctchip")) return;
-  const b = document.createElement("button"); b.id = "acctchip"; b.className = "acctchip"; b.type = "button";
-  box.insertBefore(b, $("rankline"));
-  b.onclick = () => (loadProfile() ? showProfile() : showLogin("in"));
   renderAcctChip();
   setTimeout(renderAcctChip, 2500); // 카드 사진이 늦게 오면 다시
 }

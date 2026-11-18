@@ -3447,7 +3447,7 @@ function loop(now) {
     const dt = paused ? 0 : real * S.speed;
     if (!paused && !document.hidden) autoQualityStep();
     if (!paused) {
-      if (S.phase === "plan") { if (S.augPending && !S.fast) { S.augT -= real; $("augtier").dataset.t = Math.max(0, Math.ceil(S.augT)); if (S.augT <= 0 && S.augChoose) S.augChoose(); } if (S.augPending && S.fast) { const b = $("augs").querySelector(".augcard"); if (b) b.click(); } if (!S.augPending) { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); } }
+      if (S.phase === "plan") { if (S.augPending && !S.fast) { S.augT -= real; augTick(); if (S.augT <= 0 && S.augChoose) S.augChoose(); } if (S.augPending && S.fast) { const b = $("augs").querySelector(".augcard"); if (b) b.click(); } if (!S.augPending) { S.timer -= real * (S.fast ? 30 : 1); if (S.timer <= 0) startCombat(); } }
       else if (S.phase === "combat") {
         // 1/60초씩 똑같이 잘라서 계산해요 (온라인 상대 화면과 결과가 같아지도록)
         const B = S.battle; B.acc = (B.acc || 0) + dt;
