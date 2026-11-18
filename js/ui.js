@@ -233,15 +233,23 @@ function showItem(id) {
 function showTrait(t) {
   $("info").innerHTML = `<div class="txt"><b>${t}</b> (${TRAITS[t].t.join(" / ")})<br>${TRAITS[t].d}<br><span class="guide">${DEFS.filter((d) => d.t.includes(t)).map((d) => d.n).join(", ")}</span><br><span class="guide">특성을 다시 누르면 닫혀요</span></div>`;
 }
+// 피해량 표: 롤토체스처럼 "피해량" 버튼을 눌러야 열려요 (판을 가리지 않게). 열고 닫은 건 기억해요
+let METER_OPEN = false; try { METER_OPEN = localStorage.getItem("uri-meter") === "1"; } catch (e) {}
+const meterOn = () => !!(S && S.battle && ["combat", "result"].includes(S.phase) && $("ov").hidden);
 function updateMeter() {
-  if (!S.battle || S.sel || S.traitSel || (S.infoHold || 0) > performance.now() || !["combat", "result"].includes(S.phase)) return;
-  const list = S.battle.f.filter((f) => f.team === 0 && !f.mon && !f.merged).sort((a, b) => (b.dmg || 0) - (a.dmg || 0)).slice(0, 6);
-  if (!list.length) return;
+  const btn = $("meterbtn"), box = $("meter"), on = meterOn();
+  if (S && S.fighterInfo && (S.infoHold || 0) <= performance.now()) { S.fighterInfo = false; if (!S.sel && !S.traitSel) $("info").innerHTML = ""; } // 전투 중 누른 친구 정보는 3초 뒤 닫혀요
+  btn.hidden = !on; btn.classList.toggle("on", METER_OPEN); btn.setAttribute("aria-pressed", String(METER_OPEN));
+  const busy = !!$("info").querySelector(".txt:not(.guide)"); // 친구 · 특성 설명을 보는 중이면 잠깐 숨겨요
+  const list = on ? S.battle.f.filter((f) => f.team === 0 && !f.mon && !f.merged).sort((a, b) => (b.dmg || 0) - (a.dmg || 0)).slice(0, 8) : [];
+  box.hidden = !on || !METER_OPEN || busy || !list.length;
+  if (box.hidden) return;
   const mx = Math.max(1, ...list.map((f) => f.dmg || 0));
-  $("info").innerHTML = `<div class="txt"><b>피해량</b>${list.map((f) => `<div class="dm"><span>${f.robot ? (f.mega ? "초합체로봇" : "합체로봇") : short(DEFS[f.d].n)}${"★".repeat(f.star)}</span><i style="width:${((f.dmg || 0) / mx) * 100}%"></i><em>${Math.round(f.dmg || 0)}</em></div>`).join("")}</div>`;
+  box.innerHTML = list.map((f) => `<div class="dm"><span>${f.robot ? (f.mega ? "초합체" : "합체로봇") : short(DEFS[f.d].n)}${"★".repeat(f.star)}</span><i style="width:${((f.dmg || 0) / mx) * 100}%"></i><em>${Math.round(f.dmg || 0)}</em></div>`).join("");
 }
+tapButton($("meterbtn"), () => { METER_OPEN = !METER_OPEN; try { localStorage.setItem("uri-meter", METER_OPEN ? "1" : "0"); } catch (e) {} if (METER_OPEN) { S.sel = null; S.traitSel = null; S.infoHold = 0; renderUI(); } updateMeter(); });
 function showFighter(f) {
-  S.traitSel = null; S.infoHold = performance.now() + 3000;
+  S.traitSel = null; S.infoHold = performance.now() + 3000; S.fighterInfo = true;
   if (f.mon) { $("info").innerHTML = `<div class="txt"><b>${f.mon.summon ? (f.mon.giant ? "거대 이다연" : "이다연") : f.mon.mn}</b> ${f.mon.summon ? "소환수 (김예균이 불러냄)" : "몬스터"} · 체력 ${Math.round(f.hp)}/${Math.round(f.maxHp)} · 공격 ${Math.round(f.ad)}</div>`; return; }
   const def = DEFS[f.d];
   $("info").innerHTML = `<div class="txt"><b style="color:var(${COST_COLOR[def.c]})">${f.robot ? (f.mega ? "초합체로봇 (모두 ★3)" : ROBOT_NAME) : def.n}</b> ${"★".repeat(f.star)} ${f.team ? "<span style='color:var(--danger)'>상대</span>" : ""}<br>
@@ -337,7 +345,8 @@ function renderUI() {
     guide = act.length ? "적용 중: " + act.join(" · ") + " — 왼쪽 특성을 누르면 설명이 나와요" : S.type === "pve" ? "몬스터 라운드! 이기면 골드 구슬이 떨어져요. 친구를 탭해서 고르고 놓을 칸을 탭하세요." : "다른 반 이름을 누르면 그 반 배치를 정찰할 수 있어요. 시간이 끝나면 자동으로 전투가 시작돼요.";
   } else if (S.phase === "wait") guide = "준비 완료! 다른 반이 준비를 마치면 전투가 시작돼요.";
   else guide = "전투 중… 친구를 탭하면 실시간 상태를 볼 수 있어요. 대기석 정리와 상점 구매는 지금도 할 수 있어요.";
-  $("info").innerHTML = S.stage === 1 || S.phase === "carousel" ? `<div class="txt guide">${guide}</div>` : "";
+  $("info").innerHTML = (S.stage === 1 && !(METER_OPEN && meterOn())) || S.phase === "carousel" ? `<div class="txt guide">${guide}</div>` : ""; // 피해량 표를 열어 두면 1단계 전투 안내는 빼요
+  updateMeter();
 }
 function humanBuy(i) {
   const P = human();

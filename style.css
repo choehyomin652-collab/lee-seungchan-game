@@ -219,6 +219,14 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 .track i.done { opacity: .35; } .track i.cur { outline: calc(var(--u) * .3) solid #fff; transform: scale(1.25); }
 #goldsub { font-size: calc(var(--u) * 1.25); color: var(--gold); }
 .shop.selling::after { content: attr(data-sell); position: absolute; inset: 0; display: grid; place-items: center; background: rgba(120, 25, 20, .82); border: calc(var(--u) * .4) solid var(--danger); border-radius: var(--u); font-family: var(--display); font-size: calc(var(--u) * 4); color: #fff; }
+/* 피해량: 오른쪽 위 작은 버튼 → 눌러야 작은 표가 열려요 (판을 가리지 않게, 표 위는 눌러도 판이 눌려요) */
+.meterbtn { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 6); right: calc(max(var(--u), env(safe-area-inset-right, 0px)) + var(--u) * 13); padding: calc(var(--u) * .45) calc(var(--u) * 1.2); border-radius: 999px; font-family: var(--display); font-size: calc(var(--u) * 1.4); color: var(--chalk-dim); background: rgba(7, 20, 28, .72); border: 1px solid var(--edge); }
+.meterbtn::before { content: "▸ "; } .meterbtn.on::before { content: "▾ "; }
+.meterbtn.on { color: #fff; border-color: var(--gold); }
+.meter { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 10); right: calc(max(var(--u), env(safe-area-inset-right, 0px)) + var(--u) * 13); width: min(24vw, calc(var(--u) * 30)); padding: calc(var(--u) * .7) calc(var(--u) * 1); border-radius: calc(var(--u) * 1); background: rgba(7, 20, 28, .62); border: 1px solid rgba(255, 255, 255, .12); font-size: calc(var(--u) * 1.3); line-height: 1.55; pointer-events: none; }
+.meter .dm { grid-template-columns: 4.2em 1fr 3em; gap: .4em; }
+@media (min-height: 431px) { .meter { top: auto; right: max(var(--u), env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--u) * 21); width: min(22vw, calc(var(--u) * 28)); } } /* 큰 화면: 오른쪽 아래(반 목록 아래 · 상점 위) */
+@media (max-height: 430px) { .meter { z-index: 7; background: rgba(7, 20, 28, .82); } } /* 휴대폰: 버튼 바로 아래, 연습 막대보다 위에 */
 .dm { display: grid; grid-template-columns: 4.6em 1fr 3.4em; white-space: nowrap; align-items: center; gap: .5em; }
 .dm i { display: block; height: .7em; border-radius: .3em; background: linear-gradient(90deg, #ff9a5a, #ffd75a); }
 .dm em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
@@ -287,7 +295,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
 /* 옆 목록 */
 .pl .hpn { min-width: calc(var(--u) * 3.8); padding: 0 calc(var(--u) * .5); text-align: center; background: rgba(6, 14, 18, .85); border: 1px solid rgba(255, 255, 255, .18); border-radius: calc(var(--u) * .5); text-shadow: none; font-family: var(--display); }
 .pl.me .av { width: calc(var(--u) * 6.2); height: calc(var(--u) * 6.2); }
-.info { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 6); right: calc(max(var(--u), env(safe-area-inset-right, 0px)) + var(--u) * 13); width: min(28vw, calc(var(--u) * 38)); max-height: 52vh; overflow: hidden; }
+.info { top: calc(env(safe-area-inset-top, 0px) + var(--u) * 10); right: calc(max(var(--u), env(safe-area-inset-right, 0px)) + var(--u) * 13); width: min(28vw, calc(var(--u) * 38)); max-height: 52vh; overflow: hidden; }
 /* 안내 문구: 상점 바로 위 가운데 */
 .toast { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + var(--u) * 21); color: #f3f1ea; background: rgba(7, 16, 22, .9); border: 1px solid rgba(255, 255, 255, .16); border-radius: calc(var(--u) * 1); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
 /* 증강 고르기: 제목 + 둥근 금 메달 카드 */
