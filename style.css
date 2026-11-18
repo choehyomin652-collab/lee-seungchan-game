@@ -495,3 +495,7 @@ svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2
   #ov .rankline { font-size: 13px; }
   #ov .netnote { font-size: 11px; }
 }
+/* 시작 화면 맨 아래 작은 버전 표시 (홈 화면 앱에서만 · 아티팩트는 dev 라 안 보여요) */
+.appver { margin: 0; font-size: 10px; color: rgba(255, 255, 255, .35); text-align: center; }
+.appver[data-v="dev"] { display: none; }
+.appver::before { content: "버전 " attr(data-v) " · " attr(data-d); }
