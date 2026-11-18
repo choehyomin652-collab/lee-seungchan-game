@@ -26,6 +26,8 @@ jobs:
           cp -r index.html style.css manifest.webmanifest sw.js js icons cards _site/
           # 배포할 때마다 앱 저장소 이름을 바꿔서, 홈 화면 앱이 새 버전을 받게 해요
           sed -i "s/const CACHE = \"ssipto-v1\";/const CACHE = \"ssipto-${GITHUB_SHA::8}\";/" _site/sw.js
+          # 시작 화면 맨 아래 버전 표시 (몇 번째 배포인지 · 날짜) — 새 버전을 받았는지 확인할 때 봐요
+          sed -i "s/data-v=\"dev\" data-d=\"\"/data-v=\"${GITHUB_SHA::7}\" data-d=\"$(TZ=Asia/Seoul date +%m.%d\ %H:%M)\"/" _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
