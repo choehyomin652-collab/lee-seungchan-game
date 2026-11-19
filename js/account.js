@@ -83,6 +83,7 @@ function unpack(o) {
 }
 let pushT = 0;
 function pushServer() {
+  if (typeof rankPublish === "function") rankPublish(); // 실시간 랭킹에도 (ranking.js)
   if (!ACCT.server || !ACCT.cur || !ACCT.fb.auth.currentUser) return;
   clearTimeout(pushT);
   pushT = setTimeout(() => userDoc().set(packLocal()).catch(() => toast("계정 서버에 저장하지 못했어요. 다음 판에 다시 저장해요")), 400);
@@ -183,6 +184,7 @@ function renderAcctChip() {
   if (p) {
     const L = levelOf(p.xp), T = p.tot;
     el.innerHTML = `<div class="achd">${avatarHtml(p.av, "big")}<span class="acn"><b>${esc(p.name)}</b><small>Lv.${L.lv} · ${esc(p.title)}</small></span><button class="acbtn" id="acopen" type="button">내 계정</button></div>
+      <button class="acbtn lbbtn" id="aclive" type="button">🏆 실시간 랭킹</button>
       <div class="acxp"><span>경험치</span><span>${L.cur} / ${L.need}</span><span class="xpline"><i style="width:${Math.round((L.cur / L.need) * 100)}%"></i></span></div>
       <div class="acgrid">${stat(T.g, "판")}${stat(T.w, "1등")}${stat(T.t4, "4등 안")}${stat(T.g ? (T.sum / T.g).toFixed(1) : "-", "평균 등수")}</div>
       ${rankBadge(rec.pts)}${recentHtml}`;
@@ -191,11 +193,13 @@ function renderAcctChip() {
     const n = G.length, avg = n ? (G.reduce((s, g) => s + g.pl, 0) / n).toFixed(1) : "-";
     el.innerHTML = `<div class="achd"><span class="av big guest">${GUEST_SVG}</span><span class="acn"><b>손님</b><small>로그인하면 레벨 · 칭호 · 전적이 쌓여요</small></span></div>
       <div class="acbtns"><button class="acbtn gold" id="aclogin" type="button">로그인</button><button class="acbtn" id="acsignup" type="button">계정 만들기</button></div>
+      <button class="acbtn lbbtn" id="aclive" type="button">🏆 실시간 랭킹</button>
       ${n ? `<div class="acgrid">${stat(n, "판")}${stat(G.filter((g) => g.pl === 1).length, "1등")}${stat(G.filter((g) => g.pl <= 4).length, "4등 안")}${stat(avg, "평균 등수")}</div>` : ""}
       ${rankBadge(rec.pts)}${recentHtml}`;
     tapButton($("aclogin"), () => showLogin("in"));
     tapButton($("acsignup"), () => showLogin("up"));
   }
+  if ($("aclive")) tapButton($("aclive"), () => showLiveRanking());
   if ($("histbtn")) $("histbtn").hidden = !G.length;
 }
 function acctModal(html) {
@@ -244,7 +248,7 @@ function showProfile() {
     <div class="actitles">${TITLES.map((t) => { const ok = t.ok(p); return `<button data-title="${esc(t.n)}" class="${t.n === p.title ? "on" : ""}" ${ok ? "" : "disabled"} title="${esc(t.how)}">${esc(t.n)}${ok ? "" : `<small>${esc(t.how)}</small>`}</button>`; }).join("")}</div>
     <details><summary>닉네임 · 대표 캐릭터 바꾸기</summary>
       <label>닉네임 <input id="acname" maxlength="8" value="${esc(p.name)}"></label>${avPicker(p.av)}<button class="go" id="acsave">저장</button></details>
-    ${ACCT.server ? `<button class="linkbtn" id="acrank">친구들 티어 순위 보기</button><div id="acranks"></div>` : ""}
+    <button class="linkbtn" id="acrank">🏆 실시간 랭킹 보기</button>
     <p class="acnote">${modeNote()}</p>
     <button class="linkbtn" id="acout">로그아웃 (다른 계정으로 바꾸기)</button>`);
   let av = p.av;
@@ -252,15 +256,7 @@ function showProfile() {
   m.querySelectorAll("[data-title]").forEach((b) => (b.onclick = () => { const q = loadProfile(); q.title = b.dataset.title; saveProfile(q); pushServer(); renderAcctChip(); showProfile(); }));
   $("acsave").onclick = () => { const q = loadProfile(), nm = cleanName($("acname").value); if (!nm) return toast("닉네임을 적어 주세요"); q.name = nm; q.av = av; saveProfile(q); lsSet(pkey("uri-net-name"), nm); if ($("netname")) $("netname").value = nm; pushServer(); renderAcctChip(); showProfile(); toast("저장했어요"); };
   $("acout").onclick = logOut;
-  if ($("acrank")) $("acrank").onclick = showRanking;
-}
-async function showRanking() {
-  const el = $("acranks"); el.innerHTML = `<p class="acnote">불러오는 중…</p>`;
-  try {
-    const q = await ACCT.fb.db.collection("users").orderBy("pts", "desc").limit(30).get();
-    const rows = q.docs.map((d) => d.data());
-    el.innerHTML = `<ol class="acrank">${rows.map((o, i) => `<li class="${o.id === ACCT.cur ? "me" : ""}"><span class="rk">${i + 1}</span>${avatarHtml(o.av)}<span class="acn"><b>${esc(o.name || o.id)}</b><small>${esc(o.title || "")}</small></span>${tierEmblem(tierOf(o.pts).i, "sm")}<span class="rv">${esc(tierOf(o.pts).name)}<small>${tierOf(o.pts).lp}점 · Lv.${o.lv || 1}</small></span></li>`).join("")}</ol>`;
-  } catch (e) { el.innerHTML = `<p class="acnote">순위를 불러오지 못했어요.</p>`; }
+  if ($("acrank")) $("acrank").onclick = () => showLiveRanking();
 }
 // 특별 시작 티어: 이 닉네임 계정은 처음 한 번 이 점수에서 시작해요 (이미 더 높으면 그대로). 1100 = 실버 I
 const START_PTS = { "헤데니": 1100 };
