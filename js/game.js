@@ -26,6 +26,7 @@ function newGame() {
     banner: null, resultT: 0, shake: 0, orbs: [], augPending: false, t0: Date.now(),
   };
   if (NET.on) netSetup();
+  aiAssignSkill(); // 내 티어에 맞춰 컴퓨터 반 실력을 정해요
   if ($("res")) $("res").hidden = true;
   startRound(true);
 }
@@ -187,7 +188,7 @@ function startRound(first) {
       const orbGold = P.human ? (S.orbs || []).reduce((s, o) => s + o.gold, 0) : 0;
       const interest = Math.min(5, Math.floor((P.gold + orbGold) / 10));
       const st = Math.abs(P.streak), sb = st >= 6 ? 3 : st >= 5 ? 2 : st >= 3 ? 1 : 0;
-      const inc = base + interest + sb + P.gpr;
+      const inc = base + interest + sb + P.gpr + (P.human ? 0 : P.aiBonus || 0); // aiBonus: 그랜드마스터 · 챌린저 컴퓨터 반 추가 골드
       P.gold += inc;
       addXp(P, 2);
       if (!P.locked || P.shop.every((x) => x == null)) refreshShop(P);
@@ -481,6 +482,26 @@ function carouselPick(P, o) {
   renderUI();
 }
 
+// =============== 컴퓨터 반 실력 = 내 티어 ===============
+// 내 티어(tiers.js)가 높을수록 컴퓨터 반이 잘해요. skill 1 = 정석대로 다 하는 에메랄드 수준 AI, 낮을수록 실수가 많아요
+//  · 실수: 레벨업 늦게 · 아무거나 사기 · 리롤 멈추기 · 이상하게 세우기 · 증강/급식 줄 아무거나
+//  · 그랜드마스터 · 챌린저는 실수 없이 + 라운드마다 골드를 더 받아요 (AI_TIER_BONUS)
+//  · 반마다 실력이 조금씩 달라요 (±AI_SKILL_SPREAD). tools/preview/aitier.js 로 티어별로 재 보며 정한 값
+const AI_TIER_SKILL = [0.05, 0.18, 0.32, 0.46, 0.6, 0.72, 0.84, 0.94, 1, 1];
+const AI_TIER_BONUS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+const AI_SKILL_SPREAD = 0.12;
+const myTier = () => { try { return tierOf(loadRecord().pts).i; } catch (e) { return 4; } };
+function aiAssignSkill(t) {
+  if (t == null) t = myTier();
+  for (const P of S.players) {
+    if (P.human || P.remote) continue;
+    P.skill = Math.max(0, Math.min(1, AI_TIER_SKILL[t] + (Math.random() * 2 - 1) * AI_SKILL_SPREAD));
+    P.aiBonus = AI_TIER_BONUS[t];
+  }
+}
+const aiSk = (P) => (P.skill == null ? 1 : P.skill);
+const aiSlip = (P, k = 1) => Math.random() * k > aiSk(P); // 실수할까? (실력이 낮을수록 자주)
+
 // =============== 컴퓨터(AI) 반 — 에메랄드 수준 ===============
 // 팀 세기를 숫자로 계산해서(친구 세기 × 시너지) 가장 센 배치를 고르고, 정석대로 레벨업 · 리롤 · 증강을 골라요.
 //  · aiVal: 친구 한 명의 세기  · aiTeamScore: 보드 전체 세기  · aiBestBoard: 가진 친구 중 가장 센 조합
@@ -568,7 +589,9 @@ function aiPlan(P) {
   if (s === 4 && k === 2 && !P.rolled42 && P.level >= 8) { P.rolled42 = 1; floor = Math.min(floor, hp > 75 ? 20 : 10); } // 4-2: 8레벨에서 한 번 크게 굴려 보드를 완성해요
   if (s === 3 && k === 2 && hp < 70) floor = Math.min(floor, 20); // 3-2: 체력이 깎였으면 6레벨에서 굴려요
   // 1) 레벨업: 정석 시점에는 이자보다 레벨이 먼저
-  const target = aiLevelTarget(P);
+  let target = aiLevelTarget(P);
+  if (aiSlip(P)) target -= aiSk(P) < 0.25 ? 1 + Math.floor(Math.random() * 2) : 1; // 실수: 레벨업을 깜빡
+  if (aiSlip(P)) floor = [0, 10, 50][Math.floor(Math.random() * 3)]; // 실수: 골드 관리를 엉망으로
   while (P.level < target && buyXp(P));
   while (P.level < 9 && s >= 4 && P.gold - 4 >= Math.max(floor, 50) + 4 && buyXp(P)); // 골드가 넘치면 더 올려요
   // 2) 사기 · 리롤
@@ -579,6 +602,7 @@ function aiPlan(P) {
     const done = P.level >= 8 && base.pick.length >= P.level && base.pick.every((u) => u.star >= 2);
     if (s < 2 || (s === 2 && hp > 50) || done || P.gold - 2 < floor) break;
     if (s === 3 && hp > 60 && floor >= 50) break; // 3단계엔 체력이 넉넉하면 아껴요
+    if (aiSlip(P, 1.4)) break; // 실수: 굴리다 그만둬요
     reroll(P);
   }
   aiTrim(P);
@@ -588,7 +612,7 @@ function aiBuyPass(P, floor) {
   let base = aiBestBoard(P);
   for (let i = 0; i < 5; i++) {
     const d = P.shop[i]; if (d == null || P.gold < DEFS[d].c) continue;
-    const w = aiWant(P, d, base), c = DEFS[d].c;
+    const w = aiWant(P, d, base) + (Math.random() - 0.5) * (1 - aiSk(P)) * 14, c = DEFS[d].c; // 실력이 낮으면 아무거나 사요
     const spare = P.gold - c >= floor;
     // 합성은 거의 언제나, 보드가 세지면 남는 골드로, 짝 만들기는 여유 있을 때
     const take = w >= 10 || (w > 0.6 && (spare || base.pick.length < P.level)) || (w > 0.25 && spare && P.gold - c >= floor + 6);
@@ -622,13 +646,17 @@ function aiTrim(P) {
 }
 // 배치: 수호자를 앞줄 가운데, 돌격대는 앞줄 양옆, 원거리는 뒷줄에 서로 떨어뜨려 (광역 스킬을 덜 맞게) — 가장 센 원거리는 구석
 function aiArrange(P) {
-  const all = unitsOf(P).map((x) => x.u), { pick } = aiBestBoard(P, all);
+  const all = unitsOf(P).map((x) => x.u);
+  let { pick } = aiBestBoard(P, all);
+  if (aiSlip(P)) { const rest = all.filter((u) => !pick.includes(u)); if (rest.length && pick.length) pick = pick.slice(0, -1).concat(rest[Math.floor(Math.random() * rest.length)]); } // 실수: 센 친구 대신 다른 친구
+  if (aiSk(P) < 0.3 && pick.length > 2 && Math.random() < 0.35) pick = pick.slice(0, -1); // 실수: 한 자리를 비워 둬요
+  const messy = aiSlip(P, 1.2);
   P.board = Array.from({ length: 4 }, () => Array(COLS).fill(null));
   P.bench = Array(BENCH).fill(null);
   const rg = (u) => CLASS[DEFS[u.d].k].rg, byVal = (a, b) => aiVal(b) - aiVal(a);
   const tanks = pick.filter((u) => DEFS[u.d].k === "수호자").sort(byVal), divers = pick.filter((u) => rg(u) <= 1 && DEFS[u.d].k !== "수호자").sort(byVal);
   const mids = pick.filter((u) => rg(u) === 2).sort(byVal), backs = pick.filter((u) => rg(u) >= 3).sort(byVal);
-  const put = (u, cells) => { for (const [r, c] of cells) if (!P.board[r][c]) { P.board[r][c] = u; return true; } return false; };
+  const put = (u, cells) => { if (messy) cells = shuffle(cells.slice()); for (const [r, c] of cells) if (!P.board[r][c]) { P.board[r][c] = u; return true; } return false; }; // 실수: 아무 데나 세워요
   const FRONT = [[0, 3], [0, 2], [0, 4], [0, 1], [0, 5], [0, 0], [0, 6]], SECOND = [[1, 3], [1, 2], [1, 4], [1, 1], [1, 5], [1, 0], [1, 6]];
   const BACK = [[3, 0], [3, 6], [3, 2], [3, 4], [2, 1], [2, 5], [3, 3], [2, 3], [3, 1], [3, 5], [2, 0], [2, 6], [2, 2], [2, 4]];
   tanks.forEach((u) => put(u, [...FRONT, ...SECOND]));
@@ -647,10 +675,12 @@ function aiAugment(P, opts) {
     const t = a.id.slice(4), cnt = traitCounts(base.pick.map((u) => u.d)), n = (cnt[t] || 0) + (P.emb[t] || 0);
     return traitLvl(t, n + 1) > traitLvl(t, n) ? 6 : AI_AUG.emb[ti]; // 배지: 지금 보드의 시너지가 한 단계 오르면 좋아요
   };
+  if (aiSlip(P)) return rnd(opts); // 실수: 아무 증강
   return opts.slice().sort((a, b) => val(b) - val(a))[0];
 }
 // 급식 줄: 합성 · 보드에 가장 도움이 되는 친구
 function aiCarousel(P, free) {
+  if (aiSlip(P)) return rnd(free); // 실수: 아무 친구
   const base = aiBestBoard(P);
   return free.slice().sort((x, y) => aiWant(P, y.d, base) - aiWant(P, x.d, base))[0];
 }
