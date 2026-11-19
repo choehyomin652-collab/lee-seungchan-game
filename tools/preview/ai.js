@@ -25,7 +25,7 @@ const oldSrc = fs.readFileSync(path.join(__dirname, "ai-old.js"), "utf8");
     for (let g = 0; g < N; g++) {
       newGame();
       const idx = shuffle([0, 1, 2, 3, 4, 5, 6, 7]);
-      S.players.forEach((P) => { P.human = false; });
+      S.players.forEach((P) => { P.human = false; P.skill = 1; P.aiBonus = 0; }); // 티어별 실력(aiAssignSkill)은 빼고 재요
       idx.forEach((i, j) => { S.players[i].kind = j < 8 - NB ? A : Bk; S.players[i].grp = j < 8 - NB ? A + "A" : Bk + "B"; });
       let guard = 0;
       while (guard++ < 200) {
