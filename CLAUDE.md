@@ -28,6 +28,7 @@
 ## 개인 계정 (js/account.js)
 - 아이디·비밀번호 로그인, 프로필(닉네임·대표 캐릭터), 레벨·칭호, 전적, 계정별 설정(소리·화질·카드 사진)
 - 계정마다 나뉘어야 하는 localStorage 키는 `pkey("uri-...")` 로 감싸요. 서버에 같이 올릴 키는 `SYNC_KEYS` 에 넣어요
+- 티어(아이언 ~ 챌린저)·영토 점수·티어 문장 그림은 `js/tiers.js` (`TIERS` · `tierOf` · `placeDelta` · `tierEmblem`). 점수 배율은 `GAIN_K` · `LOSS_K`
 - 서버(Firebase)는 `FIREBASE_CONFIG` 를 채우면 켜져요 (`ACCOUNTS.md`, 규칙은 `firestore.rules`). 비어 있으면 기기 안 계정만 돼요
 
 ## 화면 확인 도구 (tools/preview)
