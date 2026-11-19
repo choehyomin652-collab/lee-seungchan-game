@@ -175,6 +175,7 @@ const xpBar = (L) => `<div class="xpbar"><span>Lv.${L.lv}</span><div><i style="w
 // 시작 화면 오른쪽 "내 카드": 로그인했으면 프로필 · 경험치 · 전적 · 영토 등급 · 최근 등수, 아니면 로그인 버튼과 이 기기 기록
 const GUEST_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/></svg>`;
 function renderAcctChip() {
+  applyStartPts();
   const el = $("acctcard"); if (!el || typeof loadRecord !== "function") return;
   const p = loadProfile(), rec = loadRecord(), G = rec.games, recent = G.slice(0, 5);
   const stat = (b, s) => `<div><b>${b}</b><small>${s}</small></div>`;
@@ -264,8 +265,9 @@ async function showRanking() {
 // 특별 시작 티어: 이 닉네임 계정은 처음 한 번 이 점수에서 시작해요 (이미 더 높으면 그대로). 1100 = 실버 I
 const START_PTS = { "헤데니": 1100 };
 function applyStartPts() {
-  const p = loadProfile(); if (!p || p.startGift || !START_PTS[p.name]) return;
-  const rec = loadRecord(); rec.pts = Math.max(rec.pts, START_PTS[p.name]); saveRecord(rec);
+  const p = loadProfile(), pts = p && START_PTS[String(p.name || "").replace(/\s/g, "")]; // 띄어쓰기는 빼고 비교
+  if (!p || p.startGift || !pts || typeof loadRecord !== "function") return;
+  const rec = loadRecord(); rec.pts = Math.max(rec.pts, pts); saveRecord(rec);
   p.startGift = 1; saveProfile(p); pushServer();
 }
 function acctInit() {
