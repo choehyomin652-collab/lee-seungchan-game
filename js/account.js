@@ -9,7 +9,14 @@
 // ============================================================
 "use strict";
 // Firebase 콘솔 → 프로젝트 설정 → 내 앱(웹) → "firebaseConfig" 를 그대로 붙여 넣어요. null 이면 기기 계정만 돼요
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = { // 영토체스 계정 서버 (공개돼도 괜찮은 값이에요. 안전은 firestore.rules 가 지켜요)
+  apiKey: "AIzaSyDJFgW85OSisfVvubgEDvEsAl96I7YQCQE",
+  authDomain: "yeongto-chess.firebaseapp.com",
+  projectId: "yeongto-chess",
+  storageBucket: "yeongto-chess.firebasestorage.app",
+  messagingSenderId: "604674738690",
+  appId: "1:604674738690:web:2c26fd11481395860e751b",
+};
 const FB_VER = "10.12.2";
 const ID_DOMAIN = "yeongto-chess.app"; // 아이디를 Firebase 이메일 모양으로 바꿀 때 붙이는 가짜 주소 (메일은 안 가요)
 
@@ -65,6 +72,7 @@ ACCT.ready = (async () => {
     ACCT.server = true;
     const u = ACCT.fb.auth.currentUser;
     if (ACCT.cur && u && idOf(u) === ACCT.cur) pullServer(false); // 다른 기기에서 한 판도 가져와요
+    renderAcctChip(); // 서버로 옮겨야 하는 기기 계정이면 안내가 떠요
     return true;
   } catch (e) { return false; }
 })();
@@ -131,13 +139,25 @@ async function signUp(id, pw, name, av) {
   if (ACCT.server) await userDoc().set(packLocal()).catch(() => {});
   switchTo(id);
 }
+const loginErr = (e) => new Error(e.code === "auth/network-request-failed" ? "인터넷 연결을 확인해 주세요" : e.code === "auth/too-many-requests" ? "너무 많이 틀렸어요. 잠시 뒤에 다시 해 주세요" : "아이디나 비밀번호가 틀렸어요");
 async function logIn(id, pw) {
   await ACCT.ready;
   if (ACCT.server) {
+    let moved = false;
     try { await ACCT.fb.auth.signInWithEmailAndPassword(`${id}@${ID_DOMAIN}`, pw); }
-    catch (e) { throw new Error(e.code === "auth/network-request-failed" ? "인터넷 연결을 확인해 주세요" : e.code === "auth/too-many-requests" ? "너무 많이 틀렸어요. 잠시 뒤에 다시 해 주세요" : "아이디나 비밀번호가 틀렸어요"); }
+    catch (e) {
+      // 서버가 생기기 전에 이 기기에서 만든 계정: 비밀번호가 맞으면 서버에 새로 만들어 옮겨요
+      const a = devAccts()[id];
+      if (!a || a.h !== (await hashPw(id, pw)) || e.code === "auth/network-request-failed" || e.code === "auth/too-many-requests") throw loginErr(e);
+      try { await ACCT.fb.auth.createUserWithEmailAndPassword(`${id}@${ID_DOMAIN}`, pw); moved = true; }
+      catch (e2) { throw new Error(e2.code === "auth/email-already-in-use" ? "다른 기기에서 이미 이 아이디를 서버에 옮겼어요. 그 비밀번호로 로그인하거나, 다른 아이디로 계정을 만들어 주세요" : "서버로 옮기지 못했어요. 인터넷 연결을 확인해 주세요"); }
+    }
     ACCT.cur = id;
-    try { const snap = await userDoc().get(); if (snap.exists) unpack(snap.data()); else saveProfile(blankProfile(id, id, "")); } catch (e) {}
+    try {
+      const snap = await userDoc().get();
+      if (snap.exists && !moved) unpack(snap.data()); // 서버에 있는 내 기록을 이 기기로
+      else { if (!lsGet(pkey("uri-profile"))) saveProfile(blankProfile(id, id, "")); await userDoc().set(packLocal()); } // 이 기기의 기록을 서버로
+    } catch (e) {}
   } else {
     const a = devAccts()[id];
     if (!a || a.h !== (await hashPw(id, pw))) throw new Error("아이디나 비밀번호가 틀렸어요");
@@ -184,6 +204,7 @@ function renderAcctChip() {
   if (p) {
     const L = levelOf(p.xp), T = p.tot;
     el.innerHTML = `<div class="achd">${avatarHtml(p.av, "big")}<span class="acn"><b>${esc(p.name)}</b><small>Lv.${L.lv} · ${esc(p.title)}</small></span><button class="acbtn" id="acopen" type="button">내 계정</button></div>
+      ${ACCT.server && !ACCT.fb.auth.currentUser ? `<button class="acbtn gold lbbtn" id="acmove" type="button">☁️ 계정을 서버로 옮기기 (비밀번호 한 번 입력)</button>` : ""}
       <button class="acbtn lbbtn" id="aclive" type="button">🏆 실시간 랭킹</button>
       <div class="acxp"><span>경험치</span><span>${L.cur} / ${L.need}</span><span class="xpline"><i style="width:${Math.round((L.cur / L.need) * 100)}%"></i></span></div>
       <div class="acgrid">${stat(T.g, "판")}${stat(T.w, "1등")}${stat(T.t4, "4등 안")}${stat(T.g ? (T.sum / T.g).toFixed(1) : "-", "평균 등수")}</div>
@@ -200,6 +221,7 @@ function renderAcctChip() {
     tapButton($("acsignup"), () => showLogin("up"));
   }
   if ($("aclive")) tapButton($("aclive"), () => showLiveRanking());
+  if ($("acmove")) tapButton($("acmove"), () => showLogin("in", ACCT.cur));
   if ($("histbtn")) $("histbtn").hidden = !G.length;
 }
 function acctModal(html) {
@@ -214,7 +236,7 @@ function avPicker(sel) {
   return `<div class="avpick">${DEFS.map((d) => `<button type="button" data-av="${esc(d.n)}" class="${d.n === sel ? "on" : ""}" aria-label="${esc(d.n)}">${avatarHtml(d.n)}</button>`).join("")}</div>`;
 }
 function bindAvPicker(m, cb) { m.querySelectorAll("[data-av]").forEach((b) => (b.onclick = () => { m.querySelectorAll("[data-av]").forEach((x) => x.classList.toggle("on", x === b)); cb(b.dataset.av); })); }
-function showLogin(tab) {
+function showLogin(tab, preId) {
   let av = DEFS[0].n;
   const m = acctModal(`<h2>${tab === "up" ? "계정 만들기" : "로그인"}</h2>
     <div class="actabs"><button data-tab="in" class="${tab !== "up" ? "on" : ""}">로그인</button><button data-tab="up" class="${tab === "up" ? "on" : ""}">계정 만들기</button></div>
@@ -227,6 +249,7 @@ function showLogin(tab) {
     </form>
     <p class="acnote">${modeNote()} 비밀번호는 잊어버리면 찾을 수 없으니 꼭 기억해 두세요.</p>`);
   m.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => showLogin(b.dataset.tab)));
+  if (preId) { $("acid").value = preId; $("acerr").textContent = ""; $("acpw").focus(); m.querySelector(".acnote").textContent = "계정 서버가 생겼어요! 비밀번호를 한 번 입력하면 이 기기의 기록이 서버로 옮겨지고, 다른 기기에서도 로그인 · 랭킹에 올라가요."; }
   if (tab === "up") bindAvPicker(m, (n) => (av = n));
   $("acform").onsubmit = async (e) => {
     e.preventDefault();
