@@ -261,7 +261,15 @@ async function showRanking() {
     el.innerHTML = `<ol class="acrank">${rows.map((o, i) => `<li class="${o.id === ACCT.cur ? "me" : ""}"><span class="rk">${i + 1}</span>${avatarHtml(o.av)}<span class="acn"><b>${esc(o.name || o.id)}</b><small>${esc(o.title || "")}</small></span>${tierEmblem(tierOf(o.pts).i, "sm")}<span class="rv">${esc(tierOf(o.pts).name)}<small>${tierOf(o.pts).lp}점 · Lv.${o.lv || 1}</small></span></li>`).join("")}</ol>`;
   } catch (e) { el.innerHTML = `<p class="acnote">순위를 불러오지 못했어요.</p>`; }
 }
+// 특별 시작 티어: 이 닉네임 계정은 처음 한 번 이 점수에서 시작해요 (이미 더 높으면 그대로). 1100 = 실버 I
+const START_PTS = { "헤데니": 1100 };
+function applyStartPts() {
+  const p = loadProfile(); if (!p || p.startGift || !START_PTS[p.name]) return;
+  const rec = loadRecord(); rec.pts = Math.max(rec.pts, START_PTS[p.name]); saveRecord(rec);
+  p.startGift = 1; saveProfile(p); pushServer();
+}
 function acctInit() {
+  applyStartPts();
   renderAcctChip();
   setTimeout(renderAcctChip, 2500); // 카드 사진이 늦게 오면 다시
 }
