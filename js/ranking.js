@@ -15,36 +15,48 @@ function rankValid(m) {
   return m && typeof m === "object" && okStr(m.n, 12) && m.n && okStr(m.av || "", 8) && okStr(m.t || "", 20)
     && Number.isFinite(m.pts) && m.pts >= 0 && m.pts < 1e5 && Number.isFinite(m.lv) && m.lv >= 1 && m.lv < 1000 && Number.isFinite(m.at);
 }
+// 공개 서버 3곳에 모두 연결해요 (기기마다 먼저 붙는 서버가 달라도 서로 보이게). 한 곳이라도 되면 시작
+function rankOne(url) {
+  return new Promise((ok, no) => {
+    const c = window.mqtt.connect(url, { connectTimeout: 8000, reconnectPeriod: 4000, keepalive: 30, clean: true });
+    const t = setTimeout(() => { c.end(true); no(); }, 9000);
+    c.once("connect", () => { clearTimeout(t); ok(c); });
+    c.once("error", () => { clearTimeout(t); c.end(true); no(); });
+    c.on("message", (topic, buf) => rankMsg(topic, buf));
+    c.on("connect", () => c.subscribe(RANK_TOPIC + "+", { qos: 1 })); // 다시 연결돼도 다시 들어요
+  });
+}
+function rankMsg(t, buf) {
+  if (!t.startsWith(RANK_TOPIC)) return;
+  const k = t.slice(RANK_TOPIC.length);
+  if (!k || k.length > 40 || !buf || !buf.length) return;
+  let m = null; try { m = JSON.parse(String(buf)); } catch (e) { return; }
+  if (!rankValid(m)) return;
+  const old = RANK.rows.get(k);
+  if (old && old.at >= m.at) return; // 여러 서버에서 같은 소식이 오면 가장 새 것만
+  RANK.rows.set(k, { ...m, k });
+  if (old && old.pts !== m.pts) { RANK.flash.add(k); setTimeout(() => { RANK.flash.delete(k); rankRender(); }, 1600); } // 점수가 바뀐 줄은 잠깐 반짝
+  rankRender();
+}
 function rankConnect() {
   if (RANK.conn) return RANK.conn;
+  RANK.clients = [];
   RANK.conn = (async () => {
     if (!window.mqtt) await loadScript(MQTT_SRC);
-    const c = await appConnect();
-    c.on("message", (t, buf) => {
-      if (!t.startsWith(RANK_TOPIC)) return;
-      const k = t.slice(RANK_TOPIC.length);
-      if (!k || k.length > 40) return;
-      if (!buf || !buf.length) { RANK.rows.delete(k); return rankRender(); }
-      let m = null; try { m = JSON.parse(String(buf)); } catch (e) { return; }
-      if (!rankValid(m)) return;
-      const old = RANK.rows.get(k);
-      RANK.rows.set(k, { ...m, k });
-      if (old && old.pts !== m.pts) { RANK.flash.add(k); setTimeout(() => { RANK.flash.delete(k); rankRender(); }, 1600); } // 점수가 바뀐 줄은 잠깐 반짝
-      rankRender();
-    });
-    const sub = () => c.subscribe(RANK_TOPIC + "+", { qos: 1 });
-    sub(); c.on("connect", sub);
-    return c;
+    const tries = APP_BROKERS.map((u) => rankOne(u).then((c) => { RANK.clients.push(c); rankStat(); return c; }));
+    return await Promise.any(tries);
   })().catch((e) => { RANK.conn = null; throw e; });
   return RANK.conn;
 }
+const rankStat = () => { const el = $("lbstat"); if (el && RANK.clients.length) el.innerHTML = `<i class="lbdot on"></i>실시간 연결됨 (서버 ${RANK.clients.length}곳)`; };
 // 내 정보를 올려요 (여러 번 불려도 0.8초에 한 번만)
 function rankPublish() {
   const p = typeof loadProfile === "function" && loadProfile(); if (!p) return;
   clearTimeout(RANK.pubT);
   RANK.pubT = setTimeout(() => {
     const rec = loadRecord(), msg = { n: cleanName(p.name) || p.id, av: p.av || "", t: p.title || "", pts: rec.pts, lv: levelOf(p.xp).lv, w: p.tot.w, g: p.tot.g, at: Date.now() };
-    rankConnect().then((c) => c.publish(RANK_TOPIC + rankKey(p), JSON.stringify(msg), { qos: 1, retain: true })).catch(() => {});
+    const send = () => RANK.clients.forEach((c) => c.publish(RANK_TOPIC + rankKey(p), JSON.stringify(msg), { qos: 1, retain: true })); // 연결된 서버 모두에
+    rankConnect().then(send).catch(() => {}); setTimeout(send, 10000); // 늦게 붙은 서버에도
     RANK.rows.set(rankKey(p), { ...msg, k: rankKey(p) }); rankRender(); // 내 줄은 바로
   }, 800);
 }
@@ -72,7 +84,7 @@ function showLiveRanking() {
     <ol class="lbrank" id="lblist"></ol>
     <p class="acnote">로그인한 친구들의 티어 순위예요. 누가 게임을 끝내면 바로 바뀌어요.</p>`);
   rankRender();
-  rankConnect().then(() => { $("lbstat") && ($("lbstat").innerHTML = `<i class="lbdot on"></i>실시간 연결됨`); rankPublish(); })
+  rankConnect().then(() => { rankStat(); rankPublish(); })
     .catch(() => { $("lbstat") && ($("lbstat").innerHTML = `<i class="lbdot"></i>랭킹 서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요`); });
 }
 // 앱을 열면 (로그인돼 있으면) 내 정보를 올려 둬요
