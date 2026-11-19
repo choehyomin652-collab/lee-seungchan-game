@@ -42,27 +42,65 @@ function placeDelta(pts, place) {
   return Math.max(-pts, b > 0 ? Math.max(1, d) : d);
 }
 // ---------- 문장 그림 (SVG) ----------
-// 가운데 보석 + 양쪽으로 쓸어 올린 날개. 티어가 오를수록 겹이 늘어요
-const EM_R = [ // 오른쪽 반쪽 조각들 (왼쪽은 거울), [나오는 티어, 모양]
-  [0, "M60 72C70 63 84 52 103 36C99 53 91 66 77 78C71 81 65 81 60 80Z"], // 큰 날개
-  [1, "M63 64C76 53 88 42 97 25C97 41 90 54 75 65Z"], // 윗 깃
-  [3, "M62 81C74 84 90 78 103 66C97 82 83 92 64 90Z"], // 아래 날개
-  [5, "M67 52C71 40 77 30 86 17C84 31 80 43 72 55Z"], // 안쪽 뿔
-  [6, "M90 46C101 37 110 26 115 12C116 28 111 41 101 52Z"], // 바깥 뿔
-  [8, "M100 58C108 54 114 48 119 40C118 52 112 60 104 64Z"], // 옆 가시
+// 가운데 깎은 보석 + 양쪽으로 쓸어 올린 금속 날개. 날개 칼날마다 밝은 면 · 어두운 면 · 가운데 능선 · 새긴 홈이 있어 입체로 보여요
+// 티어가 오를수록 칼날이 늘고(EM_BLADES 의 첫 숫자 = 나오는 티어) 뒤의 빛 · 반짝이가 세져요
+const EM_BLADES = [ // [나오는 티어, 뿌리 x,y, 휘는 점 x,y, 끝 x,y, 뿌리 굵기] — 오른쪽 반쪽 (왼쪽은 거울)
+  [6, 146, 92, 166, 64, 190, 26, 20], // 바깥 뿔
+  [8, 150, 118, 176, 118, 199, 98, 16], // 옆 가시
+  [3, 104, 140, 144, 150, 184, 116, 28], // 아래 날개
+  [1, 108, 104, 136, 82, 166, 30, 28], // 윗 깃
+  [0, 104, 122, 144, 114, 192, 58, 40], // 큰 날개
+  [5, 110, 98, 116, 66, 128, 24, 18], // 안쪽 뿔
+  [0, 100, 128, 122, 122, 150, 100, 52], // 몸통 판
 ];
+const f1 = (v) => v.toFixed(1);
+// 휜 칼날 하나: 위(밝은) 면 · 아래(어두운) 면 · 능선 · 홈
+function bladeSvg(x0, y0, cx, cy, x1, y1, w, G, mir) {
+  const N = 14, up = [], dn = [], mid = [], groove = [];
+  for (let k = 0; k <= N; k++) {
+    const t = k / N, a = 1 - t;
+    const x = a * a * x0 + 2 * a * t * cx + t * t * x1, y = a * a * y0 + 2 * a * t * cy + t * t * y1;
+    let dx = 2 * a * (cx - x0) + 2 * t * (x1 - cx), dy = 2 * a * (cy - y0) + 2 * t * (y1 - cy); const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+    let nx = -dy, ny = dx; if (ny > 0) { nx = -nx; ny = -ny; } // 위쪽을 향하는 옆 방향
+    const h = (w / 2) * Math.pow(1 - t, 0.62);
+    up.push([x + nx * h, y + ny * h]); dn.push([x - nx * h, y - ny * h]); mid.push([x, y]); groove.push([x + nx * h * 0.5, y + ny * h * 0.5]);
+  }
+  const M = (pts) => pts.map(([x, y]) => `${f1(mir ? 200 - x : x)} ${f1(y)}`).join(" L");
+  const face = (side, fill) => `<path d="M${M(mid)} L${M(side.slice().reverse())}Z" fill="${fill}"/>`;
+  return `<g>${face(dn, `url(#${G}d)`)}${face(up, `url(#${G}u)`)}
+    <path d="M${M(up)} L${M(dn.slice().reverse())}Z" fill="none" stroke="${"var(--te)"}" stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M${M(mid.slice(0, -1))}" fill="none" stroke="var(--th)" stroke-width="1" stroke-opacity=".9" stroke-linecap="round"/>
+    <path d="M${M(groove.slice(1, -3))}" fill="none" stroke="var(--te)" stroke-width=".8" stroke-opacity=".55" stroke-linecap="round"/></g>`;
+}
+const sparkle = (x, y, r, o) => `<path d="M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z" fill="#fff" opacity="${o}"/>`;
+let EM_UID = 0;
 function tierEmblem(i, cls) {
-  const T = TIERS[i], id = "tg" + i;
-  const parts = EM_R.filter(([t]) => i >= t).map(([, d]) => d);
-  const wing = (d) => `<path d="${d}" fill="url(#${id}a)" stroke="${T.hi}" stroke-opacity=".55" stroke-width="1.2"/><path d="${d}" fill="url(#${id}a)" stroke="${T.hi}" stroke-opacity=".55" stroke-width="1.2" transform="translate(120 0) scale(-1 1)"/>`;
-  const crown = i >= 7 ? `<path d="M60 14L65 40L60 50L55 40Z" fill="url(#${id}a)" stroke="${T.hi}" stroke-width="1"/>` : "";
-  const tiara = i === 9 ? `<path d="M46 44L51 32L56 40L60 28L64 40L69 32L74 44Z" fill="${T.gem}" opacity=".9"/>` : "";
-  return `<svg class="temb ${cls || ""}" viewBox="0 0 120 100" role="img" aria-label="${T.n}" style="--tg:${T.gem}">
-    <defs><linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.hi}"/><stop offset=".45" stop-color="${T.c2}"/><stop offset="1" stop-color="${T.c1}"/></linearGradient>
-    <radialGradient id="${id}g" cx=".5" cy=".4" r=".6"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="${T.gem}"/><stop offset="1" stop-color="${T.c1}"/></radialGradient></defs>
-    ${parts.slice().reverse().map(wing).join("")}${crown}${tiara}
-    <path d="M60 46L72 64L60 88L48 64Z" fill="url(#${id}g)" stroke="${T.hi}" stroke-width="1.4"/>
-    <path d="M60 52L66 64L60 76L54 64Z" fill="#fff" opacity="${0.25 + i * 0.05}"/>
+  const T = TIERS[i], G = "te" + i + "_" + EM_UID++;
+  const blades = EM_BLADES.filter(([t]) => i >= t);
+  const wings = blades.map(([t, x0, y0, cx, cy, x1, y1, w]) => { const g = i === 9 && (t === 1 || t === 6) ? G + "x" : G; return bladeSvg(x0, y0, cx, cy, x1, y1, w, g, true) + bladeSvg(x0, y0, cx, cy, x1, y1, w, g, false); }).join(""); // 챌린저: 윗 깃 · 바깥 뿔은 하늘색
+  const spire = i >= 7 ? bladeSvg(100, 104, 100, 70, 100, 12, 26, G, false) : ""; // 마스터부터 가운데 위로 솟은 칼날
+  const tiara = i === 9 ? [[86, 98, 80, 84, 76, 62, 12], [114, 98, 120, 84, 124, 62, 12]].map(([a, b, c, d, e, f, w]) => bladeSvg(a, b, c, d, e, f, w, G + "x", false)).join("") : "";
+  const glow = 0.22 + i * 0.05;
+  const sp = i >= 4 ? [[46, 52, 7], [158, 40, 6], [60, 146, 5], [150, 150, 6]].slice(0, i >= 7 ? 4 : 2).map(([x, y, r], k) => sparkle(x, y, r + (i >= 8 ? 2 : 0), k % 2 ? 0.7 : 0.9)).join("") : "";
+  const acc = i === 9 ? "#7fe4ff" : T.gem;
+  return `<svg class="temb ${cls || ""}" viewBox="0 0 200 170" role="img" aria-label="${T.n}" style="--tg:${T.gem};--th:${T.hi};--te:${T.c1}">
+    <defs>
+      <linearGradient id="${G}u" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="${T.hi}"/><stop offset=".55" stop-color="${T.c2}"/><stop offset="1" stop-color="${T.c2}" stop-opacity=".9"/></linearGradient>
+      <linearGradient id="${G}d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.c2}"/><stop offset=".5" stop-color="${T.c1}"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></linearGradient>
+      <linearGradient id="${G}xu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="${acc}"/></linearGradient>
+      <linearGradient id="${G}xd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${acc}"/><stop offset="1" stop-color="#1a4a6a"/></linearGradient>
+      <radialGradient id="${G}h" cx=".5" cy=".62" r=".5"><stop offset="0" stop-color="${T.gem}" stop-opacity="${glow.toFixed(2)}"/><stop offset=".6" stop-color="${T.gem}" stop-opacity="${(glow * 0.35).toFixed(2)}"/><stop offset="1" stop-color="${T.gem}" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${G}g" cx=".42" cy=".3" r=".75"><stop offset="0" stop-color="#fff"/><stop offset=".3" stop-color="${acc}"/><stop offset="1" stop-color="${T.c1}"/></radialGradient>
+    </defs>
+    <ellipse cx="100" cy="104" rx="100" ry="70" fill="url(#${G}h)"/>
+    ${wings}${spire}${tiara}
+    <path d="M100 86L130 118L100 160L70 118Z" fill="url(#${G}d)" stroke="var(--te)" stroke-width="1.2"/>
+    <path d="M100 86L130 118L100 118Z" fill="url(#${G}u)"/><path d="M100 86L70 118L100 118Z" fill="${T.hi}" opacity=".85"/>
+    <path d="M100 160L70 118L100 118Z" fill="${T.c1}" opacity=".6"/>
+    <path d="M100 96L120 118L100 148L80 118Z" fill="url(#${G}g)" stroke="${T.hi}" stroke-width="1.2"/>
+    <path d="M100 96L120 118L100 112Z" fill="#fff" opacity=".35"/><path d="M100 96L80 118L100 112Z" fill="#fff" opacity=".6"/>
+    <path d="M80 118L100 148L100 126Z" fill="#000" opacity=".18"/><path d="M120 118L100 148L100 126Z" fill="#000" opacity=".32"/>
+    ${sparkle(93, 108, 5, 0.95)}${sp}
   </svg>`;
 }
 // 영토 티어 배지: 문장 · 티어 이름 · 점수 · 다음 단계까지 막대 (시작 화면 카드 · 결과 화면 · 내 계정). 누르면 티어표

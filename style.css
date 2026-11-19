@@ -721,9 +721,9 @@ body.ovon .hud, body.ovon .info { visibility: hidden; }
 /* ---------- 티어 (tiers.js) ---------- */
 button.rankb { width: 100%; color: inherit; font: inherit; cursor: pointer; }
 button.rankb:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.temb { flex: none; width: 64px; height: auto; overflow: visible; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .6)) drop-shadow(0 0 6px color-mix(in srgb, var(--tg) 45%, transparent)); }
-.temb.sm { width: 40px; } .temb.big { width: 84px; }
-.rtile .rankb .temb { width: 52px; }
+.temb { flex: none; width: 64px; height: auto; overflow: visible; stroke: none; stroke-width: 0; /* 전체 svg 기본 선(stroke: currentColor)이 문장에 번지지 않게 */ filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .6)) drop-shadow(0 0 6px color-mix(in srgb, var(--tg) 45%, transparent)); }
+.temb.sm { width: 44px; } .temb.big { width: 88px; }
+.rtile .rankb .temb { width: 60px; }
 .rankb b em { font-style: normal; font-family: var(--body); font-size: .72em; color: #cfdde2; margin-left: 4px; }
 .rankb.tier { --tc: #f0c060; }
 .rankb.t0 { --tc: #a89890; } .rankb.t1 { --tc: #d8925e; } .rankb.t2 { --tc: #c8d6e4; } .rankb.t3 { --tc: #f0c060; } .rankb.t4 { --tc: #6fd8e8; }
