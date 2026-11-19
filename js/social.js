@@ -10,18 +10,7 @@
 // ============================================================
 "use strict";
 
-// ---------- 영토 점수 · 등급 ----------
-// 등수별 점수: 1~4등은 오르고 5~8등은 내려가요 (0점 아래로는 안 내려가요)
-const PLACE_PTS = [0, 40, 30, 20, 10, -5, -15, -25, -35];
-const RANKS = [
-  { p: 0, n: "새싹 영주", i: "🌱" },
-  { p: 100, n: "마을 영주", i: "🏡" },
-  { p: 250, n: "성주", i: "🏰" },
-  { p: 450, n: "대영주", i: "🛡️" },
-  { p: 700, n: "영토 군주", i: "👑" },
-  { p: 1000, n: "전설의 군주", i: "🌟" },
-];
-const rankOf = (p) => RANKS.filter((r) => p >= r.p).pop();
+// ---------- 영토 점수 · 티어: tiers.js (TIERS · tierOf · placeDelta · rankBadge) ----------
 const REC_KEY = "uri-record", REC_MAX = 20;
 function loadRecord() {
   let r = null; try { r = JSON.parse(localStorage.getItem(pkey(REC_KEY))); } catch (e) {}
@@ -40,7 +29,7 @@ function recordGame(place, newBest) {
   const cnt = traitCounts(board.map((u) => u.d));
   for (const [t, n] of Object.entries(H.emb || {})) cnt[t] = (cnt[t] || 0) + n;
   const traits = Object.entries(cnt).filter(([t, n]) => TRAITS[t] && traitLvl(t, n) > 0).sort((a, b) => traitLvl(b[0], b[1]) - traitLvl(a[0], a[1]) || b[1] - a[1]);
-  const delta = Math.max(-before, PLACE_PTS[place] || 0);
+  const delta = placeDelta(before, place); // 높은 티어일수록 덜 오르고 더 내려가요 (tiers.js)
   rec.pts = before + delta;
   const augs = (H.augs || []).map((id) => (AUGS.find((a) => a.id === id) || {}).n).filter(Boolean);
   rec.games.unshift({ t: Date.now(), pl: place, d: delta, r: `${S.stage}-${S.k}`, on: S.players.some((p) => p.remote), u: board.map((u) => [DEFS[u.d].n, u.star, DEFS[u.d].c]), tr: traits.map(([t, n]) => [t, n]), ag: augs });
@@ -53,12 +42,6 @@ function recordGame(place, newBest) {
 const unitChip = ([n, star, c]) => `<span class="uchip" style="--cc:var(${COST_COLOR[c] || "--c1"})">${esc(n)}<i>${"★".repeat(star)}</i></span>`;
 const placeDot = (g) => `<span class="pdot p${g.pl <= 1 ? 1 : g.pl <= 4 ? 4 : 8}" title="${g.pl}등">${g.pl}</span>`;
 const placeTile = (pl) => `<span class="ptile p${pl <= 1 ? 1 : pl <= 4 ? 4 : 8}">${pl}</span>`;
-const nextRank = (p) => RANKS.find((x) => x.p > p);
-// 영토 등급 배지: 지금 등급 · 점수 · 다음 등급까지 막대 (시작 화면 카드 · 결과 화면)
-function rankBadge(pts) {
-  const r = rankOf(pts), nx = nextRank(pts), pct = nx ? Math.round(((pts - r.p) / (nx.p - r.p)) * 100) : 100;
-  return `<div class="rankb"><span class="ri" aria-hidden="true">${r.i}</span><span class="rt"><b>${r.n} · ${pts}점</b><small>${nx ? `${nx.n}까지 ${nx.p - pts}점` : "가장 높은 등급이에요"}</small><span class="rbar"><i style="width:${pct}%"></i></span></span></div>`;
-}
 // 마지막 팀 한 명: 카드 사진 + 별 + 코스트 색 테두리
 function unitTile([n, star, c]) {
   const d = DEFS.findIndex((x) => x.n === n), url = d >= 0 && typeof PORTRAIT !== "undefined" ? PORTRAIT[d] : null;
@@ -69,12 +52,12 @@ const PLACE_HEAD = ["", "우리 반 우승!", "아깝다, 2등!", "상위권 성
 // 결과 화면: 가운데 메달(등수) → 영토 점수 · 경험치 → 마지막 팀 · 시너지 · 증강 → 최근 등수 → 버튼
 function showResult(rec, before, info) {
   info = info || {};
-  const g = rec.games[0], pl = g.pl, r0 = rankOf(before), r1 = rankOf(rec.pts);
+  const g = rec.games[0], pl = g.pl, r0 = tierOf(before), r1 = tierOf(rec.pts);
   const tier = pl === 1 ? "gold" : pl === 2 ? "silver" : pl <= 4 ? "bronze" : "plain";
   const C = 2 * Math.PI * 54, frac = (9 - pl) / 8;
   const sub = (pl === 1 ? "8개 반 중에서 끝까지 살아남았어요" : `${g.r} 라운드에서 탈락했어요`) + (info.mins ? ` · ${info.mins}분 동안 싸웠어요` : "");
   const sign = g.d > 0 ? `<b class="up">+${g.d}</b>` : g.d < 0 ? `<b class="down">${g.d}</b>` : `<b>±0</b>`;
-  const rkChange = r1.p > r0.p ? `<small class="rkup">등급 업! ${r0.n} → ${r1.n}</small>` : r1.p < r0.p ? `<small class="rkdown">등급이 내려갔어요</small>` : "";
+  const rkChange = r1.step > r0.step ? `<small class="rkup">${r1.i > r0.i ? "티어 승급!" : "승급!"} ${r0.name} → ${r1.name}</small>` : r1.step < r0.step ? `<small class="rkdown">강등: ${r1.name}</small>` : "";
   const recent = rec.games.slice(0, 10), avg = recent.reduce((s, x) => s + x.pl, 0) / recent.length;
   const confetti = pl === 1 ? `<div class="confetti" aria-hidden="true">${Array.from({ length: 28 }, (_, i) => `<i style="--x:${(Math.random() * 100).toFixed(1)}%;--d:${(Math.random() * 1.6).toFixed(2)}s;--r:${Math.round(Math.random() * 360)}deg;--c:${["#ffd24a", "#7ff0e0", "#ff7b6b", "#b47aff", "#4fb4ff", "#3fdf8a"][i % 6]}"></i>`).join("")}</div>` : "";
   $("result").className = "rescard t-" + tier;
@@ -85,7 +68,7 @@ function showResult(rec, before, info) {
     <h2 class="reshead">${PLACE_HEAD[pl] || pl + "등"}</h2>
     <p class="ressub">${sub}</p></div>
     <div class="rright"><div class="restiles">
-      <div class="rtile pts"><span class="rtl"><span>영토 점수</span>${sign}</span>${rankBadge(rec.pts)}${rkChange}</div>
+      <div class="rtile pts"><span class="rtl"><span>티어 · 영토 점수</span>${sign}</span>${rankBadge(rec.pts)}${rkChange}</div>
       <div class="rtile xp" id="resxp"><span class="rtl"><span>경험치</span></span><p class="rnote">로그인하면 경험치 · 레벨 · 칭호가 쌓여요</p></div>
     </div>
     <div class="ressec"><h3>마지막 팀</h3><div class="rteam">${g.u.length ? g.u.map(unitTile).join("") : "<span class='muted'>경기장에 친구가 없었어요</span>"}</div>

@@ -37,7 +37,9 @@ const TITLES = [
   { n: "4등 안 단골", ok: (p) => p.tot.t4 >= 20, how: "4등 안 20번" },
   { n: "백전노장", ok: (p) => p.tot.g >= 50, how: "50판" },
   { n: "같이 하는 게 좋아", ok: (p) => p.tot.on >= 10, how: "친구와 10판" },
-  { n: "전설의 군주", ok: () => loadRecord().pts >= 1000, how: "영토 점수 1000" },
+  { n: "골드 영주", ok: () => tierOf(loadRecord().pts).i >= 3, how: "골드 티어" },
+  { n: "다이아 군주", ok: () => tierOf(loadRecord().pts).i >= 6, how: "다이아몬드 티어" },
+  { n: "챌린저", ok: () => tierOf(loadRecord().pts).i >= 9, how: "챌린저 티어" },
 ];
 function blankProfile(id, name, av) { return { id, name, av, title: "새내기", xp: 0, tot: { g: 0, w: 0, t4: 0, sum: 0, on: 0 }, made: Date.now() }; }
 function loadProfile() {
@@ -233,15 +235,15 @@ function showLogin(tab) {
   };
 }
 function showProfile() {
-  const p = loadProfile(), rec = loadRecord(), L = levelOf(p.xp), r = rankOf(rec.pts), T = p.tot;
+  const p = loadProfile(), rec = loadRecord(), L = levelOf(p.xp), r = tierOf(rec.pts), T = p.tot;
   const m = acctModal(`<div class="achead">${avatarHtml(p.av, "big")}<div><h2>${esc(p.name)}</h2><p class="acsub">@${esc(p.id)} · ${esc(p.title)}</p></div></div>
     ${xpBar(L)}
-    <div class="acstats"><div><b>${T.g}</b><small>판</small></div><div><b>${T.w}</b><small>1등</small></div><div><b>${T.t4}</b><small>4등 안</small></div><div><b>${T.g ? (T.sum / T.g).toFixed(1) : "-"}</b><small>평균 등수</small></div><div><b>${r.i}</b><small>${r.n} ${rec.pts}점</small></div></div>
+    <div class="acstats"><div><b>${T.g}</b><small>판</small></div><div><b>${T.w}</b><small>1등</small></div><div><b>${T.t4}</b><small>4등 안</small></div><div><b>${T.g ? (T.sum / T.g).toFixed(1) : "-"}</b><small>평균 등수</small></div><div>${tierEmblem(r.i, "sm")}<small>${r.name}</small></div></div>
     <p class="acsub">칭호 고르기</p>
     <div class="actitles">${TITLES.map((t) => { const ok = t.ok(p); return `<button data-title="${esc(t.n)}" class="${t.n === p.title ? "on" : ""}" ${ok ? "" : "disabled"} title="${esc(t.how)}">${esc(t.n)}${ok ? "" : `<small>${esc(t.how)}</small>`}</button>`; }).join("")}</div>
     <details><summary>닉네임 · 대표 캐릭터 바꾸기</summary>
       <label>닉네임 <input id="acname" maxlength="8" value="${esc(p.name)}"></label>${avPicker(p.av)}<button class="go" id="acsave">저장</button></details>
-    ${ACCT.server ? `<button class="linkbtn" id="acrank">친구들 순위 보기</button><div id="acranks"></div>` : ""}
+    ${ACCT.server ? `<button class="linkbtn" id="acrank">친구들 티어 순위 보기</button><div id="acranks"></div>` : ""}
     <p class="acnote">${modeNote()}</p>
     <button class="linkbtn" id="acout">로그아웃 (다른 계정으로 바꾸기)</button>`);
   let av = p.av;
@@ -254,9 +256,9 @@ function showProfile() {
 async function showRanking() {
   const el = $("acranks"); el.innerHTML = `<p class="acnote">불러오는 중…</p>`;
   try {
-    const q = await ACCT.fb.db.collection("users").orderBy("xp", "desc").limit(30).get();
+    const q = await ACCT.fb.db.collection("users").orderBy("pts", "desc").limit(30).get();
     const rows = q.docs.map((d) => d.data());
-    el.innerHTML = `<ol class="acrank">${rows.map((o, i) => `<li class="${o.id === ACCT.cur ? "me" : ""}"><span class="rk">${i + 1}</span>${avatarHtml(o.av)}<span class="acn"><b>${esc(o.name || o.id)}</b><small>${esc(o.title || "")}</small></span><span class="rv">Lv.${o.lv || 1}<small>1등 ${o.w || 0} · ${o.pts || 0}점</small></span></li>`).join("")}</ol>`;
+    el.innerHTML = `<ol class="acrank">${rows.map((o, i) => `<li class="${o.id === ACCT.cur ? "me" : ""}"><span class="rk">${i + 1}</span>${avatarHtml(o.av)}<span class="acn"><b>${esc(o.name || o.id)}</b><small>${esc(o.title || "")}</small></span>${tierEmblem(tierOf(o.pts).i, "sm")}<span class="rv">${esc(tierOf(o.pts).name)}<small>${tierOf(o.pts).lp}점 · Lv.${o.lv || 1}</small></span></li>`).join("")}</ol>`;
   } catch (e) { el.innerHTML = `<p class="acnote">순위를 불러오지 못했어요.</p>`; }
 }
 function acctInit() {
