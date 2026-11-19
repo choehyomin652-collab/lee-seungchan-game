@@ -29,8 +29,8 @@
 - 아이디·비밀번호 로그인, 프로필(닉네임·대표 캐릭터), 레벨·칭호, 전적, 계정별 설정(소리·화질·카드 사진)
 - 계정마다 나뉘어야 하는 localStorage 키는 `pkey("uri-...")` 로 감싸요. 서버에 같이 올릴 키는 `SYNC_KEYS` 에 넣어요
 - 티어(아이언 ~ 챌린저)·영토 점수·티어 문장 그림은 `js/tiers.js` (`TIERS` · `tierOf` · `placeDelta` · `tierEmblem`). 점수 배율은 `GAIN_K` · `LOSS_K`
-- 실시간 랭킹은 `js/ranking.js`: 로그인한 계정이 닉네임 · 티어 점수 · 레벨을 공개 MQTT 서버(approom.js 와 같은 서버)에 retain 메시지로 올리고, 랭킹 창은 모두의 메시지를 받아 점수 순으로 보여 줘요. `pushServer()` 가 불릴 때마다 같이 올라가요
-- 서버(Firebase)는 `FIREBASE_CONFIG` 를 채우면 켜져요 (`ACCOUNTS.md`, 규칙은 `firestore.rules`). 비어 있으면 기기 안 계정만 돼요
+- 실시간 랭킹은 `js/ranking.js` (서버가 없을 때): 로그인한 계정이 닉네임 · 티어 점수 · 레벨을 공개 MQTT 서버(approom.js 와 같은 서버)에 retain 메시지로 올리고, 랭킹 창은 모두의 메시지를 받아 점수 순으로 보여 줘요. `pushServer()` 가 불릴 때마다 같이 올라가요
+- 계정 서버(Firebase 프로젝트 `yeongto-chess`)가 켜져 있어요 (`FIREBASE_CONFIG`, 규칙은 `firestore.rules`). 서버가 생기기 전 기기 계정은 로그인(또는 카드의 "계정을 서버로 옮기기")할 때 비밀번호가 맞으면 서버로 옮겨져요. 랭킹은 서버가 있으면 Firestore `users` 를 `pts` 순으로 실시간(onSnapshot), 서버가 안 되는 곳(아티팩트 등)에서는 공개 MQTT 로
 
 ## 화면 확인 도구 (tools/preview)
 진짜 three.js 대신 간이 렌더러(`tools/preview/mini-three.js`, WebGL2)를 끼워 Playwright 로 화면을 찍어요. 외곽선·빛번짐은 안 나와요. 인자의 `.` 은 저장소 루트예요.
