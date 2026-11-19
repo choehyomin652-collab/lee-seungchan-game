@@ -282,12 +282,15 @@ function showProfile() {
   if ($("acrank")) $("acrank").onclick = () => showLiveRanking();
 }
 // 특별 시작 티어: 이 닉네임 계정은 처음 한 번 이 점수에서 시작해요 (이미 더 높으면 그대로). 1100 = 실버 I
-const START_PTS = { "헤데니": 1100 };
+const START_PTS = { "헤데니": 1100 }; // 닉네임
+const START_PTS_ID = { "sniper09": 3200 }; // 아이디 (3200 = 그랜드마스터)
 function applyStartPts() {
-  const p = loadProfile(), pts = p && START_PTS[String(p.name || "").replace(/\s/g, "")]; // 띄어쓰기는 빼고 비교
-  if (!p || p.startGift || !pts || typeof loadRecord !== "function") return;
+  const p = loadProfile(); if (!p || typeof loadRecord !== "function") return;
+  const pts = Math.max(START_PTS[String(p.name || "").replace(/\s/g, "")] || 0, START_PTS_ID[p.id] || 0); // 닉네임은 띄어쓰기 빼고 비교
+  const got = p.startGift === 1 ? 1100 : +p.startGift || 0; // 이미 받은 시작 점수 (예전 표시 1 = 1100)
+  if (!pts || got >= pts) return;
   const rec = loadRecord(); rec.pts = Math.max(rec.pts, pts); saveRecord(rec);
-  p.startGift = 1; saveProfile(p); pushServer();
+  p.startGift = pts; saveProfile(p); pushServer();
 }
 function acctInit() {
   applyStartPts();
